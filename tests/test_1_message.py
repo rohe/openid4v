@@ -3,32 +3,36 @@ import os
 from urllib.parse import quote_plus
 from urllib.parse import unquote_plus
 
+import pytest
 from cryptojwt import JWT
 from cryptojwt.jwt import utc_time_sans_frac
 from cryptojwt.key_jar import build_keyjar
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
+
 from oidc4vc.message import AuthorizationDetail
 from oidc4vc.message import ClaimsSupport
 from oidc4vc.message import CredentialDefinition
+from oidc4vc.message import CredentialIssuerMetadata
 from oidc4vc.message import CredentialMetadata
+from oidc4vc.message import CredentialOffer
 from oidc4vc.message import CredentialRequestJwtVcJson
-import pytest
+from oidc4vc.message import DisplayProperty
 
+JWT_ISSUER = "s6BhdRkqt3"
 KEYJAR = build_keyjar(DEFAULT_KEY_DEFS)
+KEYJAR.import_jwks(KEYJAR.export_jwks(private=True), JWT_ISSUER)
 
 _dirname = os.path.dirname(os.path.abspath(__file__))
 
 
 def test_credential_request():
     payload = {
-        "iss": "s6BhdRkqt3",
         "aud": "https://server.example.com",
         "iat": utc_time_sans_frac(),
         "nonce": "tZignsnFbp"
     }
-    _jwt = JWT(key_jar=KEYJAR, sign_alg='ES256')
-    _jwt.set_jws_headers(typ="openid4vci-proof+jwt")
-    _jws = _jwt.pack(payload)
+    _jwt = JWT(key_jar=KEYJAR, sign_alg='ES256', iss=JWT_ISSUER)
+    _jws = _jwt.pack(payload, jws_headers={"typ": "openid4vci-proof+jwt"})
 
     query = {
         "format": "jwt_vc_json",
@@ -227,4 +231,37 @@ def test_credential_metadata_jwt_vc_json():
     _file_name = "credential_metadata_jwt_vc_json.json"
     args = json.loads(open(os.path.join(_dirname, "example", _file_name)).read())
     _metadata = CredentialMetadata(**args)
+    _metadata.verify()
     assert _metadata
+    assert set(_metadata.keys()) == {"format", "id", "cryptographic_suites_supported",
+                                     "cryptographic_binding_methods_supported",
+                                     "credential_definition", "proof_types_supported",
+                                     "display"}
+    assert isinstance(_metadata["credential_definition"], CredentialDefinition)
+    assert len(_metadata["display"]) == 1
+    assert isinstance(_metadata["display"][0], DisplayProperty)
+    assert _metadata["display"][0]["name"] == "University Credential"
+
+
+# def test_credential_metadata_mso_mdoc():
+#     pass
+
+def test_credential_offer_authz_code():
+    _file_name = "credential_offer_authz_code.json"
+    args = json.loads(open(os.path.join(_dirname, "example", _file_name)).read())
+    offer = CredentialOffer(**args)
+    assert offer['credential_issuer'] == "https://credential-issuer.example.com"
+    assert len(offer['credentials']) == 1  # missed one, should be two eventually
+    assert len(offer['grants']) == 1
+    assert set(offer['grants'].keys()) == {'authorization_code'}
+
+
+def test_issuer_metadata():
+    _file_name = "issuer_metadata.json"
+    args = json.loads(open(os.path.join(_dirname, "example", _file_name)).read())
+    metadata = CredentialIssuerMetadata(**args)
+    assert set(metadata.keys()) == {'credentials_supported', 'credential_issuer',
+                                    'credential_endpoint'}
+    assert len(metadata["credentials_supported"]) == 3
+    # One I can deal with
+    assert len([c for c in metadata["credentials_supported"] if c["format"] == "jwt_vc_json"]) == 1
