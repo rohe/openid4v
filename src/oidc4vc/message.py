@@ -3,6 +3,7 @@ from urllib.parse import urlsplit
 
 from cryptojwt.jwk.jwk import key_from_jwk_dict
 from idpyoidc.exception import MissingAttribute
+from idpyoidc.message import SINGLE_REQUIRED_JSON
 from idpyoidc.message import json_deserializer
 from idpyoidc.message import json_serializer
 from idpyoidc.message import Message
@@ -495,3 +496,28 @@ class CredentialResponse(ResponseMessage):
         "c_nonce": SINGLE_OPTIONAL_STRING,
         "c_nonce_expires_in": SINGLE_OPTIONAL_INT
     }
+
+class WalletProviderMetadata(Message):
+    c_param = {
+        "jwks": SINGLE_REQUIRED_JSON,
+        "token_endpoint": SINGLE_REQUIRED_STRING,
+        "attested_security_context_values_supported": OPTIONAL_LIST_OF_STRINGS,
+        "grant_types_supported": OPTIONAL_LIST_OF_STRINGS,
+        "token_endpoint_auth_methods_supported": OPTIONAL_LIST_OF_STRINGS,
+        "token_endpoint_auth_signing_alg_values_supported": OPTIONAL_LIST_OF_STRINGS
+    }
+
+class WalletInstanceRequest(Message):
+    c_param = {
+        "iss": SINGLE_REQUIRED_STRING,
+        "aud": SINGLE_REQUIRED_STRING,
+        "jti": SINGLE_REQUIRED_STRING,
+        "type": SINGLE_REQUIRED_STRING,
+        "nonce": SINGLE_REQUIRED_STRING,
+        "cnf": SINGLE_REQUIRED_JSON
+    }
+
+    def verify(self, **kwargs):
+        super(WalletInstanceRequest, self).verify(**kwargs)
+        if self["type"] != "WalletInstanceAttestationRequest":
+            raise ValueError("Type has to be 'WalletInstanceAttestationRequest'")

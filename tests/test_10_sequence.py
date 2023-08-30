@@ -36,6 +36,10 @@ class TestAuthorizationRequest():
                         "merge_rule": "lax",
                     },
                 },
+                "pkce": {
+                    "function": "idpyoidc.client.oauth2.add_on.pkce.add_support",
+                    "kwargs": {"code_challenge_length": 64, "code_challenge_method": "S256"},
+                },
                 "dpop": {
                     "function": "idpyoidc.client.oauth2.add_on.dpop.add_support",
                     "kwargs": {"dpop_signing_alg_values_supported": ["ES256", "ES512"]},

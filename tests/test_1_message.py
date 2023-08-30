@@ -3,11 +3,11 @@ import os
 from urllib.parse import quote_plus
 from urllib.parse import unquote_plus
 
-import pytest
 from cryptojwt import JWT
 from cryptojwt.jwt import utc_time_sans_frac
 from cryptojwt.key_jar import build_keyjar
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
+import pytest
 
 from oidc4vc.message import AuthorizationDetail
 from oidc4vc.message import ClaimsSupport
