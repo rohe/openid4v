@@ -5,7 +5,7 @@ from idpyoidc.client.oauth2.access_token import AccessToken as oauth2_AccessToke
 from idpyoidc.client.service import Service
 from idpyoidc.message.oauth2 import ResponseMessage
 
-from oidc4vc import message
+from oidc4vci import message
 
 LOGGER = logging.getLogger(__name__)
 

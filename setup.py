@@ -27,7 +27,7 @@ __author__ = 'Roland Hedberg'
 
 extra_install_requires = []
 
-with open('src/oidc4vc/__init__.py', 'r') as fd:
+with open('src/oidc4vci/__init__.py', 'r') as fd:
     version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]',
                         fd.read(), re.MULTILINE).group(1)
 
@@ -35,7 +35,7 @@ with open(os.path.join(os.path.dirname(__file__), 'README.md')) as readme:
     README = readme.read()
 
 setup(
-    name="oidc4vc",
+    name="oidc4vci",
     version=version,
     description="Python implementation of OpenID Verifiable Credentials",
     long_description=README,
@@ -43,7 +43,7 @@ setup(
     author="Roland Hedberg",
     author_email="roland@catalogix.se",
     license="Apache 2.0",
-    url='https://github.com/rohe/oidc4vc/',
+    url='https://github.com/rohe/oidc4vci/',
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     classifiers=[

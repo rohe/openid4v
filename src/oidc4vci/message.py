@@ -3,7 +3,6 @@ from urllib.parse import urlsplit
 
 from cryptojwt.jwk.jwk import key_from_jwk_dict
 from idpyoidc.exception import MissingAttribute
-from idpyoidc.message import SINGLE_REQUIRED_JSON
 from idpyoidc.message import json_deserializer
 from idpyoidc.message import json_serializer
 from idpyoidc.message import Message
@@ -21,6 +20,7 @@ from idpyoidc.message import SINGLE_OPTIONAL_INT
 from idpyoidc.message import SINGLE_OPTIONAL_JSON
 from idpyoidc.message import SINGLE_OPTIONAL_STRING
 from idpyoidc.message import SINGLE_REQUIRED_INT
+from idpyoidc.message import SINGLE_REQUIRED_JSON
 from idpyoidc.message import SINGLE_REQUIRED_STRING
 from idpyoidc.message.oauth2 import deserialize_from_one_of
 from idpyoidc.message.oauth2 import ResponseMessage
@@ -209,7 +209,7 @@ def cred_subj_list_deser(val, sformat="urlencoded"):
 
 
 OPTIONAL_LIST_OF_CREDENTIALSUBJECTS = (
-    [CredentialSubject], False, msg_list_ser, cred_subj_list_deser, False)
+    CredentialSubject, False, msg_list_ser, cred_subj_deser, False)
 
 
 class CredentialDefinition(Message):
@@ -221,8 +221,7 @@ class CredentialDefinition(Message):
     def verify(self, **kwargs):
         super(CredentialDefinition, self).verify(**kwargs)
         if "credentialSubject" in self:
-            for _cs in self["credentialSubject"]:
-                _cs.verify(**kwargs)
+            self["credentialSubject"].verify(**kwargs)
 
 
 def cred_def_deser(val, sformat="dict"):
@@ -392,8 +391,14 @@ class CredentialsSupported(Message):
         "cryptographic_binding_methods_supported": OPTIONAL_LIST_OF_STRINGS,
         "cryptographic_suites_supported": OPTIONAL_LIST_OF_STRINGS,
         "proof_types_supported": OPTIONAL_LIST_OF_STRINGS,
-        "display": OPTIONAL_DISPLAY_PROPERIES
+        "display": OPTIONAL_DISPLAY_PROPERIES,
+        "credential_definition": SINGLE_OPTIONAL_CREDENTIAL_DEFINITION
     }
+
+    def verify(self, **kwargs):
+        if self["format"] == "jwt_vc_json":
+            if "credential_definition" not in self:
+                raise ValueError("'credential_definition' MUST be present if format == jwt_vc_json")
 
 
 def cred_deser(val, sformat=dict):
@@ -474,6 +479,7 @@ class AuthorizationRequest(oauth2.AuthorizationRequest):
     def verify(self, **kwargs):
         super(AuthorizationRequest, self).verify(**kwargs)
 
+
 class AccessTokenRequest(oauth2.AccessTokenRequest):
     c_param = oidc.AccessTokenRequest.c_param.copy()
     c_param.update({
@@ -481,12 +487,14 @@ class AccessTokenRequest(oauth2.AccessTokenRequest):
         "user_pin": SINGLE_OPTIONAL_STRING,
     })
 
+
 class AccessTokenResponse(oauth2.AccessTokenResponse):
     c_param = oauth2.AccessTokenResponse.c_param.copy()
     c_param.update({
         "c_nonce": SINGLE_OPTIONAL_STRING,
         "c_nonce_expires_in": SINGLE_OPTIONAL_INT
     })
+
 
 class CredentialResponse(ResponseMessage):
     c_param = {
@@ -497,6 +505,7 @@ class CredentialResponse(ResponseMessage):
         "c_nonce_expires_in": SINGLE_OPTIONAL_INT
     }
 
+
 class WalletProviderMetadata(Message):
     c_param = {
         "jwks": SINGLE_REQUIRED_JSON,
@@ -506,6 +515,7 @@ class WalletProviderMetadata(Message):
         "token_endpoint_auth_methods_supported": OPTIONAL_LIST_OF_STRINGS,
         "token_endpoint_auth_signing_alg_values_supported": OPTIONAL_LIST_OF_STRINGS
     }
+
 
 class WalletInstanceRequest(Message):
     c_param = {
@@ -521,3 +531,22 @@ class WalletInstanceRequest(Message):
         super(WalletInstanceRequest, self).verify(**kwargs)
         if self["type"] != "WalletInstanceAttestationRequest":
             raise ValueError("Type has to be 'WalletInstanceAttestationRequest'")
+
+class WalletInstanceAttestation(Message):
+    c_param = {
+        "iss": SINGLE_REQUIRED_STRING,
+        "sub": SINGLE_REQUIRED_STRING,
+        "iat": SINGLE_REQUIRED_INT,
+        "exp": SINGLE_REQUIRED_INT,
+        "type": SINGLE_REQUIRED_STRING,
+        "policy_uri": SINGLE_OPTIONAL_STRING,
+        "tos_uri": SINGLE_OPTIONAL_STRING,
+        "logo_uri": SINGLE_OPTIONAL_STRING,
+        "attested_security_context": SINGLE_OPTIONAL_STRING,
+        "cnf": SINGLE_REQUIRED_JSON,
+        "authorization_endpoint": SINGLE_OPTIONAL_STRING,
+        "response_types_supported": OPTIONAL_LIST_OF_STRINGS,
+        "vp_formats_supported": SINGLE_REQUIRED_JSON,
+        "request_object_signing_alg_values_supported": REQUIRED_LIST_OF_STRINGS,
+        "presentation_definition_uri_supported": SINGLE_OPTIONAL_BOOLEAN
+    }

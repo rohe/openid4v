@@ -3,20 +3,20 @@ import os
 from urllib.parse import quote_plus
 from urllib.parse import unquote_plus
 
+import pytest
 from cryptojwt import JWT
 from cryptojwt.jwt import utc_time_sans_frac
 from cryptojwt.key_jar import build_keyjar
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
-import pytest
 
-from oidc4vc.message import AuthorizationDetail
-from oidc4vc.message import ClaimsSupport
-from oidc4vc.message import CredentialDefinition
-from oidc4vc.message import CredentialIssuerMetadata
-from oidc4vc.message import CredentialMetadata
-from oidc4vc.message import CredentialOffer
-from oidc4vc.message import CredentialRequestJwtVcJson
-from oidc4vc.message import DisplayProperty
+from oidc4vci.message import AuthorizationDetail
+from oidc4vci.message import ClaimsSupport
+from oidc4vci.message import CredentialDefinition
+from oidc4vci.message import CredentialIssuerMetadata
+from oidc4vci.message import CredentialMetadata
+from oidc4vci.message import CredentialOffer
+from oidc4vci.message import CredentialRequestJwtVcJson
+from oidc4vci.message import DisplayProperty
 
 JWT_ISSUER = "s6BhdRkqt3"
 KEYJAR = build_keyjar(DEFAULT_KEY_DEFS)
@@ -124,10 +124,10 @@ def check_1(ads):
     assert set(ad["credential_definition"].keys()) == {"type", "credentialSubject"}
     assert ad["credential_definition"]["type"] == ['VerifiableCredential',
                                                    'UniversityDegreeCredential']
-    assert len(ad["credential_definition"]["credentialSubject"]) == 1
-    assert set(ad["credential_definition"]["credentialSubject"][0].keys()) == {"degree",
-                                                                               "family_name",
-                                                                               "given_name"}
+    assert len(ad["credential_definition"]["credentialSubject"]) == 3
+    assert set(ad["credential_definition"]["credentialSubject"].keys()) == {"degree",
+                                                                            "family_name",
+                                                                            "given_name"}
 
 
 def check_2(ads):
@@ -140,10 +140,10 @@ def check_2(ads):
     assert set(ad["credential_definition"].keys()) == {"type", "credentialSubject", "@context"}
     assert ad["credential_definition"]["type"] == ['VerifiableCredential',
                                                    'UniversityDegreeCredential']
-    assert len(ad["credential_definition"]["credentialSubject"]) == 1
-    assert set(ad["credential_definition"]["credentialSubject"][0].keys()) == {"degree",
-                                                                               "family_name",
-                                                                               "given_name"}
+    assert len(ad["credential_definition"]["credentialSubject"]) == 3
+    assert set(ad["credential_definition"]["credentialSubject"].keys()) == {"degree",
+                                                                            "family_name",
+                                                                            "given_name"}
 
 
 def check_3(ads):
@@ -221,8 +221,8 @@ def test_credential_definition():
 
     _cd = CredentialDefinition(**_def)
     _cd.verify()
-    assert len(_cd['credentialSubject']) == 1
-    _cs = _cd['credentialSubject'][0]
+    assert len(_cd['credentialSubject']) == 4
+    _cs = _cd['credentialSubject']
     assert set(_cs.keys()) == {'given_name', 'last_name', 'degree', 'gpa'}
     assert isinstance(_cs['given_name'], ClaimsSupport)
 
@@ -241,6 +241,11 @@ def test_credential_metadata_jwt_vc_json():
     assert len(_metadata["display"]) == 1
     assert isinstance(_metadata["display"][0], DisplayProperty)
     assert _metadata["display"][0]["name"] == "University Credential"
+    _credential_definition = _metadata["credential_definition"]
+    assert "VerifiableCredential" in _credential_definition["type"]
+    assert set(_credential_definition["credentialSubject"].keys()) == {
+        "given_name", "family_name", "degree", "gpa"
+    }
 
 
 # def test_credential_metadata_mso_mdoc():
@@ -265,3 +270,18 @@ def test_issuer_metadata():
     assert len(metadata["credentials_supported"]) == 3
     # One I can deal with
     assert len([c for c in metadata["credentials_supported"] if c["format"] == "jwt_vc_json"]) == 1
+
+
+def test_credential_issuer_metadata():
+    _file_name = "credential_issuer_metadata.json"
+    args = json.loads(open(os.path.join(_dirname, "example", _file_name)).read())
+    metadata = CredentialIssuerMetadata(**args)
+    metadata.verify()
+    assert set(metadata.keys()) == {'authorization_server',
+                                    'credential_endpoint',
+                                    'credential_issuer',
+                                    'credentials_supported',
+                                    'deferred_credential_endpoint'}
+    assert len(metadata["credentials_supported"]) == 2
+    # One I can deal with
+    assert len([c for c in metadata["credentials_supported"] if c["format"] == "jwt_vc"]) == 2

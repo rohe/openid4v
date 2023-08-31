@@ -15,7 +15,7 @@ from idpyoidc.message import oauth2
 from idpyoidc.message.oauth2 import ResponseMessage
 from idpyoidc.time_util import time_sans_frac
 
-from oidc4vc.message import AuthorizationRequest
+from oidc4vci.message import AuthorizationRequest
 
 LOGGER = logging.getLogger(__name__)
 

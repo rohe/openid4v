@@ -1,0 +1,38 @@
+{
+  "iss": "https://wallet-provider.example.org",
+  "sub": "vbeXJksM45xphtANnCiG6mCyuU4jfGNzopGuKvogg9c",
+  "type": "WalletInstanceAttestation",
+  "policy_uri": "https://wallet-provider.example.org/privacy_policy",
+  "tos_uri": "https://wallet-provider.example.org/info_policy",
+  "logo_uri": "https://wallet-provider.example.org/logo.svg",
+  "attested_security_context": "https://wallet-provider.example.org/LoA/basic",
+  "cnf":
+  {
+    "jwk":
+    {
+      "crv": "P-256",
+      "kty": "EC",
+      "x": "4HNptI-xr2pjyRJKGMnz4WmdnQD_uJSq4R95Nj98b44",
+      "y": "LIZnSB39vFJhYgS3k7jXE4r3-CoGFQwZtPBIRqpNlrg",
+      "kid": "vbeXJksM45xphtANnCiG6mCyuU4jfGNzopGuKvogg9c"
+    }
+  },
+  "authorization_endpoint": "eudiw:",
+  "response_types_supported": [
+    "vp_token"
+  ],
+  "vp_formats_supported": {
+    "jwt_vp_json": {
+      "alg_values_supported": ["ES256"]
+    },
+    "jwt_vc_json": {
+      "alg_values_supported": ["ES256"]
+    }
+  },
+  "request_object_signing_alg_values_supported": [
+    "ES256"
+  ],
+  "presentation_definition_uri_supported": false,
+  "iat": 1687281195,
+  "exp": 1687288395
+}

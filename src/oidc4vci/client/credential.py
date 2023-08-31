@@ -3,8 +3,8 @@ import logging
 from idpyoidc.client.service import Service
 from idpyoidc.message import oidc
 
-from oidc4vc.message import CredentialRequest
-from oidc4vc.message import CredentialResponse
+from oidc4vci.message import CredentialRequest
+from oidc4vci.message import CredentialResponse
 
 logger = logging.getLogger(__name__)
 
