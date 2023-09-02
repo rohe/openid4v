@@ -1,7 +1,9 @@
 import json
 from urllib.parse import urlsplit
 
+from cryptojwt import JWT
 from cryptojwt.jwk.jwk import key_from_jwk_dict
+from idpyoidc import verified_claim_name
 from idpyoidc.exception import MissingAttribute
 from idpyoidc.message import json_deserializer
 from idpyoidc.message import json_serializer
@@ -517,7 +519,7 @@ class WalletProviderMetadata(Message):
     }
 
 
-class WalletInstanceRequest(Message):
+class WalletInstanceRequestJWT(Message):
     c_param = {
         "iss": SINGLE_REQUIRED_STRING,
         "aud": SINGLE_REQUIRED_STRING,
@@ -528,11 +530,33 @@ class WalletInstanceRequest(Message):
     }
 
     def verify(self, **kwargs):
-        super(WalletInstanceRequest, self).verify(**kwargs)
+        super(WalletInstanceRequestJWT, self).verify(**kwargs)
         if self["type"] != "WalletInstanceAttestationRequest":
             raise ValueError("Type has to be 'WalletInstanceAttestationRequest'")
 
-class WalletInstanceAttestation(Message):
+class WalletInstanceRequest(Message):
+    c_param = {
+        "grant_type": SINGLE_REQUIRED_STRING,
+        "assertion": SINGLE_REQUIRED_STRING
+    }
+
+    def verify(self, **kwargs):
+        super(WalletInstanceRequest, self).verify(**kwargs)
+
+        _allowed_sign_algs = kwargs.get("allowed_sign_algs", ["ES256"])
+        _verifier = JWT(key_jar=kwargs["keyjar"], allowed_sign_algs=_allowed_sign_algs)
+        # if the 'typ' parameter in the JWT header matches one of the keys in this dictionary then
+        # the payload is mapped into the corresponding class
+        _verifier.typ2msg_cls = {
+            "var+jwt": WalletInstanceRequestJWT
+        }
+
+        _request = _verifier.unpack(self["assertion"])
+        if isinstance(_request, Message):
+            _request.verify()
+        self[verified_claim_name("assertion")] = _request
+
+class WalletInstanceAttestationJWT(Message):
     c_param = {
         "iss": SINGLE_REQUIRED_STRING,
         "sub": SINGLE_REQUIRED_STRING,
@@ -550,3 +574,35 @@ class WalletInstanceAttestation(Message):
         "request_object_signing_alg_values_supported": REQUIRED_LIST_OF_STRINGS,
         "presentation_definition_uri_supported": SINGLE_OPTIONAL_BOOLEAN
     }
+
+class WalletProvider(Message):
+    c_param = {
+        "jwks": SINGLE_REQUIRED_JSON,
+        "token_endpoint": SINGLE_REQUIRED_STRING,
+        "attested_security_context_values_supported": OPTIONAL_LIST_OF_STRINGS,
+        "grant_types_supported": REQUIRED_LIST_OF_STRINGS,
+        "token_endpoint_auth_methods_supported": OPTIONAL_LIST_OF_STRINGS,
+        "token_endpoint_auth_signing_alg_values_supported": OPTIONAL_LIST_OF_STRINGS
+    }
+
+class WalletInstanceAttestationResponse(Message):
+    c_param = {
+        "grant_type": SINGLE_REQUIRED_STRING,
+        "assertion": SINGLE_REQUIRED_STRING
+    }
+
+    def verify(self, **kwargs):
+        super(WalletInstanceAttestationResponse, self).verify(**kwargs)
+
+        _allowed_sign_algs = kwargs.get("allowed_sign_algs", ["ES256"])
+        _verifier = JWT(key_jar=kwargs["keyjar"], allowed_sign_algs=_allowed_sign_algs)
+        # if the 'typ' parameter in the JWT header matches one of the keys in this dictionary then
+        # the payload is mapped into the corresponding class
+        _verifier.typ2msg_cls = {
+            "wallet-attestation+jwt": WalletInstanceAttestationJWT
+        }
+
+        _request = _verifier.unpack(self["assertion"])
+        if isinstance(_request, Message):
+            _request.verify()
+        self[verified_claim_name("assertion")] = _request
