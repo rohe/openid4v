@@ -563,16 +563,16 @@ class WalletInstanceAttestationJWT(Message):
         "iat": SINGLE_REQUIRED_INT,
         "exp": SINGLE_REQUIRED_INT,
         "type": SINGLE_REQUIRED_STRING,
-        "policy_uri": SINGLE_OPTIONAL_STRING,
-        "tos_uri": SINGLE_OPTIONAL_STRING,
-        "logo_uri": SINGLE_OPTIONAL_STRING,
+        # "policy_uri": SINGLE_OPTIONAL_STRING,
+        # "tos_uri": SINGLE_OPTIONAL_STRING,
+        # "logo_uri": SINGLE_OPTIONAL_STRING,
         "attested_security_context": SINGLE_OPTIONAL_STRING,
         "cnf": SINGLE_REQUIRED_JSON,
-        "authorization_endpoint": SINGLE_OPTIONAL_STRING,
-        "response_types_supported": OPTIONAL_LIST_OF_STRINGS,
-        "vp_formats_supported": SINGLE_REQUIRED_JSON,
-        "request_object_signing_alg_values_supported": REQUIRED_LIST_OF_STRINGS,
-        "presentation_definition_uri_supported": SINGLE_OPTIONAL_BOOLEAN
+        # "authorization_endpoint": SINGLE_OPTIONAL_STRING,
+        # "response_types_supported": OPTIONAL_LIST_OF_STRINGS,
+        # "vp_formats_supported": SINGLE_REQUIRED_JSON,
+        # "request_object_signing_alg_values_supported": REQUIRED_LIST_OF_STRINGS,
+        # "presentation_definition_uri_supported": SINGLE_OPTIONAL_BOOLEAN
     }
 
 class WalletProvider(Message):

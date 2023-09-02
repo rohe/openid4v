@@ -141,7 +141,7 @@ def federation_setup():
 
     WalletProvider = {
         'entity_id': WP_ID,
-        'key_conf': {"key_defs": DEFAULT_KEY_DEFS},
+        # 'key_conf': {"key_defs": DEFAULT_KEY_DEFS},
         "federation_entity": {
             'class': FederationEntity,
             'kwargs': WP_FE.conf
@@ -211,7 +211,7 @@ def federation_setup():
     }
 
     im2.server.subordinate[WP_ID] = {
-        "jwks": wp.keyjar.export_jwks(),
+        "jwks": wp['federation_entity'].keyjar.export_jwks(),
         'authority_hints': [IM2_ID]
 
     }

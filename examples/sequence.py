@@ -101,39 +101,6 @@ _req = token_endpoint.parse_request(request=wiar_message)
 
 # ---------- Wallet provider creates response with a Wallet Instance Attestation --------------
 
-
-#
-# _wp_signer = JWT(key_jar=wallet_provider.keyjar, sign_alg='ES256', iss=WALLET_PROVIDER_ID)
-# _wp_signer.with_jti = True
-#
-# payload = {
-#     "sub": _request["iss"],
-#     "policy_uri": "https://wallet-provider.example.org/privacy_policy",
-#     "tos_uri": "https://wallet-provider.example.org/info_policy",
-#     "logo_uri": "https://wallet-provider.example.org/logo.svg",
-#     "attested_security_context": "https://wallet-provider.example.org/LoA/basic",
-#     "type": "WalletInstanceAttestation",
-#     "cnf": _request["cnf"],
-#     "authorization_endpoint": "eudiw:",
-#     "response_types_supported": [
-#         "vp_token"
-#     ],
-#     "vp_formats_supported": {
-#         "jwt_vp_json": {
-#             "alg_values_supported": ["ES256"]
-#         },
-#         "jwt_vc_json": {
-#             "alg_values_supported": ["ES256"]
-#         }
-#     },
-#     "request_object_signing_alg_values_supported": [
-#         "ES256"
-#     ],
-#     "presentation_definition_uri_supported": False,
-#     "iat": utc_time_sans_frac(),
-#     "exp": utc_time_sans_frac() + 300  # Valid for 5 minutes
-# }
-
 # Build a trust chain that goes from the wallet provider to the TA
 trust_chain = create_trust_chain(federation_entity["wp"],
                                  federation_entity["im2"],
@@ -146,8 +113,9 @@ _response = token_endpoint.process_request(request=_req, trust_chain=trust_chain
 
 # Wallet parsing Wallet Instance Attestation
 # Need wallet provider's public keys in my key jar
-fed_wallet.keyjar.import_jwks(wallet_provider.keyjar.export_jwks(issuer_id=WALLET_PROVIDER_ID),
-                              WALLET_PROVIDER_ID)
+fed_wallet.keyjar.import_jwks(
+    wallet_provider["wallet_provider"].context.keyjar.export_jwks(issuer_id=wallet_provider.entity_id),
+    wallet_provider.entity_id)
 
 _verifier = JWT(key_jar=fed_wallet.keyjar, allowed_sign_algs=['ES256'])
 # _jwt.msg_cls = WalletInstanceRequest

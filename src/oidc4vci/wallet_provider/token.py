@@ -51,7 +51,8 @@ class Token(Endpoint):
     def verify_self_signed_signature(self, self_signed_jwt):
         _jws = factory(self_signed_jwt)
         _payload = _jws.jwt.payload()
-        keyjar = self.upstream_get("attribute", "keyjar")
+        self.upstream_get("attribute", "keyjar")
+        keyjar = self.upstream_get('unit').context.keyjar
         _key = key_from_jwk_dict(_payload['cnf']['jwk'])
         keyjar.add_keys(_payload['iss'], [_key])
 
@@ -97,7 +98,7 @@ class Token(Endpoint):
         }
         keyjar = self.upstream_get("attribute", "keyjar")
         entity_id = self.upstream_get("attribute", "entity_id")
-        _signer = JWT(key_jar=keyjar, sign_alg='ES256', iss=entity_id)
+        _signer = JWT(key_jar=keyjar, sign_alg='ES256', iss=entity_id, lifetime=300)
         _signer.with_jti = True
 
         _jws_header = {"typ": "wallet-attestation+jwt"}
