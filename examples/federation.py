@@ -5,6 +5,8 @@ from fedservice.defaults import LEAF_ENDPOINT
 from fedservice.entity import FederationEntity
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
 
+from oidc4vci.pid_provider.authorization import Authorization
+from oidc4vci.pid_provider.credential import Credential
 from oidc4vci.wallet_provider import ServerEntity
 from oidc4vci.wallet_provider.token import Token
 
@@ -15,13 +17,14 @@ from oidc4vci.wallet_provider.token import Token
 #          |          |
 #    WalletProvider   +--+--+
 #                     |     |
-#                    RP  PIDProvider
+#                    RP  PIDIssuer
 
 TA_ID = "https://ta.example.org"
 RP_ID = "https://rp.example.org"
 WP_ID = "https://wp.example.org"
 IM1_ID = "https://im1.example.org"
 IM2_ID = "https://im2.example.org"
+PIDI_ID = "https://pid.example.org"
 
 TA_ENDPOINTS = DEFAULT_FEDERATION_ENTITY_ENDPOINTS.copy()
 
@@ -118,6 +121,7 @@ def federation_setup():
         'trust_anchors'] = ANCHOR
 
     rp = FederationEntity(**RP_FE.conf)
+    rp.keyjar.import_jwks(ANCHOR[TA_ID], TA_ID)
 
     ########################################
     # Wallet provider
@@ -169,7 +173,8 @@ def federation_setup():
                         "policy_uri": "https://wallet-provider.example.org/privacy_policy",
                         "tos_uri": "https://wallet-provider.example.org/info_policy",
                         "logo_uri": "https://wallet-provider.example.org/logo.svg",
-                        "attested_security_context": "https://wallet-provider.example.org/LoA/basic",
+                        "attested_security_context":
+                            "https://wallet-provider.example.org/LoA/basic",
                         "type": "WalletInstanceAttestation",
                         "authorization_endpoint": "eudiw:",
                         "response_types_supported": [
@@ -193,32 +198,104 @@ def federation_setup():
         }
     }
     wp = FederationCombo(WalletProvider)
+    wp["federation_entity"].keyjar.import_jwks(ANCHOR[TA_ID], TA_ID)
 
-    # Wallet
+    # PID Issuer
+
+    PIDI_FE = FederationEntityBuilder(
+        WP_ID,
+        preference={
+            "organization_name": "The PID Issuer",
+            "homepage_uri": "https://pid.example.com",
+            "contacts": "operations@pid.example.com"
+        },
+        authority_hints=[IM2_ID],
+        key_conf={"key_defs": DEFAULT_KEY_DEFS}
+    )
+    PIDI_FE.add_services()
+    PIDI_FE.add_functions()
+    PIDI_FE.add_endpoints({}, **LEAF_ENDPOINT)
+    PIDI_FE.conf['function']['kwargs']['functions']['trust_chain_collector']['kwargs'][
+        'trust_anchors'] = ANCHOR
+
+    PIDIssuer = {
+        'entity_id': PIDI_ID,
+        "federation_entity": {
+            'class': FederationEntity,
+            'kwargs': PIDI_FE.conf
+        },
+        "pid_issuer": {
+            'class': ServerEntity,
+            'kwargs': {
+                'config': {
+                    "keys": {"key_defs": DEFAULT_KEY_DEFS, "uri_path": "static/jwks.json"},
+                    "endpoint": {
+                        "token": {
+                            "path": "token",
+                            "class": Token,
+                            "kwargs": {
+                                "client_authn_method": [
+                                    "client_secret_post",
+                                    "client_secret_basic",
+                                    "client_secret_jwt",
+                                    "private_key_jwt",
+                                ],
+                            },
+                        },
+                        "authorization": {
+                            "path": "authorization",
+                            "class": Authorization,
+                            "kwargs": {
+                                "response_types_supported": ["code"],
+                                "response_modes_supported": ["query", "form_post"],
+                                "request_parameter_supported": True,
+                                "request_uri_parameter_supported": True,
+                            },
+                        },
+                        "credential": {
+                            "path": "credential",
+                            "class": Credential,
+                            "kwargs": {
+                            },
+                        }
+                    },
+                    'preference': {
+                    }
+                }
+            }
+        }
+    }
+    pidi = FederationCombo(PIDIssuer)
+    pidi["federation_entity"].keyjar.import_jwks(ANCHOR[TA_ID], TA_ID)
+
 
     # Setup subordinates
 
     ta.server.subordinate[IM1_ID] = {
         "jwks": im1.keyjar.export_jwks(),
-        'authority_hints': [TA_ID]
+        'authority_hints': [TA_ID],
+        "entity_types": ["federation_entity"],
+        "intermediate": True
 
     }
 
     ta.server.subordinate[IM2_ID] = {
         "jwks": im2.keyjar.export_jwks(),
-        'authority_hints': [TA_ID]
-
+        'authority_hints': [TA_ID],
+        "entity_types": ["federation_entity"],
+        "intermediate": True
     }
 
     im2.server.subordinate[WP_ID] = {
         "jwks": wp['federation_entity'].keyjar.export_jwks(),
-        'authority_hints': [IM2_ID]
-
+        'authority_hints': [IM2_ID],
+        "entity_types": ["federation_entity", "wallet_provider"],
     }
 
     im1.server.subordinate[RP_ID] = {
         "jwks": rp.keyjar.export_jwks(),
-        'authority_hints': [IM1_ID]
+        'authority_hints': [IM1_ID],
+        "entity_types": ["federation_entity", "relying_party"],
     }
 
     return {

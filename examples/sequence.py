@@ -1,19 +1,15 @@
 # wallet_instance_attestation_request
 from cryptojwt import JWT
-from cryptojwt import KeyJar
 from cryptojwt.jwk.ec import new_ec_key
-from cryptojwt.jwt import utc_time_sans_frac
 from cryptojwt.key_jar import build_keyjar
 from fedservice.build_entity import FederationEntityBuilder
 from fedservice.entity import FederationEntity
-from idpyoidc import verified_claim_name
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
 from idpyoidc.util import rndstr
 
 from examples import create_trust_chain
 from federation import federation_setup
 from oidc4vci.message import WalletInstanceAttestationJWT
-from oidc4vci.message import WalletInstanceRequestJWT
 
 # Build the federation
 federation_entity = federation_setup()
@@ -108,13 +104,13 @@ trust_chain = create_trust_chain(federation_entity["wp"],
 
 _response = token_endpoint.process_request(request=_req, trust_chain=trust_chain)
 
-
 # ========= Back in the Wallet ==========
 
 # Wallet parsing Wallet Instance Attestation
 # Need wallet provider's public keys in my key jar
 fed_wallet.keyjar.import_jwks(
-    wallet_provider["wallet_provider"].context.keyjar.export_jwks(issuer_id=wallet_provider.entity_id),
+    wallet_provider["wallet_provider"].context.keyjar.export_jwks(
+        issuer_id=wallet_provider.entity_id),
     wallet_provider.entity_id)
 
 _verifier = JWT(key_jar=fed_wallet.keyjar, allowed_sign_algs=['ES256'])
@@ -154,7 +150,10 @@ keyjar = build_keyjar([{"type": "EC", "crv": "P-256", "use": ["sig"]}])
 # &client_id=$thumprint-of-the-jwk-in-the-cnf-wallet-attestation$
 # &code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM
 # &code_challenge_method=S256
-# &request=eyJhbGciOiJSUzI1NiIsImtpZCI6ImsyYmRjIn0.ew0KIC Jpc3MiOiAiczZCaGRSa3F0MyIsDQogImF1ZCI6ICJodHRwczovL3NlcnZlci5leGFtcGxlLmNvbSIsDQo gInJlc3BvbnNlX3R5cGUiOiAiY29kZSBpZF90b2tlbiIsDQogImNsaWVudF9pZCI6ICJzNkJoZFJrcXQz IiwNCiAicmVkaXJlY3RfdXJpIjogImh0dHBzOi8vY2xpZW50LmV4YW1...
+# &request=eyJhbGciOiJSUzI1NiIsImtpZCI6ImsyYmRjIn0.ew0KIC
+# Jpc3MiOiAiczZCaGRSa3F0MyIsDQogImF1ZCI6ICJodHRwczovL3NlcnZlci5leGFtcGxlLmNvbSIsDQo
+# gInJlc3BvbnNlX3R5cGUiOiAiY29kZSBpZF90b2tlbiIsDQogImNsaWVudF9pZCI6ICJzNkJoZFJrcXQz
+# IiwNCiAicmVkaXJlY3RfdXJpIjogImh0dHBzOi8vY2xpZW50LmV4YW1...
 # &client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-key-attestation
 # &client_assertion=$WalletInstanceAttestation$
 

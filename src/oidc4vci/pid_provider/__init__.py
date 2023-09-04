@@ -69,6 +69,10 @@ class ServerEntity(ServerUnit):
             claims_class=WalletProviderClaims()
         )
 
+        _token_endp = self.endpoint.get("token")
+        if _token_endp:
+            _token_endp.allow_refresh = allow_refresh_token(self.context)
+
         self.context.claims_interface = init_service(
             config["claims_interface"], self.upstream_get
         )

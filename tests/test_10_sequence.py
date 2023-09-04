@@ -1,11 +1,11 @@
 import json
 import os
 
-import pytest
-import responses
 from cryptojwt.key_jar import init_key_jar
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
 from idpyoidc.client.oauth2 import Client
+import pytest
+import responses
 
 _dirname = os.path.dirname(os.path.abspath(__file__))
 
@@ -46,9 +46,9 @@ class TestAuthorizationRequest():
                 }
             },
             "services": {
-                "authorization": {"class": "oidc4vc.client.authorization.Authorization"},
-                "access_token": {"class": "oidc4vc.client.access_token.AccessToken"},
-                "credential": {"class": "oidc4vc.client.credential.Credential"}
+                "authorization": {"class": "oidc4vc.pid_provider.authorization.Authorization"},
+                "access_token": {"class": "oidc4vc.pid_provider.access_token.AccessToken"},
+                "credential": {"class": "oidc4vc.pid_provider.credential.Credential"}
             },
             "provider_info": {
                 "authorization_endpoint": "https://issuer.example.com/auth",
