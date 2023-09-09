@@ -15,5 +15,6 @@ class Credential(Service):
     error_msg = oidc.ResponseMessage
     endpoint_name = "credential_endpoint"
     service_name = "credential"
+    name = "credential"
     default_authn_method = "bearer_header"
     response_body_type = "jose"

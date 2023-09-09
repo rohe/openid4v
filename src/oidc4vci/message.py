@@ -29,6 +29,7 @@ from idpyoidc.message.oauth2 import ResponseMessage
 from idpyoidc.message.oidc import JsonWebToken
 from idpyoidc.message.oidc import jwt_deser
 from idpyoidc.message.oidc import SINGLE_OPTIONAL_BOOLEAN
+from idpyoidc.message.oidc.identity_assurance import REQUIRED_VERIFIED_CLAIMS
 
 
 class ProofToken(JsonWebToken):
@@ -524,15 +525,10 @@ class WalletInstanceRequestJWT(Message):
         "iss": SINGLE_REQUIRED_STRING,
         "aud": SINGLE_REQUIRED_STRING,
         "jti": SINGLE_REQUIRED_STRING,
-        "type": SINGLE_REQUIRED_STRING,
         "nonce": SINGLE_REQUIRED_STRING,
         "cnf": SINGLE_REQUIRED_JSON
     }
 
-    def verify(self, **kwargs):
-        super(WalletInstanceRequestJWT, self).verify(**kwargs)
-        if self["type"] != "WalletInstanceAttestationRequest":
-            raise ValueError("Type has to be 'WalletInstanceAttestationRequest'")
 
 class WalletInstanceRequest(Message):
     c_param = {
@@ -606,3 +602,22 @@ class WalletInstanceAttestationResponse(Message):
         if isinstance(_request, Message):
             _request.verify()
         self[verified_claim_name("assertion")] = _request
+
+
+class PidEaaJWT(Message):
+    c_param = {
+        "iss": SINGLE_REQUIRED_STRING,
+        "sub": SINGLE_REQUIRED_STRING,
+        "iat": SINGLE_REQUIRED_INT,
+        "exp": SINGLE_REQUIRED_INT,
+        "type": SINGLE_REQUIRED_STRING,
+        "jti": SINGLE_REQUIRED_STRING,
+        "status": SINGLE_OPTIONAL_STRING,
+        "cnf": SINGLE_REQUIRED_JSON,
+        "verified_claims": REQUIRED_VERIFIED_CLAIMS
+    }
+
+class PidEaaRequest(AuthorizationRequest):
+    c_param = {
+
+    }

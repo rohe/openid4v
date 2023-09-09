@@ -1,121 +1,48 @@
-from typing import Any
-from typing import Callable
-from typing import Optional
-from typing import Union
-
-from cryptojwt import KeyJar
-from fedservice.entity.claims import OPClaims
-from fedservice.server import ServerUnit
-from idpyoidc.configure import Base
-from idpyoidc.server import allow_refresh_token
-from idpyoidc.server import ASConfiguration
-from idpyoidc.server import authz
-from idpyoidc.server import build_endpoints
+from idpyoidc.metadata import get_signing_algs
 from idpyoidc.server import Endpoint
 from idpyoidc.server import EndpointContext
-from idpyoidc.server.client_authn import client_auth_setup
-from idpyoidc.server.endpoint_context import init_service
-from idpyoidc.server.user_authn.authn_context import populate_authn_broker
+from idpyoidc.server.claims import Claims
 
-from oidc4vci.claims import WalletProviderClaims
-
-
-def do_endpoints(conf, upstream_get):
-    _endpoints = conf.get("endpoint")
-    if _endpoints:
-        return build_endpoints(_endpoints, upstream_get=upstream_get, issuer=conf["issuer"])
-    else:
-        return {}
+from oidc4vci import message
+from oidc4vci import ServerEntity
 
 
-class ServerEntity(ServerUnit):
+class WalletProviderClaims(Claims):
+    _supports = {
+        "attested_security_context_values_supported": [],
+        "grant_types_supported": ["urn:ietf:params:oauth:grant-type:jwt-bearer"],
+        "response_types_supported": ["vp_token"],
+        "vp_formats_supported": {
+            "jwt_vp_json": {
+                "alg_values_supported": get_signing_algs
+            },
+            "jwt_vc_json": {
+                "alg_values_supported": get_signing_algs
+            }
+        },
+        "request_object_signing_alg_values_supported": get_signing_algs,
+        "presentation_definition_uri_supported": False
+    }
+
+    def provider_info(self, supports):
+        _info = {}
+        for key in message.WalletProvider.c_param.keys():
+            _val = self.get_preference(key, supports.get(key, None))
+            if _val not in [None, []]:
+                _info[key] = _val
+
+        return _info
+
+
+class WalletProvider(ServerEntity):
     name = 'wallet_provider'
     parameter = {"endpoint": [Endpoint], "context": EndpointContext}
-
-    def __init__(
-            self,
-            config: Optional[Union[dict, ASConfiguration]] = None,
-            upstream_get: Optional[Callable] = None,
-            keyjar: Optional[KeyJar] = None,
-            cwd: Optional[str] = "",
-            cookie_handler: Optional[Any] = None,
-            httpc: Optional[Any] = None,
-            httpc_params: Optional[dict] = None,
-            entity_id: Optional[str] = "",
-            key_conf: Optional[dict] = None
-    ):
-        if config is None:
-            config = {}
-
-        ServerUnit.__init__(self, upstream_get=upstream_get, keyjar=keyjar, httpc=httpc,
-                            httpc_params=httpc_params, entity_id=entity_id, key_conf=key_conf,
-                            config=config)
-
-        if not isinstance(config, Base):
-            config['issuer'] = entity_id
-            config['base_url'] = entity_id
-            config = ASConfiguration(config)
-
-        self.config = config
-
-        self.endpoint = do_endpoints(config, self.unit_get)
-
-        self.context = EndpointContext(
-            conf=config,
-            upstream_get=self.unit_get,
-            cwd=cwd,
-            cookie_handler=cookie_handler,
-            httpc=httpc,
-            claims_class=WalletProviderClaims()
-        )
-
-        self.context.claims_interface = init_service(
-            config["claims_interface"], self.upstream_get
-        )
-
-    def get_endpoints(self, *arg):
-        return self.endpoint
-
-    def get_endpoint(self, endpoint_name, *arg):
-        try:
-            return self.endpoint[endpoint_name]
-        except KeyError:
-            return None
-
-    def get_context(self, *arg):
-        return self.context
-
-    def get_server(self, *args):
-        return self
+    claims_class = WalletProviderClaims
 
     def get_metadata(self, *args):
         # static ! Should this be done dynamically ?
-        return {'openid_provider': self.context.provider_info}
+        _metadata = self.context.provider_info
+        if "jwks" not in _metadata:
+            _metadata["jwks"] = self.context.keyjar.export_jwks()
 
-    def setup_authz(self):
-        authz_spec = self.config.get("authz")
-        if authz_spec:
-            return init_service(authz_spec, self.unit_get)
-        else:
-            return authz.Implicit(self.unit_get)
-
-    def setup_authentication(self, target):
-        _conf = self.config.get("authentication")
-        if _conf:
-            target.authn_broker = populate_authn_broker(
-                _conf, self.unit_get, target.template_handler
-            )
-        else:
-            target.authn_broker = {}
-
-        target.endpoint_to_authn_method = {}
-        for method in target.authn_broker:
-            try:
-                target.endpoint_to_authn_method[method.action] = method
-            except AttributeError:
-                pass
-
-    def setup_client_authn_methods(self):
-        self.context.client_authn_methods = client_auth_setup(
-            self.unit_get, self.config.get("client_authn_methods")
-        )
+        return {self.name: _metadata}

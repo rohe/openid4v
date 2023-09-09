@@ -1,13 +1,16 @@
 """Implements the service that talks to the Access Token endpoint."""
+import json
 import logging
 from typing import Optional
 from typing import Union
+from urllib.parse import parse_qs
 
 from cryptojwt import JWT
 from cryptojwt.jwk.jwk import key_from_jwk_dict
 from cryptojwt.jws.jws import factory
 from idpyoidc import verified_claim_name
 from idpyoidc.client.client_auth import get_client_authn_methods
+from idpyoidc.defaults import JWT_BEARER
 from idpyoidc.message import Message
 from idpyoidc.message.oauth2 import ResponseMessage
 from idpyoidc.metadata import get_signing_algs
@@ -34,7 +37,7 @@ class Token(Endpoint):
     request_format = "urlencoded"
     request_placement = "body"
     response_body_type = "jose"
-    name = "token"  # The name of this endpoint in the server context
+    name = "wallet_provider_token"  # The name of this endpoint in the server context
 
     _include = {
         "grant_types_supported": [
@@ -59,7 +62,7 @@ class Token(Endpoint):
         # basically verifies that the sender has control of the key included in the message.
         _verifier = JWT(key_jar=keyjar)
         _verifier.typ2msg_cls = {
-            "var+jwt": WalletInstanceRequestJWT
+            "wiar+jwt": WalletInstanceRequestJWT
         }
         _val = _verifier.unpack(self_signed_jwt)
         return _val
@@ -71,6 +74,9 @@ class Token(Endpoint):
             verify_args: Optional[dict] = None,
             **kwargs
     ):
+        if isinstance(request, str):  # json
+            request = {k: v[0] for k, v in parse_qs(request).items()}
+
         request[verified_claim_name("assertion")] = self.verify_self_signed_signature(
             request["assertion"])
 
@@ -112,14 +118,15 @@ class Token(Endpoint):
                                                     jws_headers=_jws_header)
 
         response_args = {
-            "attestation": _wallet_instance_attestation
+            "assertion": _wallet_instance_attestation,
+            "grant_type": JWT_BEARER
         }
 
         if isinstance(response_args, ResponseMessage):
             return response_args
 
         _headers = [("Content-type", "application/json")]
-        resp = {"response_args": response_args, "http_headers": _headers}
+        resp = {"response": json.dumps(response_args), "http_headers": _headers}
         return resp
 
     def supports(self):

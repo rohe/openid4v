@@ -5,20 +5,25 @@ from urllib.parse import urlencode
 
 from cryptojwt import JWT
 from cryptojwt.jwk.ec import new_ec_key
-from fedservice import message
 from fedservice.entity.function import apply_policies
 from fedservice.entity.function import collect_trust_chains
 from fedservice.entity.function import verify_trust_chains
+from idpyoidc import verified_claim_name
 from idpyoidc.client.configure import Configuration
 from idpyoidc.client.service import Service
+from idpyoidc.defaults import JWT_BEARER
 from idpyoidc.message.oauth2 import ResponseMessage
 from idpyoidc.util import rndstr
+
+from oidc4vci.message import WalletInstanceAttestationResponse
+from oidc4vci.message import WalletInstanceRequest
 
 
 class WalletInstanceAttestation(Service):
     """The service that talks to the Wallet provider."""
 
-    response_cls = message.ResolveResponse
+    msg_type = WalletInstanceRequest
+    response_cls = WalletInstanceAttestationResponse
     error_msg = ResponseMessage
     synchronous = True
     service_name = "wallet_instance_attestation"
@@ -28,7 +33,8 @@ class WalletInstanceAttestation(Service):
                  upstream_get: Callable,
                  conf: Optional[Union[dict, Configuration]] = None):
         Service.__init__(self, upstream_get, conf=conf)
-        self.wallet_provider_id = conf["wallet_provider_id"]
+        self.wallet_provider_id = conf.get("wallet_provider_id", "")
+        self.wallet_instance_attestations = {}
 
     def get_endpoint(self):
         # get endpoint from the Entity Configuration
@@ -62,31 +68,44 @@ class WalletInstanceAttestation(Service):
         """
         keyjar = self.upstream_get("attribute", "keyjar")
         ec_key = new_ec_key(crv="P-256", key_ops=["sign"])
-        keyjar.add_keys(issuer_id=keyjar, keys=[ec_key])
 
         entity_id = self.upstream_get("attribute", "entity_id")
+
+        keyjar.add_keys(issuer_id=entity_id, keys=[ec_key])
+
         _jwt = JWT(key_jar=keyjar, sign_alg='ES256', iss=entity_id)
         _jwt.with_jti = True
 
-        endpoint = self.get_endpoint()
+        if not endpoint:
+            endpoint = self.get_endpoint()
 
-        payload = {
-            "type": "WalletInstanceAttestationRequest",
-            "nonce": rndstr(),  # create nonce
-            "cnf": {
-                "jwk": ec_key.serialize()
+        payload = request_args.copy()
+        # Should have gotten nonce out-of-bounds
+        if "nonce" not in payload:
+            payload["nonce"] = rndstr()
+
+        payload.update(
+            {
+                # "type": "WalletInstanceAttestationRequest",
+                "cnf": {
+                    "jwk": ec_key.serialize()
+                }
             }
-        }
-
+        )
         _jws = _jwt.pack(payload,
                          aud=self.wallet_provider_id,
                          kid=ec_key.kid,
                          issuer_id=entity_id,
-                         jws_headers={"typ": "var+jwt"}
+                         jws_headers={"typ": "wiar+jwt"}
                          )
 
         _data = urlencode({
             "assertion": _jws,
-            "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer"})
+            "grant_type": JWT_BEARER})
 
         return {"url": endpoint, 'method': self.http_method, "data": _data}
+
+    def post_parse_response(self, response, **kwargs):
+        kid = response[verified_claim_name("assertion")]['cnf']['jwk']["kid"]
+        self.wallet_instance_attestations[kid] = response
+        return response

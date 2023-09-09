@@ -19,6 +19,7 @@ class AccessToken(oauth2_AccessToken):
     endpoint_name = "token_endpoint"
     synchronous = True
     service_name = "accesstoken"
+    name = "token"
     default_authn_method = "client_secret_basic"
     http_method = "POST"
     request_body_type = "urlencoded"
