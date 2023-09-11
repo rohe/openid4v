@@ -172,7 +172,7 @@ def federation_setup():
                     "endpoint": {
                         "token": {
                             "path": "token",
-                            "class": Token,
+                            "class": "oidc4vci.wallet_provider.token.Token",
                             "kwargs": {
                                 "client_authn_method": [
                                     "client_secret_post",
@@ -257,13 +257,12 @@ def federation_setup():
                     "endpoint": {
                         "token": {
                             "path": "token",
-                            "class": Token,
+                            "class": "oidc4vci.openid_credential_issuer.access_token.Token",
                             "kwargs": {
                                 "client_authn_method": [
-                                    "client_secret_post",
-                                    "client_secret_basic",
-                                ],
-                            },
+                                    "private_key_jwt"
+                                ]
+                            }
                         },
                         "authorization": {
                             "path": "authorization",
@@ -522,7 +521,6 @@ def wallet_setup(federation):
             "contacts": "operations@rp.example.com"
         },
         authority_hints=[IM1_ID],
-        key_conf={"key_defs": DEFAULT_KEY_DEFS}
     )
     FE.add_services()
     FE.add_functions()
@@ -533,6 +531,7 @@ def wallet_setup(federation):
 
     WalletConfig = {
         'entity_id': WALLET_ID,
+        "key_conf": {"key_defs": DEFAULT_KEY_DEFS},
         "federation_entity": {
             'class': FederationEntity,
             'kwargs': FE.conf
@@ -593,7 +592,9 @@ def wallet_setup(federation):
                         },
                         "pid_eaa_token": {
                             "class": "oidc4vci.client.pid_eaa.AccessToken",
-                            "kwargs": {}
+                            "kwargs": {
+                                "client_authn_methods": ["private_key_jwt"]
+                            }
                         }
                         # "credential": {
                         #     "path": "credential",

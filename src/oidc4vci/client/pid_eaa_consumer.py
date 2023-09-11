@@ -62,7 +62,6 @@ class PidEaaHandler(Unit):
         self.httpc_params = httpc_params
         self.kwargs = kwargs
 
-        # will create a Key Jar (self.keyjar) as a side effect
         Unit.__init__(self,
                       httpc=self.httpc,
                       httpc_params=self.httpc_params,

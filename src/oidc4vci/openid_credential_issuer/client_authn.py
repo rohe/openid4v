@@ -61,11 +61,15 @@ class ClientAssertion(ClientAuthnMethod):
         if isinstance(_wia, Message):
             _wia.verify()
 
+        # Automatic registration
         root = topmost_unit(self)
-        oci = root["openid_credential_issuer"] # Should not be static
-        _cinfo = {k:v for k,v in _wia.items() if k not in JsonWebToken.c_param.keys()}
+        oci = root["openid_credential_issuer"]  # Should not be static
+        _cinfo = {k: v for k, v in _wia.items() if k not in JsonWebToken.c_param.keys()}
         _cinfo["client_id"] = _wia["sub"]
         oci.context.cdb[_wia["sub"]] = _cinfo
+
+        # adding wallet key to keyjar
+        _keyjar.import_jwks({"keys": [_wia["cnf"]["jwk"]]}, _wia["sub"])
 
         return {"client_id": _wia["sub"], "jwt": _wia}
 

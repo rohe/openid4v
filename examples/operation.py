@@ -40,10 +40,8 @@ SRV2FUNC_MAP = {
 
 EUDI_SRV2ENDP_MAP = {
     "wallet_instance_attestation": "wallet_provider_token",
-    "list": "list",
-    "fetch": "entity_statement",
-    "resolve": "resolve",
-    "authorization": "authorization"
+    "authorization": "authorization",
+    "accesstoken": "token"
 }
 
 
@@ -321,7 +319,7 @@ for oci in res:
             my_oci = oci_metadata
             break
 
-request_args = {
+authz_request_args = {
     "authorization_details": [
         {
             "type": "openid_credential",
@@ -341,9 +339,31 @@ authorization_response = _federation.eudi_query(
     service_name="authorization",
     requester_part="pid_eaa_consumer",
     opponent=oci,
-    request_args=request_args,
+    request_args=authz_request_args,
     endpoint=my_oci["openid_credential_issuer"]["authorization_endpoint"],
     client_assertion_kid=thumbprint_in_cnf_jwk
 )
 
-print(authorization_response)
+print(f"Authorization response: f{authorization_response}")
+
+token_request_args = {
+    "state": authorization_response["state"],
+    "grant_type": "authorization_code",
+    "code": authorization_response["code"],
+    "redirect_uri": authz_request_args["redirect_uri"],
+    "client_id": thumbprint_in_cnf_jwk,
+}
+
+token_response = _federation.eudi_query(
+    receiver_id='oci',
+    service_name="accesstoken",
+    requester_part="pid_eaa_consumer",
+    opponent=oci,
+    request_args=token_request_args,
+    endpoint=my_oci["openid_credential_issuer"]["token_endpoint"],
+    client_assertion_kid=thumbprint_in_cnf_jwk,
+    kid=thumbprint_in_cnf_jwk,
+    # client_id = thumbprint_in_cnf_jwk
+)
+
+print(f"Token response: f{token_response}")

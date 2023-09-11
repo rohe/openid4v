@@ -74,7 +74,7 @@ class AccessToken(access_token.AccessToken):
     msg_type = oauth2.AccessTokenRequest
     response_cls = oauth2.AccessTokenResponse
     error_msg = oauth2.ResponseMessage
-    default_authn_method = "client_secret_basic"
+    default_authn_method = "private_key_jwt"
     service_name = "accesstoken"
 
     _include = {"grant_types_supported": ["authorization_code"]}
@@ -84,8 +84,8 @@ class AccessToken(access_token.AccessToken):
         "token_endpoint_auth_signing_alg_values_supported": get_signing_algs,
     }
 
-    def __init__(self, upstream_get, conf: Optional[dict] = None):
-        access_token.AccessToken.__init__(self, upstream_get, conf=conf)
+    def __init__(self, upstream_get, conf: Optional[dict] = None, **kwargs):
+        access_token.AccessToken.__init__(self, upstream_get, conf=conf, **kwargs)
 
     def gather_verify_arguments(
             self, response: Optional[Union[dict, Message]] = None,
