@@ -70,7 +70,7 @@ class ServerEntity(ServerUnit):
         )
 
         self.context.claims_interface = init_service(
-            config["claims_interface"], self.upstream_get
+            config["claims_interface"], self.unit_get
         )
 
     def get_endpoints(self, *arg):

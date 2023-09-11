@@ -13,11 +13,10 @@ from fedservice.entity.function import apply_policies
 from fedservice.entity.function import verify_trust_chains
 from idpyoidc.message import Message
 from idpyoidc.util import rndstr
-from oidc4vci.wallet_provider.token import Token
 
 from examples.federation import federation_setup
 from examples.federation import wallet_setup
-from oidc4vci import wallet_provider
+from oidc4vci.wallet_provider.token import Token
 
 TA_ID = "https://ta.example.org"
 RP_ID = "https://rp.example.org"
@@ -241,7 +240,12 @@ class Federation():
         else:
             _response = _receiver.process_request(_args)
 
-        _resp = _service.parse_response(_response["response"])
+        if isinstance(_response, Message):
+            _resp = _service.parse_response(_response, sformat="dict")
+        elif 'response' in _response:
+            _resp = _service.parse_response(_response["response"])
+        else:
+            _resp = _service.parse_response(_response["response_args"], sformat="dict")
         return _resp
 
 
@@ -328,10 +332,11 @@ request_args = {
         }
     ],
     "response_type": "code",
-    "client_id": thumbprint_in_cnf_jwk
+    "client_id": thumbprint_in_cnf_jwk,
+    "redirect_uri": "eudiw://start.wallet.example.org"
 }
 
-_federation.eudi_query(
+authorization_response = _federation.eudi_query(
     receiver_id='oci',
     service_name="authorization",
     requester_part="pid_eaa_consumer",
@@ -340,3 +345,5 @@ _federation.eudi_query(
     endpoint=my_oci["openid_credential_issuer"]["authorization_endpoint"],
     client_assertion_kid=thumbprint_in_cnf_jwk
 )
+
+print(authorization_response)

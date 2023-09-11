@@ -9,6 +9,8 @@ from cryptojwt.exception import MissingKey
 from cryptojwt.jws.jws import factory
 from fedservice.entity.function import verify_trust_chains
 from idpyoidc.message import Message
+from idpyoidc.message.oidc import JsonWebToken
+from idpyoidc.node import topmost_unit
 from idpyoidc.server.client_authn import ClientAuthnMethod
 from idpyoidc.server.exception import ClientAuthenticationError
 
@@ -58,6 +60,12 @@ class ClientAssertion(ClientAuthnMethod):
 
         if isinstance(_wia, Message):
             _wia.verify()
+
+        root = topmost_unit(self)
+        oci = root["openid_credential_issuer"] # Should not be static
+        _cinfo = {k:v for k,v in _wia.items() if k not in JsonWebToken.c_param.keys()}
+        _cinfo["client_id"] = _wia["sub"]
+        oci.context.cdb[_wia["sub"]] = _cinfo
 
         return {"client_id": _wia["sub"], "jwt": _wia}
 

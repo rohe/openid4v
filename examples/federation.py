@@ -1,3 +1,6 @@
+import json
+import os
+
 from fedservice.build_entity import FederationEntityBuilder
 from fedservice.combo import FederationCombo
 from fedservice.defaults import DEFAULT_FEDERATION_ENTITY_ENDPOINTS
@@ -5,9 +8,11 @@ from fedservice.defaults import LEAF_ENDPOINT
 from fedservice.entity import FederationEntity
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
 from idpyoidc.client.oauth2 import Client
+from idpyoidc.server.authz import AuthzHandling
 from idpyoidc.server.client_authn import ClientSecretBasic
 from idpyoidc.server.client_authn import ClientSecretPost
 from idpyoidc.server.oauth2.pushed_authorization import PushedAuthorization
+from idpyoidc.server.user_info import UserInfo
 
 import oidc4vci
 from oidc4vci.client.client_authn import ClientAssertion as client_ClientAssertion
@@ -210,6 +215,12 @@ def federation_setup():
     wp["federation_entity"].keyjar.import_jwks(ANCHOR[TA_ID], TA_ID)
 
     # OpenidCredentialIssuer
+    BASEDIR = os.path.abspath(os.path.dirname(__file__))
+
+    def full_path(local_file):
+        return os.path.join(BASEDIR, local_file)
+
+    USERINFO_db = json.loads(open(full_path("users.json")).read())
 
     OCI_FE = FederationEntityBuilder(
         OCI_ID,
@@ -408,7 +419,42 @@ def federation_setup():
                                 }
                             }
                         ]
-                    }
+                    },
+                    "authentication": {
+                        "anon": {
+                            "acr": "http://www.swamid.se/policy/assurance/al1",
+                            "class": "idpyoidc.server.user_authn.user.NoAuthn",
+                            "kwargs": {"user": "diana"},
+                        }
+                    },
+                    "userinfo": {"class": UserInfo, "kwargs": {"db": USERINFO_db}},
+                    "authz": {
+                        "class": AuthzHandling,
+                        "kwargs": {
+                            "grant_config": {
+                                "usage_rules": {
+                                    "authorization_code": {
+                                        "supports_minting": [
+                                            "access_token",
+                                            "refresh_token",
+                                            "id_token",
+                                        ],
+                                        "max_usage": 1,
+                                    },
+                                    "access_token": {},
+                                    "refresh_token": {
+                                        "supports_minting": [
+                                            "access_token",
+                                            "refresh_token",
+                                            "id_token",
+                                        ],
+                                    },
+                                },
+                                "expires_in": 43200,
+                            }
+                        },
+                    },
+                    "session_params": SESSION_PARAMS,
                 }
             }
         }

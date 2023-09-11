@@ -34,4 +34,4 @@ class Authorization(authorization.Authorization):
         authorization.Authorization.__init__(self, upstream_get, conf=conf, **kwargs)
 
     def get_assertion_issuer_info(self, iss):
-        federation_entity()
+        pass
