@@ -224,13 +224,15 @@ class Federation():
         else:
             req_info = _service.get_request_parameters(request_args, **kwargs)
 
+        http_info = {k:v for k,v in req_info.items() if k in ["url", "headers", "method"]}
+
         # talk to the non-federation_entity part
         non_fed_role = [k for k in self.federation_entity[receiver_id].keys() if
                         k != "federation_entity"]
         _receiver = self.federation_entity[receiver_id][non_fed_role[0]].get_endpoint(
             EUDI_SRV2ENDP_MAP[service_name])
         _data = req_info.get("data", req_info.get("body"))
-        _args = _receiver.parse_request(_data)
+        _args = _receiver.parse_request(_data, http_info)
         if isinstance(_receiver, Token):
             _chain = self.requestor["federation_entity"].get_trust_chain(
                 self.federation_entity[receiver_id].entity_id)
@@ -344,7 +346,7 @@ authorization_response = _federation.eudi_query(
     client_assertion_kid=thumbprint_in_cnf_jwk
 )
 
-print(f"Authorization response: f{authorization_response}")
+print(f"Authorization response: {authorization_response}")
 
 token_request_args = {
     "state": authorization_response["state"],
@@ -366,4 +368,4 @@ token_response = _federation.eudi_query(
     # client_id = thumbprint_in_cnf_jwk
 )
 
-print(f"Token response: f{token_response}")
+print(f"Token response: {token_response}")

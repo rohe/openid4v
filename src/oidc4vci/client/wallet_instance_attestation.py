@@ -67,11 +67,12 @@ class WalletInstanceAttestation(Service):
         :return: List of entity IDs
         """
         keyjar = self.upstream_get("attribute", "keyjar")
-        ec_key = new_ec_key(crv="P-256", key_ops=["sign"])
+        ec_key = new_ec_key(crv="P-256", use="sig")
 
         entity_id = self.upstream_get("attribute", "entity_id")
 
         keyjar.add_keys(issuer_id=entity_id, keys=[ec_key])
+        keyjar.add_keys(issuer_id="", keys=[ec_key])
 
         _jwt = JWT(key_jar=keyjar, sign_alg='ES256', iss=entity_id)
         _jwt.with_jti = True

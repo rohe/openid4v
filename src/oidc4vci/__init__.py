@@ -73,6 +73,8 @@ class ServerEntity(ServerUnit):
             config["claims_interface"], self.unit_get
         )
 
+        self.context.do_add_on(endpoints=self.endpoint)
+
     def get_endpoints(self, *arg):
         return self.endpoint
 

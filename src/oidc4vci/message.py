@@ -499,6 +499,11 @@ class AccessTokenResponse(oauth2.AccessTokenResponse):
     })
 
 
+class CredentialDefinition(Message):
+    c_param = {
+        "type": REQUIRED_LIST_OF_STRINGS
+    }
+
 class CredentialResponse(ResponseMessage):
     c_param = {
         "format": SINGLE_REQUIRED_STRING,
@@ -507,6 +512,12 @@ class CredentialResponse(ResponseMessage):
         "c_nonce": SINGLE_OPTIONAL_STRING,
         "c_nonce_expires_in": SINGLE_OPTIONAL_INT
     }
+
+    def verify(self, **kwargs):
+        if "credential" in self and "transaction_id" in self:
+            ValueError("'credential' and 'transaction_id' can not appear at the same time")
+        if "credential" not in self and "transaction_id" not in self:
+            MissingAttribute("One of 'credential' or 'transaction_id' must be given")
 
 
 class WalletProviderMetadata(Message):
@@ -552,6 +563,7 @@ class WalletInstanceRequest(Message):
             _request.verify()
         self[verified_claim_name("assertion")] = _request
 
+
 class WalletInstanceAttestationJWT(Message):
     c_param = {
         "iss": SINGLE_REQUIRED_STRING,
@@ -571,6 +583,7 @@ class WalletInstanceAttestationJWT(Message):
         # "presentation_definition_uri_supported": SINGLE_OPTIONAL_BOOLEAN
     }
 
+
 class WalletProvider(Message):
     c_param = {
         "jwks": SINGLE_REQUIRED_JSON,
@@ -580,6 +593,7 @@ class WalletProvider(Message):
         "token_endpoint_auth_methods_supported": OPTIONAL_LIST_OF_STRINGS,
         "token_endpoint_auth_signing_alg_values_supported": OPTIONAL_LIST_OF_STRINGS
     }
+
 
 class WalletInstanceAttestationResponse(Message):
     c_param = {
@@ -617,7 +631,55 @@ class PidEaaJWT(Message):
         "verified_claims": REQUIRED_VERIFIED_CLAIMS
     }
 
+
 class PidEaaRequest(AuthorizationRequest):
     c_param = {
 
     }
+
+
+class JwtKeyProof(Message):
+    c_param = {
+        "iss": SINGLE_OPTIONAL_STRING,
+        "aud": SINGLE_REQUIRED_STRING,
+        "iat": SINGLE_REQUIRED_INT,
+        "nonce": SINGLE_OPTIONAL_STRING
+    }
+
+
+class JwtKeyJOSEHeader(Message):
+    c_param = {
+        "alg": SINGLE_REQUIRED_STRING,
+        "typ": SINGLE_REQUIRED_STRING,
+        "kid": SINGLE_OPTIONAL_STRING,
+        "jwk": SINGLE_OPTIONAL_JSON,
+        "x5c": OPTIONAL_LIST_OF_STRINGS,
+        "trust_chain": OPTIONAL_LIST_OF_STRINGS
+    }
+
+
+class CredentialRequest(Message):
+    c_param = {
+        "format": SINGLE_REQUIRED_STRING,
+        "proof": SINGLE_OPTIONAL_JSON,
+        "credential_encryption_jwk": SINGLE_OPTIONAL_JSON,
+        "credential_response_encryption_alg": SINGLE_OPTIONAL_STRING,
+        "credential_response_encryption_enc": SINGLE_OPTIONAL_STRING
+    }
+
+    def verify(self, **kwargs):
+        if "credential_response_encryption_alg" in self:
+            if "credential_response_encryption_enc" not in self:
+                self["credential_response_encryption_enc"] = "A256GCM"
+        if "credential_response_encryption_enc" in self:
+            if "credential_response_encryption_alg" not in self:
+                raise MissingAttribute("Missing credential_response_encryption_alg specification")
+
+        if "proof" in self:
+            _proof = self["proof"]
+            if "proof_type" not in _proof:
+                raise MissingAttribute("Missing proof_type in proof")
+            if _proof["proof_type"] == "jwt":
+                if "jwt" not in _proof:
+                    raise MissingAttribute("Expected 'jwt' claim")
+                _jwt_proof = JwtKeyProof().from_jwt(_proof["jwt"], kwargs.get("keyjar"))

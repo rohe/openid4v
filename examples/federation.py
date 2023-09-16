@@ -520,6 +520,7 @@ def wallet_setup(federation):
             "homepage_uri": "https://rp.example.com",
             "contacts": "operations@rp.example.com"
         },
+        key_conf = {"key_defs": DEFAULT_KEY_DEFS},
         authority_hints=[IM1_ID],
     )
     FE.add_services()
@@ -540,7 +541,7 @@ def wallet_setup(federation):
             'class': Client,
             'kwargs': {
                 'config': {
-                    "key_conf": {"key_defs": DEFAULT_KEY_DEFS},
+                    # "key_conf": {"key_defs": DEFAULT_KEY_DEFS},
                     "services": {
                         "wallet_instance_attestation": {
                             "class": WalletInstanceAttestation,
@@ -556,7 +557,7 @@ def wallet_setup(federation):
             'kwargs': {
                 'config': {
                     "base_url": "",
-                    "key_conf": {"key_defs": DEFAULT_KEY_DEFS},
+                    # "key_conf": {"key_defs": DEFAULT_KEY_DEFS},
                     "add_ons": {
                         "pkce": {
                             "function": "idpyoidc.client.oauth2.add_on.pkce.add_support",
@@ -579,22 +580,25 @@ def wallet_setup(federation):
                         #     },
                         # }
                     },
+                    "preference": {
+                        "client_authn_methods": ["private_key_jwt"],
+                        "response_types_supported": ["code"],
+                        "response_modes_supported": ["query", "form_post"],
+                        "request_parameter_supported": True,
+                        "request_uri_parameter_supported": True,
+                        "token_endpoint_auth_methods_supported": ["private_key_jwt"],
+                        "token_endpoint_auth_signing_alg_values_supported": ["ES256"]
+                    },
                     "services": {
                         "pid_eaa_authorization": {
                             "class": "oidc4vci.client.pid_eaa.Authorization",
                             "kwargs": {
-                                "response_types_supported": ["code"],
-                                "response_modes_supported": ["query", "form_post"],
-                                "request_parameter_supported": True,
-                                "request_uri_parameter_supported": True,
                                 "client_authn_methods": {"client_assertion": client_ClientAssertion}
                             },
                         },
                         "pid_eaa_token": {
                             "class": "oidc4vci.client.pid_eaa.AccessToken",
-                            "kwargs": {
-                                "client_authn_methods": ["private_key_jwt"]
-                            }
+                            "kwargs": {}
                         }
                         # "credential": {
                         #     "path": "credential",
@@ -610,7 +614,7 @@ def wallet_setup(federation):
     wallet = FederationCombo(WalletConfig)
     wallet["federation_entity"].keyjar.import_jwks(_anchor[TA_ID], TA_ID)
     # Need the wallet providers public keys. Could get this from the metadata
-    wallet["wallet"].keyjar.import_jwks(
+    wallet.keyjar.import_jwks(
         federation["wp"]["wallet_provider"].context.keyjar.export_jwks(),
         federation["wp"].entity_id)
 

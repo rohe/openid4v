@@ -5,6 +5,7 @@ from typing import Union
 from fedservice.entity.function import apply_policies
 from fedservice.entity.function import collect_trust_chains
 from fedservice.entity.function import verify_trust_chains
+from idpyoidc import metadata
 from idpyoidc import verified_claim_name
 from idpyoidc.client.client_auth import get_client_authn_methods
 from idpyoidc.client.configure import Configuration
@@ -33,6 +34,20 @@ class Authorization(Service):
     service_name = "authorization"
     http_method = "POST"
     default_authn_method = "client_assertion"
+
+    _supports = {
+        "claims_parameter_supported": True,
+        "request_parameter_supported": True,
+        "request_uri_parameter_supported": True,
+        "response_types_supported": ["code"],
+        "response_modes_supported": ["query"],
+        "request_object_signing_alg_values_supported": metadata.get_signing_algs,
+        "request_object_encryption_alg_values_supported": metadata.get_encryption_algs,
+        "request_object_encryption_enc_values_supported": metadata.get_encryption_encs,
+        # "grant_types_supported": ["authorization_code", "implicit"],
+        "code_challenge_methods_supported": ["S256"],
+        "scopes_supported": [],
+    }
 
     def __init__(self,
                  upstream_get: Callable,
@@ -77,11 +92,10 @@ class AccessToken(access_token.AccessToken):
     default_authn_method = "private_key_jwt"
     service_name = "accesstoken"
 
-    _include = {"grant_types_supported": ["authorization_code"]}
-
     _supports = {
         "token_endpoint_auth_methods_supported": get_client_authn_methods,
         "token_endpoint_auth_signing_alg_values_supported": get_signing_algs,
+        "grant_types_supported": ["authorization_code"]
     }
 
     def __init__(self, upstream_get, conf: Optional[dict] = None, **kwargs):
@@ -150,3 +164,16 @@ class AccessToken(access_token.AccessToken):
 class PushedAuthorization(pushed_authorization.PushedAuthorization):
     def __init__(self, upstream_get, **kwargs):
         pushed_authorization.PushedAuthorization.__init__(self, upstream_get, **kwargs)
+
+class Credential(Service):
+    msg_type = Message
+    response_cls = Message
+    error_msg = ResponseMessage
+    endpoint_name = ""
+    endpoint = ""
+    service_name = ""
+    synchronous = True
+    default_authn_method = ""
+    http_method = "GET"
+    request_body_type = "urlencoded"
+    response_body_type = "json"

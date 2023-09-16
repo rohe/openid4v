@@ -3,7 +3,6 @@ from typing import Optional
 from typing import Union
 
 from cryptojwt.utils import importer
-from fedservice.entity import FederationEntity
 from idpyoidc.client.configure import Configuration
 from idpyoidc.client.oauth2 import Client
 from idpyoidc.node import Unit
@@ -22,6 +21,7 @@ def build_instance(spec, upstream_get):
     else:
         _instance = spec["class"](upstream_get=upstream_get, **conf)
     return _instance
+
 
 class PidEaaHandler(Unit):
     client_type = "oauth2"
@@ -69,7 +69,9 @@ class PidEaaHandler(Unit):
                       issuer_id=entity_id,
                       **kwargs)
 
-        del self.config["key_conf"]
+        if "key_conf" in self.config:
+            del self.config["key_conf"]
+
         self._consumer = {}
 
     def new_consumer(self, issuer_id):
@@ -84,6 +86,8 @@ class PidEaaHandler(Unit):
         _consumer.context.claims.prefer["client_id"] = _consumer.entity_id
         _consumer.context.provider_info = self.upstream_get("unit")[
             "federation_entity"].get_verified_metadata(issuer_id)["openid_credential_issuer"]
+        _consumer.context.map_preferred_to_registered()
+
         self._consumer[issuer_id] = _consumer
         return _consumer
 
