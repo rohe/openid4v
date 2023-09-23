@@ -126,8 +126,8 @@ class Token(Endpoint):
             return response_args
 
         _headers = [("Content-type", "application/json")]
-        resp = {"response": json.dumps(response_args), "http_headers": _headers}
-        return resp
+        # resp = {"response": json.dumps(response_args), "http_headers": _headers}
+        return response_args
 
     def supports(self):
         return {"grant_types_supported": self._include["grant_types_supported"]}

@@ -1,7 +1,17 @@
+import json
 from typing import Callable
 from typing import Optional
 from typing import Union
 
+from cryptojwt import JWK
+from cryptojwt import JWT
+from cryptojwt.jwk.ec import new_ec_key
+from cryptojwt.jwk.rsa import new_rsa_key
+from cryptojwt.jws.utils import alg2keytype
+from cryptojwt.key_bundle import DEFAULT_EC_CURVE
+from cryptojwt.key_bundle import DEFAULT_OKP_CURVE
+from cryptojwt.key_bundle import DEFAULT_RSA_KEYSIZE
+from cryptojwt.key_bundle import key_gen
 from fedservice.entity.function import apply_policies
 from fedservice.entity.function import collect_trust_chains
 from fedservice.entity.function import verify_trust_chains
@@ -22,6 +32,8 @@ from idpyoidc.server.oauth2 import pushed_authorization
 from idpyoidc.time_util import time_sans_frac
 
 from oidc4vci.message import AuthorizationRequest
+from oidc4vci.message import CredentialResponse
+from oidc4vci.message import CredentialsSupported
 
 
 class Authorization(Service):
@@ -161,19 +173,81 @@ class AccessToken(access_token.AccessToken):
 
         _cstate.update(key, resp)
 
+
 class PushedAuthorization(pushed_authorization.PushedAuthorization):
+
     def __init__(self, upstream_get, **kwargs):
         pushed_authorization.PushedAuthorization.__init__(self, upstream_get, **kwargs)
 
+
 class Credential(Service):
-    msg_type = Message
-    response_cls = Message
+    msg_type = CredentialsSupported
+    # msg_type = Message
+    response_cls = CredentialResponse
     error_msg = ResponseMessage
-    endpoint_name = ""
+    endpoint_name = "credential_endpoint"
     endpoint = ""
-    service_name = ""
+    service_name = "credential"
     synchronous = True
-    default_authn_method = ""
-    http_method = "GET"
-    request_body_type = "urlencoded"
+    http_method = "POST"
+    request_body_type = "json"
     response_body_type = "json"
+    default_authn_method = "bearer_header"
+
+    def __init__(self, upstream_get, conf=None):
+        Service.__init__(self, upstream_get, conf=conf)
+        self.pre_construct.append(self.create_proof)
+
+    def create_key_proof_JWT(self,
+                             aud: Optional[str] = "",
+                             nonce: Optional[str] = "",
+                             key: Optional[JWK] = None,
+                             sign_alg: Optional[str] = "ES256",
+                             **kwargs) -> (str, str):
+        entity_id = self.upstream_get("attribute", "entity_id")
+        keyjar = self.upstream_get("attribute", "keyjar")
+        if not key:
+            algtyp = alg2keytype(sign_alg)
+            if algtyp == "EC":
+                _crv = kwargs.get("crv", DEFAULT_EC_CURVE)
+                key = new_ec_key(_crv)
+            elif algtyp == "RSA":
+                keysize = kwargs.get("keysize", DEFAULT_RSA_KEYSIZE)
+                key = new_rsa_key(key_size=keysize)
+            elif algtyp == "OKP":
+                return key_gen("OKP", crv=DEFAULT_OKP_CURVE)
+            else:
+                raise ValueError(f"Not allow signing alg: {sign_alg}")
+            keyjar.add_keys(entity_id, [key])
+
+        requests_info = self.upstream_get("context").cstate.get(kwargs["state"])
+        if not nonce: # look for it in earlier responses
+            # TODO check that it is still valid
+            nonce = requests_info.get("c_nonce")
+        if not aud:
+            aud = requests_info["iss"]
+
+        _signer = JWT(key_jar=keyjar, sign_alg=sign_alg, iss=entity_id)
+        if nonce:
+            payload = {"nonce": nonce}
+        else:
+            payload = {}
+        if not aud:
+            aud = self.upstream_get("attrbute", "issuer")
+
+        _jws = _signer.pack(payload,
+                            kid=key.kid,
+                            aud=aud,
+                            jws_headers={
+                                "typ": "openid4vci-proof-jwt",
+                                "jwk": key.serialize()
+                            })
+        return _jws
+
+    def create_proof(self,
+                     request_args: Optional[Union[Message, dict]] = None,
+                     service: Optional[Service] = None, **kwargs
+                     ):
+        # static for the time being
+        request_args["proof"] = {"proof_type": "jwt", "jwt": self.create_key_proof_JWT(**kwargs)}
+        return request_args, {}

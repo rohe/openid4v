@@ -5,6 +5,7 @@ from typing import Union
 from cryptojwt.utils import importer
 from idpyoidc.client.configure import Configuration
 from idpyoidc.client.oauth2 import Client
+from idpyoidc.client.oauth2.add_on.dpop import dpop_header
 from idpyoidc.node import Unit
 from requests import request
 
@@ -87,6 +88,9 @@ class PidEaaHandler(Unit):
         _consumer.context.provider_info = self.upstream_get("unit")[
             "federation_entity"].get_verified_metadata(issuer_id)["openid_credential_issuer"]
         _consumer.context.map_preferred_to_registered()
+        if "dpop" in _consumer.context.add_on:
+            _cred_srv = _consumer.get_service('credential')
+            _cred_srv.construct_extra_headers.append(dpop_header)
 
         self._consumer[issuer_id] = _consumer
         return _consumer

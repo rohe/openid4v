@@ -11,6 +11,7 @@ from idpyoidc.client.oauth2 import Client
 from idpyoidc.server.authz import AuthzHandling
 from idpyoidc.server.client_authn import ClientSecretBasic
 from idpyoidc.server.client_authn import ClientSecretPost
+from idpyoidc.server.oauth2.add_on.dpop import DPoPClientAuth
 from idpyoidc.server.oauth2.pushed_authorization import PushedAuthorization
 from idpyoidc.server.user_info import UserInfo
 
@@ -21,7 +22,6 @@ from oidc4vci.client.wallet_instance_attestation import WalletInstanceAttestatio
 from oidc4vci.openid_credential_issuer import OpenidCredentialIssuer
 from oidc4vci.openid_credential_issuer.authorization import Authorization
 from oidc4vci.openid_credential_issuer.client_authn import ClientAssertion as srv_ClientAssertion
-from oidc4vci.openid_credential_issuer.credential import Credential
 from oidc4vci.wallet_provider.token import Token
 
 #              TA
@@ -222,6 +222,7 @@ def federation_setup():
 
     USERINFO_db = json.loads(open(full_path("users.json")).read())
 
+    # ----------- OpenID Credential Issuer ----------
     OCI_FE = FederationEntityBuilder(
         OCI_ID,
         preference={
@@ -251,7 +252,8 @@ def federation_setup():
                     "client_authn_methods": {
                         "client_secret_basic": ClientSecretBasic,
                         "client_secret_post": ClientSecretPost,
-                        "client_assertion": srv_ClientAssertion
+                        "client_assertion": srv_ClientAssertion,
+                        "dpop_client_auth": DPoPClientAuth
                     },
                     "keys": {"key_defs": DEFAULT_KEY_DEFS, "uri_path": "static/jwks.json"},
                     "endpoint": {
@@ -277,8 +279,11 @@ def federation_setup():
                         },
                         "credential": {
                             "path": "credential",
-                            "class": Credential,
+                            "class": "oidc4vci.openid_credential_issuer.credential.Credential",
                             "kwargs": {
+                                "client_authn_method": [
+                                    "dpop_client_auth"
+                                ]
                             },
                         },
                         "pushed_authorization": {
@@ -417,7 +422,15 @@ def federation_setup():
                                     }
                                 }
                             }
-                        ]
+                        ],
+                        "attribute_disclosure": {
+                            "": ["given_name",
+                                 "family_name",
+                                 "birthdate",
+                                 "place_of_birth",
+                                 "unique_id",
+                                 "tax_id_code"]
+                        },
                     },
                     "authentication": {
                         "anon": {
@@ -520,7 +533,7 @@ def wallet_setup(federation):
             "homepage_uri": "https://rp.example.com",
             "contacts": "operations@rp.example.com"
         },
-        key_conf = {"key_defs": DEFAULT_KEY_DEFS},
+        key_conf={"key_defs": DEFAULT_KEY_DEFS},
         authority_hints=[IM1_ID],
     )
     FE.add_services()
@@ -599,13 +612,13 @@ def wallet_setup(federation):
                         "pid_eaa_token": {
                             "class": "oidc4vci.client.pid_eaa.AccessToken",
                             "kwargs": {}
+                        },
+                        "credential": {
+                            "path": "credential",
+                            "class": 'oidc4vci.client.pid_eaa.Credential',
+                            "kwargs": {
+                            },
                         }
-                        # "credential": {
-                        #     "path": "credential",
-                        #     "class": Credential,
-                        #     "kwargs": {
-                        #     },
-                        # }
                     }
                 }
             }

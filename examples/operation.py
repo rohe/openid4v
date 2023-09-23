@@ -41,7 +41,8 @@ SRV2FUNC_MAP = {
 EUDI_SRV2ENDP_MAP = {
     "wallet_instance_attestation": "wallet_provider_token",
     "authorization": "authorization",
-    "accesstoken": "token"
+    "accesstoken": "token",
+    "credential": "credential"
 }
 
 
@@ -50,6 +51,28 @@ class Federation():
     def __init__(self):
         self.federation_entity = federation_setup()
         self.requestor = wallet_setup(self.federation_entity)
+        self.state = ""
+
+    def get_request(self, req_info):
+        if "url" in req_info:
+            part = urlsplit(req_info["url"])
+            if part.query:
+                query = {}
+                for key, val in parse_qs(part.query).items():
+                    if len(val) == 1:
+                        query[key] = val[0]
+                    else:
+                        query[key] = val
+                return query
+
+        if "request" in req_info:
+            return req_info["request"]
+        elif "request_args" in req_info:
+            return req_info["request_args"]
+        elif "data" in req_info:
+            return req_info["data"]
+        elif "body" in req_info:
+            return req_info["body"]
 
     def federation_query(self,
                          receiver_id: str,
@@ -214,9 +237,13 @@ class Federation():
                 actor = actor.new_consumer(opponent)
             else:
                 actor = _actor
-            _w_service = self.requestor["wallet"].get_service("wallet_instance_attestation")
-            wia = _w_service.wallet_instance_attestations[kwargs.get('client_assertion_kid')]
-            kwargs["wallet_instance_attestation"] = wia["assertion"]
+
+            if service_name == "authorization":
+                _w_service = self.requestor["wallet"].get_service("wallet_instance_attestation")
+                wia = _w_service.wallet_instance_attestations[kwargs.get('client_assertion_kid')]
+                kwargs["wallet_instance_attestation"] = wia["assertion"]
+            else:
+                kwargs["state"] = self.state
 
         _service = actor.get_service(service_name)
         if request_args is None:
@@ -224,28 +251,38 @@ class Federation():
         else:
             req_info = _service.get_request_parameters(request_args, **kwargs)
 
-        http_info = {k:v for k,v in req_info.items() if k in ["url", "headers", "method"]}
+        http_info = {k: v for k, v in req_info.items() if k in ["url", "headers", "method"]}
 
         # talk to the non-federation_entity part
         non_fed_role = [k for k in self.federation_entity[receiver_id].keys() if
                         k != "federation_entity"]
         _receiver = self.federation_entity[receiver_id][non_fed_role[0]].get_endpoint(
             EUDI_SRV2ENDP_MAP[service_name])
-        _data = req_info.get("data", req_info.get("body"))
-        _args = _receiver.parse_request(_data, http_info)
+        _data = self.get_request(req_info)
+        _request_args = _receiver.parse_request(_data, http_info)
         if isinstance(_receiver, Token):
             _chain = self.requestor["federation_entity"].get_trust_chain(
                 self.federation_entity[receiver_id].entity_id)
-            _response = _receiver.process_request(_args, trust_chain=_chain)
+            _response = _receiver.process_request(_request_args, trust_chain=_chain)
         else:
-            _response = _receiver.process_request(_args)
+            _response = _receiver.process_request(_request_args, http_info=http_info)
 
         if isinstance(_response, Message):
             _resp = _service.parse_response(_response, sformat="dict")
         elif 'response' in _response:
             _resp = _service.parse_response(_response["response"])
-        else:
+        elif "response_args" in _response:
             _resp = _service.parse_response(_response["response_args"], sformat="dict")
+        else:
+            _resp = _service.parse_response(_response, sformat="dict")
+
+        if requester_part == "pid_eaa_consumer":
+            if service_name == "authorization":
+                self.state = request_args["state"]
+
+        if self.state:
+            _service.update_service_context(_resp, key=self.state)
+
         return _resp
 
 
@@ -369,3 +406,23 @@ token_response = _federation.eudi_query(
 )
 
 print(f"Token response: {token_response}")
+
+# ---------------- Credential request -------------------
+
+credential_request_args = {
+    "format": "vc+sd-jwt",
+    "credential_definition": {
+        "type": ["PersonIdentificationData"]
+    }
+}
+
+credential_response = _federation.eudi_query(
+    receiver_id='oci',
+    service_name="credential",
+    requester_part="pid_eaa_consumer",
+    opponent=oci,
+    request_args=credential_request_args,
+    endpoint=my_oci["openid_credential_issuer"]["credential_endpoint"],
+)
+
+print(f"Credential response: {credential_response}")

@@ -16,7 +16,10 @@
     "eduperson_scoped_affiliation": [
       "staff@example.org"
     ],
-    "webid": "http://bblfish.net/#hjs"
+    "webid": "http://bblfish.net/#hjs",
+    "birthdate": "19710101",
+    "place_of_birth": "Ann Arbor",
+    "tax_id_code": "01234567890123"
   },
   "babs": {
     "name": "Barbara J Jensen",

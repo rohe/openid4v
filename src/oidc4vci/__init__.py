@@ -121,3 +121,4 @@ class ServerEntity(ServerUnit):
         self.context.client_authn_methods = client_auth_setup(
             self.unit_get, self.config.get("client_authn_methods")
         )
+

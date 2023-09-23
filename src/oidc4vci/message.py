@@ -3,6 +3,7 @@ from urllib.parse import urlsplit
 
 from cryptojwt import JWT
 from cryptojwt.jwk.jwk import key_from_jwk_dict
+from cryptojwt.jws.jws import factory
 from idpyoidc import verified_claim_name
 from idpyoidc.exception import MissingAttribute
 from idpyoidc.message import json_deserializer
@@ -30,6 +31,7 @@ from idpyoidc.message.oidc import JsonWebToken
 from idpyoidc.message.oidc import jwt_deser
 from idpyoidc.message.oidc import SINGLE_OPTIONAL_BOOLEAN
 from idpyoidc.message.oidc.identity_assurance import REQUIRED_VERIFIED_CLAIMS
+from idpysdjwt.holder import Holder
 
 
 class ProofToken(JsonWebToken):
@@ -52,16 +54,25 @@ class Proof(Message):
             if 'jwt' not in self:
                 raise MissingAttribute("jwt parameter missing")
 
-            _proof_token = ProofToken().from_jwt(self['jwt'], **kwargs)
+            key_jar = kwargs.get("keyjar")
+            # first get the key from JWT:jwk
+            _jws = factory(self["jwt"])
+            _key = key_from_jwk_dict(_jws.jwt.headers["jwk"])
+            _payload = _jws.jwt.payload()
+            key_jar.add_keys(_payload["iss"], [_key])
+
+            # verify key_proof
+            _verifier = JWT(key_jar=key_jar, msg_cls=ProofToken)
+            _proof_token = _verifier.unpack(self["jwt"])
 
             # typ MUST be specified in the JWS header and MUST be 'openid4vci-proof+jwt'
             _header = _proof_token.jws_header
-            if "typ" in _header and _header['typ'] == 'openid4vci-proof+jwt':
+            if "typ" in _header and _header['typ'] == 'openid4vci-proof-jwt':
                 pass
             else:
                 raise ValueError("Wrong value type")
 
-            self['__proof_token__'] = _proof_token
+            self[verified_claim_name("proof")] = _proof_token
 
 
 def proof_deser(val, sformat=dict):
@@ -507,7 +518,7 @@ class CredentialDefinition(Message):
 class CredentialResponse(ResponseMessage):
     c_param = {
         "format": SINGLE_REQUIRED_STRING,
-        "credential": SINGLE_OPTIONAL_ANY,
+        "credential": SINGLE_OPTIONAL_STRING,
         "transaction_id": SINGLE_OPTIONAL_STRING,
         "c_nonce": SINGLE_OPTIONAL_STRING,
         "c_nonce_expires_in": SINGLE_OPTIONAL_INT
@@ -519,6 +530,10 @@ class CredentialResponse(ResponseMessage):
         if "credential" not in self and "transaction_id" not in self:
             MissingAttribute("One of 'credential' or 'transaction_id' must be given")
 
+        if "credential" in self:
+            recv = Holder(key_jar=kwargs.get("keyjar"))
+            _msg = recv.parse(self["credential"])
+            self[verified_claim_name("credential")] = _msg
 
 class WalletProviderMetadata(Message):
     c_param = {
@@ -683,3 +698,8 @@ class CredentialRequest(Message):
                 if "jwt" not in _proof:
                     raise MissingAttribute("Expected 'jwt' claim")
                 _jwt_proof = JwtKeyProof().from_jwt(_proof["jwt"], kwargs.get("keyjar"))
+
+
+MAP_TYP_MSG = {
+    "openid4vci-proof+jwt": ProofJWT
+}

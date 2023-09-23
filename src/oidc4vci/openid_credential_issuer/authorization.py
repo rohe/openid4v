@@ -1,9 +1,7 @@
 """The service that talks to the OAuth2 Authorization endpoint."""
 import logging
 
-from fedservice.entity import federation_entity
 from idpyoidc.message import oauth2
-from idpyoidc.message.oauth2 import ResponseMessage
 from idpyoidc.server.oauth2 import authorization
 
 from oidc4vci.message import AuthorizationRequest
@@ -30,6 +28,7 @@ class Authorization(authorization.Authorization):
             # "form_post": "form"
         }
     }
+
     def __init__(self, upstream_get, conf=None, **kwargs):
         authorization.Authorization.__init__(self, upstream_get, conf=conf, **kwargs)
 
