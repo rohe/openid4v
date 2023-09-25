@@ -28,6 +28,7 @@ from idpyoidc.message import SINGLE_REQUIRED_STRING
 from idpyoidc.message.oauth2 import deserialize_from_one_of
 from idpyoidc.message.oauth2 import ResponseMessage
 from idpyoidc.message.oidc import JsonWebToken
+from idpyoidc.message.oidc import SINGLE_OPTIONAL_DICT
 from idpyoidc.message.oidc import jwt_deser
 from idpyoidc.message.oidc import SINGLE_OPTIONAL_BOOLEAN
 from idpyoidc.message.oidc.identity_assurance import REQUIRED_VERIFIED_CLAIMS
@@ -482,7 +483,9 @@ class CredentialIssuerMetadata(Message):
         "credential_response_encryption_enc_values_supported": OPTIONAL_LIST_OF_STRINGS,
         "require_credential_response_encryption": SINGLE_OPTIONAL_BOOLEAN,
         "credentials_supported": REQUIRED_LIST_OF_CREDENTIAL_TYPES,
-        "display": OPTIONAL_DISPLAY_PROPERIES
+        "display": OPTIONAL_DISPLAY_PROPERIES,
+        "jwks": SINGLE_OPTIONAL_DICT,
+        "jwks_uri": SINGLE_OPTIONAL_STRING
     }
 
 
@@ -533,7 +536,7 @@ class CredentialResponse(ResponseMessage):
         if "credential" in self:
             recv = Holder(key_jar=kwargs.get("keyjar"))
             _msg = recv.parse(self["credential"])
-            self[verified_claim_name("credential")] = _msg
+            self[verified_claim_name("credential")] = recv.payload
 
 class WalletProviderMetadata(Message):
     c_param = {

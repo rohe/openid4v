@@ -348,10 +348,10 @@ for entity_id in list_resp:
 print(f"openid_credential_issuers: {res}")
 
 my_oci = None
-oci = ''
-for oci in res:
-    print(10 * "-", f"OpenID Credential Issuer {oci} Metadata", 10 * "-")
-    oci_metadata = _federation.get_verified_metadata(oci, stop_at=tas)
+pid = ''
+for pid in res:
+    print(10 * "-", f"OpenID Credential Issuer {pid} Metadata", 10 * "-")
+    oci_metadata = _federation.get_verified_metadata(pid, stop_at=tas)
     # print(json.dumps(oci_metadata, sort_keys=True, indent=4))
     for cs in oci_metadata['openid_credential_issuer']["credentials_supported"]:
         if "PersonIdentificationData" in cs["credential_definition"]["type"]:
@@ -374,10 +374,10 @@ authz_request_args = {
 }
 
 authorization_response = _federation.eudi_query(
-    receiver_id='oci',
+    receiver_id='pid',
     service_name="authorization",
     requester_part="pid_eaa_consumer",
-    opponent=oci,
+    opponent=pid,
     request_args=authz_request_args,
     endpoint=my_oci["openid_credential_issuer"]["authorization_endpoint"],
     client_assertion_kid=thumbprint_in_cnf_jwk
@@ -394,10 +394,10 @@ token_request_args = {
 }
 
 token_response = _federation.eudi_query(
-    receiver_id='oci',
+    receiver_id='pid',
     service_name="accesstoken",
     requester_part="pid_eaa_consumer",
-    opponent=oci,
+    opponent=pid,
     request_args=token_request_args,
     endpoint=my_oci["openid_credential_issuer"]["token_endpoint"],
     client_assertion_kid=thumbprint_in_cnf_jwk,
@@ -409,6 +409,9 @@ print(f"Token response: {token_response}")
 
 # ---------------- Credential request -------------------
 
+_federation.requestor.keyjar.import_jwks(my_oci["openid_credential_issuer"]["jwks"],
+                                         my_oci["openid_credential_issuer"]["issuer"])
+
 credential_request_args = {
     "format": "vc+sd-jwt",
     "credential_definition": {
@@ -417,10 +420,10 @@ credential_request_args = {
 }
 
 credential_response = _federation.eudi_query(
-    receiver_id='oci',
+    receiver_id='pid',
     service_name="credential",
     requester_part="pid_eaa_consumer",
-    opponent=oci,
+    opponent=pid,
     request_args=credential_request_args,
     endpoint=my_oci["openid_credential_issuer"]["credential_endpoint"],
 )

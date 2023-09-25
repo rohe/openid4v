@@ -233,7 +233,7 @@ class Credential(Service):
         else:
             payload = {}
         if not aud:
-            aud = self.upstream_get("attrbute", "issuer")
+            aud = self.upstream_get("attribute", "issuer")
 
         _jws = _signer.pack(payload,
                             kid=key.kid,

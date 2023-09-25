@@ -20,7 +20,8 @@ class OpenidCredentialIssuerClaims(Claims):
         "credential_response_encryption_enc_values_supported": get_encryption_encs,
         "require_credential_response_encryption": False,
         "credentials_supported": ["vp_token"],
-        "display": None
+        "display": None,
+        "jwks": None
     }
 
     def provider_info(self, supports):
