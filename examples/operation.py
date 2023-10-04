@@ -11,11 +11,12 @@ from cryptojwt.jws.jws import factory
 from fedservice.combo import FederationCombo
 from fedservice.entity.function import apply_policies
 from fedservice.entity.function import verify_trust_chains
+from idpyoidc.logging import configure_logging
 from idpyoidc.message import Message
 from idpyoidc.util import rndstr
 
 from examples.federation import federation_setup
-from examples.federation import wallet_setup
+from examples.wallet_setup import wallet_setup
 from oidc4vci.wallet_provider.token import Token
 
 TA_ID = "https://ta.example.org"
@@ -82,12 +83,14 @@ class Federation():
                          **kwargs) -> Union[Message, dict]:
         _service = self.requestor["federation_entity"].get_service(SRV2FUNC_MAP[service])
         _service.upstream_get('unit').context.issuer = receiver_id
+        logger.info(f"==== Service name: {_service.service_name}")
 
         if request_args is None:
             req_info = _service.get_request_parameters(**kwargs)
         else:
             req_info = _service.get_request_parameters(request_args, **kwargs)
 
+        logger.info(f"==== Request Info: {req_info} ====")
         receiver = get_entity(self.federation_entity, receiver_id)
 
         if isinstance(receiver, FederationCombo):
@@ -115,6 +118,8 @@ class Federation():
                 _args = req_info["request_args"]
             response = endpoint.process_request(_args)
 
+        logger.info(f"==== Endpoint Response: {response} ====")
+
         if "response_msg" in response:
             try:
                 _resp = json.loads(response["response_msg"])
@@ -130,6 +135,8 @@ class Federation():
                 _resp = _payload
             else:
                 _resp = _service.parse_response(response["response"])
+
+        logger.info(f"==== Response parsed by the Service: {_resp} ====")
         return _resp
 
     def do_layer(self, entity_id, subordinate_id):
@@ -304,26 +311,148 @@ def tree2chains(node):
     return res
 
 
+def get_credential_issuer(credential_type: Optional[str] = "PersonIdentificationData"):
+    # Search for all credential issuers
+    logger.info("**** Find one Credential Issuer that issues credentials of type {"
+                "credential_type} ****")
+    res = []
+    list_resp = _federation.federation_query(TA_ID, "list", entity_id=TA_ID)
+    for entity_id in list_resp:
+        res.extend(_federation.trawl(TA_ID, entity_id, "openid_credential_issuer"))
+
+    logger.info(f"**** ALL openid_credential_issuers: {res} ****")
+
+    _oci = {}
+    for pid in res:
+        oci_metadata = _federation.get_verified_metadata(pid, stop_at=tas)
+        # logger.info(json.dumps(oci_metadata, sort_keys=True, indent=4))
+        for cs in oci_metadata['openid_credential_issuer']["credentials_supported"]:
+            if credential_type in cs["credential_definition"]["type"]:
+                _oci[pid] = oci_metadata
+                break
+    return _oci
+
+
+def get_credentials(authz_request_args: dict,
+                    credential_type: Optional[str] = "PersonIdentificationData",
+                    receiver_id: Optional[str] = "pid"
+                    ):
+    logger.info(f"Looking for credential issuers of {credential_type}")
+    oci_dict = get_credential_issuer(credential_type)
+    for key, val in oci_dict.items():
+        logger.info(f"{key} **** OpenID Credential Issuer {val} Metadata ****")
+
+    pid = list(oci_dict.keys())[0]
+    my_oci = oci_dict[pid]
+
+    logger.info(">>>> Send the authorization request >>>>")
+    authorization_response = _federation.eudi_query(
+        receiver_id=receiver_id,
+        service_name="authorization",
+        requester_part="pid_eaa_consumer",
+        opponent=pid,
+        request_args=authz_request_args,
+        endpoint=my_oci["openid_credential_issuer"]["authorization_endpoint"],
+        client_assertion_kid=thumbprint_in_cnf_jwk
+    )
+
+    logger.info(f"<<<< Authorization response: {authorization_response} <<<<")
+
+    token_request_args = {
+        "state": authorization_response["state"],
+        "grant_type": "authorization_code",
+        "code": authorization_response["code"],
+        "redirect_uri": authz_request_args["redirect_uri"],
+        "client_id": thumbprint_in_cnf_jwk,
+    }
+
+    logger.info(">>>> The Token Request >>>>")
+    token_response = _federation.eudi_query(
+        receiver_id=receiver_id,
+        service_name="accesstoken",
+        requester_part="pid_eaa_consumer",
+        opponent=pid,
+        request_args=token_request_args,
+        endpoint=my_oci["openid_credential_issuer"]["token_endpoint"],
+        client_assertion_kid=thumbprint_in_cnf_jwk,
+        kid=thumbprint_in_cnf_jwk,
+        # client_id = thumbprint_in_cnf_jwk
+    )
+
+    logger.info(f"<<<< Token response: {token_response} <<<<")
+
+    # ---------------- Credential request -------------------
+
+    _federation.requestor.keyjar.import_jwks(my_oci["openid_credential_issuer"]["jwks"],
+                                             my_oci["openid_credential_issuer"]["issuer"])
+
+    credential_request_args = {
+        "format": "vc+sd-jwt",
+        "credential_definition": {
+            "type": [credential_type]
+        }
+    }
+
+    logger.info(">>>> The Credential Request >>>>")
+    credential_response = _federation.eudi_query(
+        receiver_id=receiver_id,
+        service_name="credential",
+        requester_part="pid_eaa_consumer",
+        opponent=pid,
+        request_args=credential_request_args,
+        endpoint=my_oci["openid_credential_issuer"]["credential_endpoint"],
+    )
+
+    logger.info(f"<<<< {credential_type} Credential response: {credential_response} <<<<")
+
+
 # ================================================================================================
+
+LOGG_CONFIG = {
+    "version": 1,
+    "root": {
+        "handlers": [
+            "default"
+        ],
+        "level": "DEBUG"
+    },
+    "handlers": {
+        "default": {
+            "class": "logging.FileHandler",
+            "filename": "debug.log",
+            "formatter": "default"
+        },
+    },
+    "formatters": {
+        "default": {
+            "format": "%(asctime)s %(name)s %(levelname)s %(message)s"
+        }
+    }
+}
+
+logger = configure_logging(config=LOGG_CONFIG)
+logger.info("Starting")
 
 _federation = Federation()
 
-print(10 * "-", "Collect trust chain", 10 * "-")
 tas = list(
     _federation.requestor["federation_entity"].function.trust_chain_collector.trust_anchors.keys())
-print(tas)
+logger.info(f"Trust Anchors: {tas}")
 
 # get entity configuration for TA
+logger.info(f">>>> Get entity configuration for {tas[0]} >>>>")
 ta_entity_configuration = _federation.federation_query(tas[0], "entity_configuration",
                                                        request_args={"entity_id": tas[0]})
-print(ta_entity_configuration)
+logger.info(f"<<<< Trust anchor entity configuration: {ta_entity_configuration} <<<<")
 
 wallet_provider_entity_id = _federation.federation_entity["wp"].entity_id
+logger.info(">>>> Collect Wallet Provider Metadata >>>>")
 wpi_metadata = _federation.get_verified_metadata(wallet_provider_entity_id, stop_at=tas)
 
 # wallet_provider = _federation.federation_entity["wp"]
 # token_endpoint = wallet_provider["wallet_provider"].get_endpoint("wallet_provider_token")
 
+logger.info(">>>> The wallet asks the Wallet Provider for a Wallet Instance Attestation >>>>")
 wallet_instance_attestation = _federation.eudi_query("wp",
                                                      "wallet_instance_attestation",
                                                      "wallet",
@@ -336,27 +465,9 @@ wallet_instance_attestation = _federation.eudi_query("wp",
                                                          "token_endpoint"]
                                                      )
 
-print(wallet_instance_attestation)
+logger.info("<<<< The returned Wallet Instance Attestation <<<<")
+logger.info(wallet_instance_attestation)
 thumbprint_in_cnf_jwk = wallet_instance_attestation["__verified_assertion"]["cnf"]["jwk"]["kid"]
-
-# Search for all credential issuers
-res = []
-list_resp = _federation.federation_query(TA_ID, "list", entity_id=TA_ID)
-for entity_id in list_resp:
-    res.extend(_federation.trawl(TA_ID, entity_id, "openid_credential_issuer"))
-
-print(f"openid_credential_issuers: {res}")
-
-my_oci = None
-pid = ''
-for pid in res:
-    print(10 * "-", f"OpenID Credential Issuer {pid} Metadata", 10 * "-")
-    oci_metadata = _federation.get_verified_metadata(pid, stop_at=tas)
-    # print(json.dumps(oci_metadata, sort_keys=True, indent=4))
-    for cs in oci_metadata['openid_credential_issuer']["credentials_supported"]:
-        if "PersonIdentificationData" in cs["credential_definition"]["type"]:
-            my_oci = oci_metadata
-            break
 
 authz_request_args = {
     "authorization_details": [
@@ -373,59 +484,7 @@ authz_request_args = {
     "redirect_uri": "eudiw://start.wallet.example.org"
 }
 
-authorization_response = _federation.eudi_query(
-    receiver_id='pid',
-    service_name="authorization",
-    requester_part="pid_eaa_consumer",
-    opponent=pid,
-    request_args=authz_request_args,
-    endpoint=my_oci["openid_credential_issuer"]["authorization_endpoint"],
-    client_assertion_kid=thumbprint_in_cnf_jwk
-)
-
-print(f"Authorization response: {authorization_response}")
-
-token_request_args = {
-    "state": authorization_response["state"],
-    "grant_type": "authorization_code",
-    "code": authorization_response["code"],
-    "redirect_uri": authz_request_args["redirect_uri"],
-    "client_id": thumbprint_in_cnf_jwk,
-}
-
-token_response = _federation.eudi_query(
-    receiver_id='pid',
-    service_name="accesstoken",
-    requester_part="pid_eaa_consumer",
-    opponent=pid,
-    request_args=token_request_args,
-    endpoint=my_oci["openid_credential_issuer"]["token_endpoint"],
-    client_assertion_kid=thumbprint_in_cnf_jwk,
-    kid=thumbprint_in_cnf_jwk,
-    # client_id = thumbprint_in_cnf_jwk
-)
-
-print(f"Token response: {token_response}")
-
-# ---------------- Credential request -------------------
-
-_federation.requestor.keyjar.import_jwks(my_oci["openid_credential_issuer"]["jwks"],
-                                         my_oci["openid_credential_issuer"]["issuer"])
-
-credential_request_args = {
-    "format": "vc+sd-jwt",
-    "credential_definition": {
-        "type": ["PersonIdentificationData"]
-    }
-}
-
-credential_response = _federation.eudi_query(
-    receiver_id='pid',
-    service_name="credential",
-    requester_part="pid_eaa_consumer",
-    opponent=pid,
-    request_args=credential_request_args,
-    endpoint=my_oci["openid_credential_issuer"]["credential_endpoint"],
-)
-
-print(f"Credential response: {credential_response}")
+logger.info("**** PersonIdentificationData ****")
+get_credentials(authz_request_args, "PersonIdentificationData", receiver_id="pid")
+logger.info("**** OpenBadgeCredential ****")
+get_credentials(authz_request_args, "OpenBadgeCredential", receiver_id="qeea")

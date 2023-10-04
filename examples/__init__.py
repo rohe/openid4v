@@ -1,3 +1,4 @@
+from cryptojwt.utils import importer
 from fedservice.entity import FederationEntity
 from fedservice.entity.function import get_federation_entity
 
@@ -26,6 +27,11 @@ RESPONSE_TYPES_SUPPORTED = [
     ["none"],
 ]
 
+def execute_function(function, **kwargs):
+    if isinstance(function, str):
+        return importer(function)(**kwargs)
+    else:
+        return function(**kwargs)
 
 def create_trust_chain_messages(leaf, *entity):
     where_and_what = {}

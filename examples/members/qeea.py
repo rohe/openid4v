@@ -37,7 +37,7 @@ def full_path(local_file):
     return os.path.join(BASEDIR, local_file)
 
 
-USERINFO_db = json.loads(open(full_path("users.json")).read())
+USERINFO_db = json.loads(open(full_path("diploma.json")).read())
 
 
 def main(entity_id: str,
@@ -54,7 +54,7 @@ def main(entity_id: str,
     entity.add_functions()
     entity.add_endpoints({}, **LEAF_ENDPOINT)
 
-    PIDIssuer = {
+    QEEAIssuer = {
         'entity_id': entity_id,
         "federation_entity": {
             'class': FederationEntity,
@@ -136,88 +136,28 @@ def main(entity_id: str,
                                                                    "ES512"],
                                 "display": [
                                     {
-                                        "name": "Example Swedish PID Provider",
+                                        "name": "Example Swedish QEEA Provider",
                                         "locale": "en-US",
                                     }
                                 ],
                                 "credential_definition": {
-                                    "type": ["PersonIdentificationData"],
+                                    "type": ["OpenBadgeCredential"],
                                     "credentialSubject": {
-                                        "given_name": {
+                                        "type": {
                                             "mandatory": True,
                                             "display": [
                                                 {
-                                                    "name": "Current First Name",
+                                                    "name": "Type of achievement",
                                                     "locale": "en-US"
-                                                },
-                                                {
-                                                    "name": "Nome",
-                                                    "locale": "it-IT"
                                                 }
                                             ]
                                         },
-                                        "family_name": {
+                                        "achievement": {
                                             "mandatory": True,
                                             "display": [
                                                 {
-                                                    "name": "Current Family Name",
+                                                    "name": "Achievement description",
                                                     "locale": "en-US"
-                                                },
-                                                {
-                                                    "name": "Cognome",
-                                                    "locale": "it-IT"
-                                                }
-                                            ]
-                                        },
-                                        "birthdate": {
-                                            "mandatory": True,
-                                            "display": [
-                                                {
-                                                    "name": "Date of Birth",
-                                                    "locale": "en-US"
-                                                },
-                                                {
-                                                    "name": "Data di Nascita",
-                                                    "locale": "it-IT"
-                                                }
-                                            ]
-                                        },
-                                        "place_of_birth": {
-                                            "mandatory": True,
-                                            "display": [
-                                                {
-                                                    "name": "Place of Birth",
-                                                    "locale": "en-US"
-                                                },
-                                                {
-                                                    "name": "Luogo di Nascita",
-                                                    "locale": "it-IT"
-                                                }
-                                            ]
-                                        },
-                                        "unique_id": {
-                                            "mandatory": True,
-                                            "display": [
-                                                {
-                                                    "name": "Unique Identifier",
-                                                    "locale": "en-US"
-                                                },
-                                                {
-                                                    "name": "Identificativo univoco",
-                                                    "locale": "it-IT"
-                                                }
-                                            ]
-                                        },
-                                        "tax_id_code": {
-                                            "mandatory": True,
-                                            "display": [
-                                                {
-                                                    "name": "Tax Id Number",
-                                                    "locale": "en-US"
-                                                },
-                                                {
-                                                    "name": "Codice Fiscale",
-                                                    "locale": "it-IT"
                                                 }
                                             ]
                                         }
@@ -273,10 +213,10 @@ def main(entity_id: str,
             }
         }
     }
-    pid = FederationCombo(PIDIssuer)
+    qeea = FederationCombo(QEEAIssuer)
     for id, jwk in trust_anchors.items():
-        pid["federation_entity"].keyjar.import_jwks(jwk, id)
+        qeea["federation_entity"].keyjar.import_jwks(jwk, id)
 
-    pid["federation_entity"].function.trust_chain_collector.trust_anchors = trust_anchors
+    qeea["federation_entity"].function.trust_chain_collector.trust_anchors = trust_anchors
 
-    return pid
+    return qeea
