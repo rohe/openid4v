@@ -8,8 +8,8 @@ from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
 
 
 def main(entity_id: str,
-         authority_hints: List[str],
-         trust_anchors: dict,
+         authority_hints: Optional[List[str]],
+         trust_anchors: Optional[dict],
          preference: Optional[dict] = None):
     entity = FederationEntityBuilder(
         entity_id,
@@ -20,11 +20,11 @@ def main(entity_id: str,
     entity.add_services()
     entity.add_functions()
     entity.add_endpoints({}, **LEAF_ENDPOINT)
-    entity.conf['function']['kwargs']['functions']['trust_chain_collector']['kwargs'][
-        'trust_anchors'] = trust_anchors
 
-    fe = FederationEntity(**entity.conf)
+    federation_entity = FederationEntity(**entity.conf)
     for id, jwk in trust_anchors.items():
-        fe.keyjar.import_jwks(jwk, id)
+        federation_entity.keyjar.import_jwks(jwk, id)
 
-    return fe
+    federation_entity.function.trust_chain_collector.trust_anchors = trust_anchors
+
+    return federation_entity

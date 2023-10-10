@@ -7,9 +7,9 @@ from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
 
 
 def main(entity_id: str,
-         authority_hints: List[str],
-         trust_anchors: dict,
-         preference: Optional[dict]=None):
+         authority_hints: Optional[List[str]],
+         trust_anchors: Optional[dict],
+         preference: Optional[dict] = None):
     entity = FederationEntityBuilder(
         entity_id,
         preference=preference,
@@ -21,5 +21,5 @@ def main(entity_id: str,
     entity.add_endpoints()
 
     federation_entity = FederationEntity(**entity.conf)
-    federation_entity.function.trust_anchors = trust_anchors
+    federation_entity.function.trust_chain_collector.trust_anchors = trust_anchors
     return federation_entity

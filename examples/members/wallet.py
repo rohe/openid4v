@@ -13,11 +13,9 @@ from oidc4vci.client.wallet_instance_attestation import WalletInstanceAttestatio
 
 
 def main(entity_id: str,
-         wallet_provider: FederationCombo,
          authority_hints: Optional[List[str]] = None,
          trust_anchors: Optional[dict] = None,
-         preference: Optional[dict] = None,
-         ):
+         preference: Optional[dict] = None):
     FE = FederationEntityBuilder(
         entity_id,
         key_conf={"key_defs": DEFAULT_KEY_DEFS},
@@ -112,10 +110,5 @@ def main(entity_id: str,
     wallet = FederationCombo(WalletConfig)
     for id, jwk in trust_anchors.items():
         wallet["federation_entity"].keyjar.import_jwks(jwk, id)
-
-    # Need the wallet providers public keys. Could get this from the metadata
-    wallet.keyjar.import_jwks(
-        wallet_provider["wallet_provider"].context.keyjar.export_jwks(),
-        wallet_provider.entity_id)
 
     return wallet

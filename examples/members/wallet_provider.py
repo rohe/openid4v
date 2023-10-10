@@ -9,8 +9,8 @@ from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
 
 
 def main(entity_id: str,
-         authority_hints: List[str],
-         trust_anchors: dict,
+         authority_hints: Optional[List[str]],
+         trust_anchors: Optional[dict],
          preference: Optional[dict] = None):
     entity = FederationEntityBuilder(
         entity_id,
