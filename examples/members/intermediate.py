@@ -21,6 +21,5 @@ def main(entity_id: str,
     entity.add_endpoints()
 
     federation_entity = FederationEntity(**entity.conf)
-    federation_entity.conf['function']['kwargs']['functions']['trust_chain_collector']['kwargs'][
-        'trust_anchors'] = trust_anchors
+    federation_entity.function.trust_anchors = trust_anchors
     return federation_entity

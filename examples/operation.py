@@ -1,5 +1,6 @@
 import json
 from json import JSONDecodeError
+import logging.config
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -15,8 +16,33 @@ from idpyoidc.message import Message
 from idpyoidc.util import rndstr
 
 from examples.federation import federation_setup
-from examples.federation import wallet_setup
 from oidc4vci.wallet_provider.token import Token
+
+default_logging_config = {
+    "version": 1,
+    "formatters": {
+        "simple": {
+            "format": "[%(asctime)s] [%(levelname)s] [%(name)s.%(funcName)s] %(message)s"
+        }
+    },
+    "handlers": {
+        "stdout": {
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stdout",
+            "level": "DEBUG",
+            "formatter": "simple",
+        },
+        "file": {
+            "class": "logging.FileHandler",
+            "filename": "debug.log",
+            "formatter": "simple",
+        }
+    },
+    "loggers": {"openid4": {"level": "DEBUG"}},
+    "root": {"level": "DEBUG", "handlers": ["file"]},
+}
+logging.config.dictConfig(default_logging_config)
+logger = logging.getLogger(__name__)
 
 TA_ID = "https://ta.example.org"
 RP_ID = "https://rp.example.org"
@@ -50,7 +76,7 @@ class Federation():
 
     def __init__(self):
         self.federation_entity = federation_setup()
-        self.requestor = wallet_setup(self.federation_entity)
+        self.requestor = self.federation_entity["wallet"]
         self.state = ""
 
     def get_request(self, req_info):
@@ -306,38 +332,36 @@ def tree2chains(node):
 
 # ================================================================================================
 
+logger.info(f"**** Building federation")
 _federation = Federation()
 
-print(10 * "-", "Collect trust chain", 10 * "-")
+logger.info(f"**** Trust Anchors ****")
 tas = list(
     _federation.requestor["federation_entity"].function.trust_chain_collector.trust_anchors.keys())
-print(tas)
+logger.info(tas)
 
 # get entity configuration for TA
 ta_entity_configuration = _federation.federation_query(tas[0], "entity_configuration",
                                                        request_args={"entity_id": tas[0]})
-print(ta_entity_configuration)
+logger.info("**** Trust Anchor Entity Configuration ****")
+logger.info(ta_entity_configuration)
 
+logger.info("**** Wallet Provider Metadata ****")
 wallet_provider_entity_id = _federation.federation_entity["wp"].entity_id
 wpi_metadata = _federation.get_verified_metadata(wallet_provider_entity_id, stop_at=tas)
 
 # wallet_provider = _federation.federation_entity["wp"]
 # token_endpoint = wallet_provider["wallet_provider"].get_endpoint("wallet_provider_token")
 
-wallet_instance_attestation = _federation.eudi_query("wp",
-                                                     "wallet_instance_attestation",
-                                                     "wallet",
-                                                     request_args={
-                                                         "nonce": rndstr(),
-                                                         "aud": wallet_provider_entity_id
-                                                     },
-                                                     # endpoint=token_endpoint.endpoint_path
-                                                     endpoint=wpi_metadata["wallet_provider"][
-                                                         "token_endpoint"]
-                                                     )
+wallet_instance_attestation = _federation.eudi_query(
+    "wp", "wallet_instance_attestation", "wallet",
+    request_args={"nonce": rndstr(), "aud": wallet_provider_entity_id},
+    endpoint=wpi_metadata["wallet_provider"]["token_endpoint"])
 
-print(wallet_instance_attestation)
+logger.info("**** Wallet Instance Attestation ****")
+logger.info(wallet_instance_attestation)
 thumbprint_in_cnf_jwk = wallet_instance_attestation["__verified_assertion"]["cnf"]["jwk"]["kid"]
+logger.info(f"**** JWK thumbprint: {thumbprint_in_cnf_jwk}")
 
 # Search for all credential issuers
 res = []
@@ -345,18 +369,20 @@ list_resp = _federation.federation_query(TA_ID, "list", entity_id=TA_ID)
 for entity_id in list_resp:
     res.extend(_federation.trawl(TA_ID, entity_id, "openid_credential_issuer"))
 
-print(f"openid_credential_issuers: {res}")
+logger.info(f"**** openid_credential_issuers: {res}")
 
 my_oci = None
 pid = ''
 for pid in res:
-    print(10 * "-", f"OpenID Credential Issuer {pid} Metadata", 10 * "-")
+    logger.info(f"**** OpenID Credential Issuer {pid} Metadata")
     oci_metadata = _federation.get_verified_metadata(pid, stop_at=tas)
-    # print(json.dumps(oci_metadata, sort_keys=True, indent=4))
+    # logger.info(json.dumps(oci_metadata, sort_keys=True, indent=4))
     for cs in oci_metadata['openid_credential_issuer']["credentials_supported"]:
         if "PersonIdentificationData" in cs["credential_definition"]["type"]:
             my_oci = oci_metadata
             break
+
+logger.info(f"**** openid_credential_issuer that issues PID: {pid}")
 
 authz_request_args = {
     "authorization_details": [
@@ -383,7 +409,7 @@ authorization_response = _federation.eudi_query(
     client_assertion_kid=thumbprint_in_cnf_jwk
 )
 
-print(f"Authorization response: {authorization_response}")
+logger.info(f"Authorization response: {authorization_response}")
 
 token_request_args = {
     "state": authorization_response["state"],
@@ -405,7 +431,7 @@ token_response = _federation.eudi_query(
     # client_id = thumbprint_in_cnf_jwk
 )
 
-print(f"Token response: {token_response}")
+logger.info(f"Token response: {token_response}")
 
 # ---------------- Credential request -------------------
 
@@ -428,4 +454,4 @@ credential_response = _federation.eudi_query(
     endpoint=my_oci["openid_credential_issuer"]["credential_endpoint"],
 )
 
-print(f"Credential response: {credential_response}")
+logger.info(f"Credential response: {credential_response}")

@@ -16,7 +16,20 @@ from idpyoidc.server.user_info import UserInfo
 
 from oidc4vci.openid_credential_issuer import OpenidCredentialIssuer
 from oidc4vci.openid_credential_issuer.client_authn import ClientAssertion
-from .. import SESSION_PARAMS
+
+CRYPT_CONFIG = {
+    "kwargs": {
+        "keys": {
+            "key_defs": [
+                {"type": "OCT", "use": ["enc"], "kid": "password"},
+                {"type": "OCT", "use": ["enc"], "kid": "salt"},
+            ]
+        },
+        "iterations": 1,
+    }
+}
+
+SESSION_PARAMS = {"encrypter": CRYPT_CONFIG}
 
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 

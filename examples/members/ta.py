@@ -10,8 +10,8 @@ TA_ENDPOINTS = DEFAULT_FEDERATION_ENTITY_ENDPOINTS.copy()
 
 
 def main(entity_id: str,
-         authority_hints: List[str],
-         trust_anchors: dict,
+         authority_hints: Optional[List[str]] = None,
+         trust_anchors: Optional[dict] = None,
          preference: Optional[dict] = None):
     TA = FederationEntityBuilder(
         entity_id,

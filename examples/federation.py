@@ -1,5 +1,8 @@
-from fedservice.defaults import DEFAULT_FEDERATION_ENTITY_ENDPOINTS
-from idpyoidc.server.util import execute
+import logging
+
+from cryptojwt.utils import importer
+
+logger = logging.getLogger()
 
 #              TA
 #          +------|---+
@@ -18,7 +21,6 @@ IM2_ID = "https://im2.example.org"
 OCI_ID = "https://pid.example.org"
 WALLET_ID = "s6BhdRkqt3"
 
-
 SESSION_PARAMS = {
     "encrypter": {
         "kwargs": {
@@ -34,9 +36,14 @@ SESSION_PARAMS = {
 }
 
 
+def run(cls, **kwargs):
+    _func = importer(f"{cls}.main")
+    return _func(**kwargs)
+
+
 def federation_setup():
     # TRUST ANCHOR
-
+    logger.info("---- Trust Anchor ----")
     kwargs = {
         "entity_id": TA_ID,
         "preference": {
@@ -45,13 +52,15 @@ def federation_setup():
             "contacts": "operations@ta.example.com"
         }
     }
-    trust_anchor = execute('members.ta', **kwargs)
+    trust_anchor = run('members.ta', **kwargs)
 
     trust_anchors = {TA_ID: trust_anchor.keyjar.export_jwks()}
 
     ##################
     # intermediate 1
     ##################
+    logger.info("---- Intermediate 1 ----")
+    logger.info("--- Subordinate to the Trust Anchor ---")
 
     kwargs = {
         "entity_id": IM1_ID,
@@ -63,11 +72,23 @@ def federation_setup():
         "authority_hints": [TA_ID],
         "trust_anchors": trust_anchors
     }
-    im1 = execute("members.intermediate", **kwargs)
+    im1 = run("members.intermediate", **kwargs)
+
+    trust_anchor.server.subordinate[IM1_ID] = {
+        "jwks": im1.keyjar.export_jwks(),
+        'authority_hints': [TA_ID],
+        "registration_info": {
+            "entity_types": ["federation_entity"],
+            "intermediate": True
+        }
+    }
 
     ##################
     # intermediate 2
     ##################
+
+    logger.info("---- Intermediate 2 ----")
+    logger.info("--- Subordinate to the Trust Anchor ---")
 
     kwargs = {
         "entity_id": IM2_ID,
@@ -79,11 +100,23 @@ def federation_setup():
         "authority_hints": [TA_ID],
         "trust_anchors": trust_anchors
     }
-    im2 = execute("members.intermediate", **kwargs)
+    im2 = run("members.intermediate", **kwargs)
+
+    trust_anchor.server.subordinate[IM2_ID] = {
+        "jwks": im2.keyjar.export_jwks(),
+        'authority_hints': [TA_ID],
+        "registration_info": {
+            "entity_types": ["federation_entity"],
+            "intermediate": True
+        }
+    }
 
     ########################################
     # Leaf
     ########################################
+
+    logger.info("---- RP (not used) ----")
+    logger.info("--- Subordinate to intermediate 1 ---")
 
     kwargs = {
         "entity_id": RP_ID,
@@ -95,11 +128,19 @@ def federation_setup():
         "authority_hints": [IM1_ID],
         "trust_anchors": trust_anchors
     }
-    rp = execute("members.rp", **kwargs)
+    rp = run("members.rp", **kwargs)
+    im1.server.subordinate[RP_ID] = {
+        "jwks": rp.keyjar.export_jwks(),
+        'authority_hints': [IM1_ID],
+        "registration_info": {"entity_types": ["federation_entity", "relying_party"]},
+    }
 
     ########################################
     # Wallet provider
     ########################################
+
+    logger.info("---- Wallet ----")
+    logger.info("--- Subordinate to intermediate 2 ---")
 
     kwargs = {
         "entity_id": WP_ID,
@@ -111,14 +152,23 @@ def federation_setup():
         "authority_hints": [IM2_ID],
         "trust_anchors": trust_anchors
     }
-    wp = execute("members.wallet_provider", **kwargs)
+    wp = run("members.wallet_provider", **kwargs)
+
+    im2.server.subordinate[WP_ID] = {
+        "jwks": wp['federation_entity'].keyjar.export_jwks(),
+        'authority_hints': [IM2_ID],
+        "registration_info": {"entity_types": ["federation_entity", "wallet_provider"]},
+    }
 
     #########################################
     # OpenidCredentialIssuer
     #########################################
 
+    logger.info("---- Openid Credential Issuer ----")
+    logger.info("--- Subordinate to intermediate 2 ---")
+
     kwargs = {
-        "entity_id": WP_ID,
+        "entity_id": OCI_ID,
         "preference": {
             "organization_name": "The OpenID Credential Issuer",
             "homepage_uri": "https://pid.example.com",
@@ -128,33 +178,7 @@ def federation_setup():
         "trust_anchors": trust_anchors
     }
 
-    pid = execute("members.pid", **kwargs)
-
-    # Setup subordinates
-
-    trust_anchor.server.subordinate[IM1_ID] = {
-        "jwks": im1.keyjar.export_jwks(),
-        'authority_hints': [TA_ID],
-        "registration_info": {
-            "entity_types": ["federation_entity"],
-            "intermediate": True
-        }
-    }
-
-    trust_anchor.server.subordinate[IM2_ID] = {
-        "jwks": im2.keyjar.export_jwks(),
-        'authority_hints': [TA_ID],
-        "registration_info": {
-            "entity_types": ["federation_entity"],
-            "intermediate": True
-        }
-    }
-
-    im2.server.subordinate[WP_ID] = {
-        "jwks": wp['federation_entity'].keyjar.export_jwks(),
-        'authority_hints': [IM2_ID],
-        "registration_info": {"entity_types": ["federation_entity", "wallet_provider"]},
-    }
+    pid = run("members.pid", **kwargs)
 
     im2.server.subordinate[OCI_ID] = {
         "jwks": pid['federation_entity'].keyjar.export_jwks(),
@@ -162,21 +186,22 @@ def federation_setup():
         "registration_info": {"entity_types": ["federation_entity", "openid_credential_issuer"]},
     }
 
-    im1.server.subordinate[RP_ID] = {
-        "jwks": rp.keyjar.export_jwks(),
-        'authority_hints': [IM1_ID],
-        "registration_info": {"entity_types": ["federation_entity", "relying_party"]},
-    }
 
     #########################################
     # Wallet
     #########################################
 
+    logger.info("---- Openid Credential Issuer ----")
+    logger.info("--- Outside the federation ---")
+
     kwargs = {
         "entity_id": WALLET_ID,
-        "trust_anchors": trust_anchors
+        "trust_anchors": trust_anchors,
+        "wallet_provider": wp
     }
-    wallet = execute("members.wallet", **kwargs)
+    wallet = run("members.wallet", **kwargs)
+
+    ################## The whole set ###################
 
     return {
         "ta": trust_anchor,
@@ -184,7 +209,6 @@ def federation_setup():
         "im2": im2,
         "wp": wp,
         "rp": rp,
-        "pid": pid
+        "pid": pid,
+        "wallet": wallet
     }
-
-

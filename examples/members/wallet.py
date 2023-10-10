@@ -13,9 +13,11 @@ from oidc4vci.client.wallet_instance_attestation import WalletInstanceAttestatio
 
 
 def main(entity_id: str,
-         authority_hints: List[str],
-         trust_anchors: dict,
-         preference: Optional[dict] = None):
+         wallet_provider: FederationCombo,
+         authority_hints: Optional[List[str]] = None,
+         trust_anchors: Optional[dict] = None,
+         preference: Optional[dict] = None,
+         ):
     FE = FederationEntityBuilder(
         entity_id,
         key_conf={"key_defs": DEFAULT_KEY_DEFS},
