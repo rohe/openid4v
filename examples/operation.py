@@ -433,11 +433,12 @@ LOGG_CONFIG = {
 logger = configure_logging(config=LOGG_CONFIG)
 logger.info("Starting")
 
+logger.info("##### Building the federation #####")
 _federation = Federation()
 
 tas = list(
     _federation.requestor["federation_entity"].function.trust_chain_collector.trust_anchors.keys())
-logger.info(f"Trust Anchors: {tas}")
+logger.info(f"#### Trust Anchors: {tas}")
 
 # get entity configuration for TA
 logger.info(f">>>> Get entity configuration for {tas[0]} >>>>")
@@ -448,22 +449,13 @@ logger.info(f"<<<< Trust anchor entity configuration: {ta_entity_configuration} 
 wallet_provider_entity_id = _federation.federation_entity["wp"].entity_id
 logger.info(">>>> Collect Wallet Provider Metadata >>>>")
 wpi_metadata = _federation.get_verified_metadata(wallet_provider_entity_id, stop_at=tas)
-
-# wallet_provider = _federation.federation_entity["wp"]
-# token_endpoint = wallet_provider["wallet_provider"].get_endpoint("wallet_provider_token")
+logger.info(f"<<<< Wallet Provider Metadata: {wpi_metadata}")
 
 logger.info(">>>> The wallet asks the Wallet Provider for a Wallet Instance Attestation >>>>")
-wallet_instance_attestation = _federation.eudi_query("wp",
-                                                     "wallet_instance_attestation",
-                                                     "wallet",
-                                                     request_args={
-                                                         "nonce": rndstr(),
-                                                         "aud": wallet_provider_entity_id
-                                                     },
-                                                     # endpoint=token_endpoint.endpoint_path
-                                                     endpoint=wpi_metadata["wallet_provider"][
-                                                         "token_endpoint"]
-                                                     )
+wallet_instance_attestation = _federation.eudi_query(
+    "wp", "wallet_instance_attestation", "wallet",
+    request_args={"nonce": rndstr(), "aud": wallet_provider_entity_id},
+    endpoint=wpi_metadata["wallet_provider"]["token_endpoint"])
 
 logger.info("<<<< The returned Wallet Instance Attestation <<<<")
 logger.info(wallet_instance_attestation)

@@ -19,7 +19,7 @@ IM2_ID = "https://im2.example.org"
 PID_ID = "https://pid.example.org"
 QEEA_ID = "https://qeea.example.org"
 
-logger = logging.getLogger("__name__")
+logger = logging.getLogger(__name__)
 
 
 def federation_setup():
@@ -27,6 +27,7 @@ def federation_setup():
     # TRUST ANCHOR
     ##################
 
+    logger.info("---- Trust Anchor ----")
     kwargs = {
         "entity_id": TA_ID,
         "preference": {
@@ -42,6 +43,8 @@ def federation_setup():
     ##################
     # intermediate 1
     ##################
+    logger.info("---- Intermediate 1 ----")
+    logger.info("--- Subordinate to the Trust Anchor ---")
 
     kwargs = {
         "entity_id": IM1_ID,
@@ -70,6 +73,9 @@ def federation_setup():
     # intermediate 2
     ##################
 
+    logger.info("---- Intermediate 2 ----")
+    logger.info("--- Subordinate to the Trust Anchor ---")
+
     kwargs = {
         "entity_id": IM2_ID,
         "preference": {
@@ -97,6 +103,9 @@ def federation_setup():
     # Leaf
     ########################################
 
+    logger.info("---- RP (not used) ----")
+    logger.info("--- Subordinate to intermediate 1 ---")
+
     kwargs = {
         "entity_id": RP_ID,
         "preference": {
@@ -121,6 +130,9 @@ def federation_setup():
     # Wallet provider
     ########################################
 
+    logger.info("---- Wallet ----")
+    logger.info("--- Subordinate to intermediate 2 ---")
+
     kwargs = {
         "entity_id": WP_ID,
         "preference": {
@@ -144,6 +156,9 @@ def federation_setup():
     #########################################
     # OpenidCredentialIssuer - PID version
     #########################################
+
+    logger.info("---- Openid Credential Issuer PID variant ----")
+    logger.info("--- Subordinate to intermediate 2 ---")
 
     kwargs = {
         "entity_id": PID_ID,
@@ -170,6 +185,9 @@ def federation_setup():
     #########################################
     # OpenidCredentialIssuer - (Q)EEA version
     #########################################
+
+    logger.info("---- Openid Credential Issuer QEEA variant ----")
+    logger.info("--- Outside the federation ---")
 
     kwargs = {
         "entity_id": QEEA_ID,
