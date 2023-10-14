@@ -1,1 +1,1 @@
-# Implementation of openid-4-verifiable-credential-issuance
+# Implementation of openid-4-verifiable-credential-issuance and openid-4-verifiable-presentation

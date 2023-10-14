@@ -14,8 +14,8 @@ from idpyoidc.server.client_authn import ClientSecretPost
 from idpyoidc.server.oauth2.add_on.dpop import DPoPClientAuth
 from idpyoidc.server.user_info import UserInfo
 
-from oidc4vci.openid_credential_issuer import OpenidCredentialIssuer
-from oidc4vci.openid_credential_issuer.client_authn import ClientAssertion
+from openid4v.openid_credential_issuer import OpenidCredentialIssuer
+from openid4v.openid_credential_issuer.client_authn import ClientAssertion
 
 SESSION_PARAMS = {
     "encrypter": {

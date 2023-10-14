@@ -9,7 +9,7 @@ from idpyoidc.util import rndstr
 
 from examples import create_trust_chain
 from federation import federation_setup
-from oidc4vci.message import WalletInstanceAttestationJWT
+from openid4v.message import WalletInstanceAttestationJWT
 
 # Build the federation
 federation_entity = federation_setup()

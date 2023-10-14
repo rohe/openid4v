@@ -27,7 +27,7 @@ __author__ = 'Roland Hedberg'
 
 extra_install_requires = []
 
-with open('src/oidc4vci/__init__.py', 'r') as fd:
+with open('src/openid4v/__init__.py', 'r') as fd:
     version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]',
                         fd.read(), re.MULTILINE).group(1)
 
@@ -35,9 +35,10 @@ with open(os.path.join(os.path.dirname(__file__), 'README.md')) as readme:
     README = readme.read()
 
 setup(
-    name="oidc4vci",
+    name="openid4v",
     version=version,
-    description="Python implementation of OpenID Verifiable Credentials",
+    description="Python implementation of OpenID Verifiable Credentials and Verifiable "
+                "Presentation",
     long_description=README,
     long_description_content_type='text/markdown',
     author="Roland Hedberg",
@@ -54,7 +55,7 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Topic :: Software Development :: Libraries :: Python Modules"],
     install_requires=[
-        "idpyoidc>=2.1.0"
+        "idpyoidc>=3.0.0"
     ],
     zip_safe=False,
 )

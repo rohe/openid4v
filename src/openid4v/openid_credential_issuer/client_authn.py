@@ -14,7 +14,7 @@ from idpyoidc.node import topmost_unit
 from idpyoidc.server.client_authn import ClientAuthnMethod
 from idpyoidc.server.exception import ClientAuthenticationError
 
-from oidc4vci.message import WalletInstanceAttestationJWT
+from openid4v.message import WalletInstanceAttestationJWT
 
 
 class ClientAssertion(ClientAuthnMethod):

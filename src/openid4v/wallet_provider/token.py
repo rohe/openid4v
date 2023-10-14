@@ -16,9 +16,9 @@ from idpyoidc.message.oauth2 import ResponseMessage
 from idpyoidc.metadata import get_signing_algs
 from idpyoidc.server import Endpoint
 
-from oidc4vci.message import WalletInstanceAttestationResponse
-from oidc4vci.message import WalletInstanceRequest
-from oidc4vci.message import WalletInstanceRequestJWT
+from openid4v.message import WalletInstanceAttestationResponse
+from openid4v.message import WalletInstanceRequest
+from openid4v.message import WalletInstanceRequestJWT
 
 LOGGER = logging.getLogger(__name__)
 

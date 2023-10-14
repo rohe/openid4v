@@ -3,8 +3,8 @@ from idpyoidc.server import Endpoint
 from idpyoidc.server import EndpointContext
 from idpyoidc.server.claims import Claims
 
-from oidc4vci import message
-from oidc4vci import ServerEntity
+from openid4v import message
+from openid4v import ServerEntity
 
 
 class WalletProviderClaims(Claims):

@@ -8,7 +8,7 @@ from idpyoidc.server.authz import AuthzHandling
 from idpyoidc.server.configure import ASConfiguration
 from idpyoidc.server.user_info import UserInfo
 
-from oidc4vci.verifier import Verifier
+from openid4v.verifier import Verifier
 
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 

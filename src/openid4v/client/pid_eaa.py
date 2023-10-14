@@ -31,9 +31,9 @@ from idpyoidc.metadata import get_signing_algs
 from idpyoidc.server.oauth2 import pushed_authorization
 from idpyoidc.time_util import time_sans_frac
 
-from oidc4vci.message import AuthorizationRequest
-from oidc4vci.message import CredentialResponse
-from oidc4vci.message import CredentialsSupported
+from openid4v.message import AuthorizationRequest
+from openid4v.message import CredentialResponse
+from openid4v.message import CredentialsSupported
 
 
 class Authorization(Service):

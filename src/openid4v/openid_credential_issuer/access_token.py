@@ -14,7 +14,7 @@ from idpyoidc.server.session.token import MintingNotAllowed
 from idpyoidc.server.session.token import SessionToken
 from idpyoidc.util import rndstr
 
-from oidc4vci import message
+from openid4v import message
 
 LOGGER = logging.getLogger(__name__)
 

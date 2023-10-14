@@ -9,14 +9,14 @@ from cryptojwt.jwt import utc_time_sans_frac
 from cryptojwt.key_jar import build_keyjar
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
 
-from oidc4vci.message import AuthorizationDetail
-from oidc4vci.message import ClaimsSupport
-from oidc4vci.message import CredentialDefinition
-from oidc4vci.message import CredentialIssuerMetadata
-from oidc4vci.message import CredentialMetadata
-from oidc4vci.message import CredentialOffer
-from oidc4vci.message import CredentialRequestJwtVcJson
-from oidc4vci.message import DisplayProperty
+from openid4v.message import AuthorizationDetail
+from openid4v.message import ClaimsSupport
+from openid4v.message import CredentialDefinition
+from openid4v.message import CredentialIssuerMetadata
+from openid4v.message import CredentialMetadata
+from openid4v.message import CredentialOffer
+from openid4v.message import CredentialRequestJwtVcJson
+from openid4v.message import DisplayProperty
 
 JWT_ISSUER = "s6BhdRkqt3"
 KEYJAR = build_keyjar(DEFAULT_KEY_DEFS)

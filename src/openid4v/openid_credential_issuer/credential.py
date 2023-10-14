@@ -12,11 +12,11 @@ from idpyoidc.server.oidc.userinfo import UserInfo
 from idpyoidc.util import rndstr
 from idpysdjwt.issuer import Issuer
 
-from oidc4vci.message import CredentialDefinition
-from oidc4vci.message import CredentialRequest
-from oidc4vci.message import CredentialResponse
-from oidc4vci.message import CredentialsSupported
-from oidc4vci.message import Proof
+from openid4v.message import CredentialDefinition
+from openid4v.message import CredentialRequest
+from openid4v.message import CredentialResponse
+from openid4v.message import CredentialsSupported
+from openid4v.message import Proof
 
 logger = logging.getLogger(__name__)
 

@@ -6,8 +6,8 @@ from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
 from idpyoidc.server import ASConfiguration
 from idpyoidc.server.client_authn import verify_client
 
-from oidc4vci.wallet_provider import ServerEntity
-from oidc4vci.wallet_provider.token import Token
+from openid4v.wallet_provider import ServerEntity
+from openid4v.wallet_provider.token import Token
 
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 CLIENT_KEYJAR = build_keyjar(DEFAULT_KEY_DEFS)

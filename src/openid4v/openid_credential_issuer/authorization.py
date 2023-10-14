@@ -4,7 +4,7 @@ import logging
 from idpyoidc.message import oauth2
 from idpyoidc.server.oauth2 import authorization
 
-from oidc4vci.message import AuthorizationRequest
+from openid4v.message import AuthorizationRequest
 
 LOGGER = logging.getLogger(__name__)
 

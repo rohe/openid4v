@@ -15,8 +15,8 @@ from idpyoidc.defaults import JWT_BEARER
 from idpyoidc.message.oauth2 import ResponseMessage
 from idpyoidc.util import rndstr
 
-from oidc4vci.message import WalletInstanceAttestationResponse
-from oidc4vci.message import WalletInstanceRequest
+from openid4v.message import WalletInstanceAttestationResponse
+from openid4v.message import WalletInstanceRequest
 
 
 class WalletInstanceAttestation(Service):

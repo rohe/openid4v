@@ -17,7 +17,7 @@ from idpyoidc.util import rndstr
 
 from examples.federation import federation_setup
 from examples.wallet_setup import wallet_setup
-from oidc4vci.wallet_provider.token import Token
+from openid4v.wallet_provider.token import Token
 
 TA_ID = "https://ta.example.org"
 RP_ID = "https://rp.example.org"
@@ -425,7 +425,7 @@ LOGG_CONFIG = {
     },
     "formatters": {
         "default": {
-            "format": "%(asctime)s %(name)s %(levelname)s %(message)s"
+            "format": "[%(asctime)s] [%(levelname)s] [%(name)s.%(funcName)s] %(message)s"
         }
     }
 }

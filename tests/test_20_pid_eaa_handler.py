@@ -2,9 +2,9 @@ from fedservice.build_entity import FederationEntityBuilder
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
 from idpyoidc.client.oauth2 import Client
 
-from oidc4vci.client.pid_eaa_consumer import PidEaaHandler
-from oidc4vci.client.wallet_instance_attestation import WalletInstanceAttestation
-from oidc4vci.client.client_authn import ClientAssertion
+from openid4v.client.pid_eaa_consumer import PidEaaHandler
+from openid4v.client.wallet_instance_attestation import WalletInstanceAttestation
+from openid4v.client.client_authn import ClientAssertion
 
 
 def test_create():
