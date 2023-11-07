@@ -1,4 +1,4 @@
-"""The service that talks to the OAuth2 Authorization endpoint."""
+"""The service that answers at the OAuth2 Authorization endpoint."""
 import logging
 
 from idpyoidc.message import oauth2

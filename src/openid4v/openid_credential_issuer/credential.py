@@ -1,15 +1,17 @@
-import logging
 from datetime import datetime
+import logging
 from typing import Optional
 from typing import Union
 
 from cryptojwt import JWT
 from cryptojwt.jws.jws import factory
 from cryptojwt.jwt import utc_time_sans_frac
-from fedservice.entity.utils import get_federation_entity
+from fedservice.entity import get_federation_entity
+from idpyoidc.exception import RequestError
 from idpyoidc.message import Message
 from idpyoidc.message import oidc
 from idpyoidc.server.oidc.userinfo import UserInfo
+from idpyoidc.server.util import execute
 from idpyoidc.util import rndstr
 from idpysdjwt.issuer import Issuer
 
@@ -20,6 +22,102 @@ from openid4v.message import CredentialsSupported
 from openid4v.message import Proof
 
 logger = logging.getLogger(__name__)
+
+
+def get_keyjar(unit):
+    _fed = get_federation_entity(unit)
+    if _fed:
+        return _fed.keyjar
+    else:
+        return unit.upstream_get("attribute", "keyjar")
+
+
+class CredentialConstructor(object):
+    def __init__(self, upstream_get, **kwargs):
+        self.upstream_get = upstream_get
+
+    def calculate_attribute_disclosure(self, info):
+        attribute_disclosure = self.upstream_get('context').claims.get_preference(
+            "attribute_disclosure")
+        if attribute_disclosure:
+            return {"": {k: v for k, v in info.items() if k in attribute_disclosure[""]}}
+        else:
+            return {}
+
+    def calculate_array_disclosure(self, info):
+        array_disclosure = self.upstream_get('context').claims.get_preference("array_disclosure")
+        _discl = {}
+        if array_disclosure:
+            for k in array_disclosure:
+                if k in info and len(info[k]) > 1:
+                    _discl[k] = info[k]
+
+        return _discl
+
+    def matching_credentials_supported(self, request):
+        _supported = self.upstream_get('context').claims.get_preference(
+            "credentials_supported")
+        matching = []
+        for cs in _supported:
+            if cs["format"] != request["format"]:
+                continue
+            _cred_def_sup = cs["credential_definition"]
+            _req_cred_def = request["credential_definition"]
+            # The set of type values must match
+            if set(_cred_def_sup["type"]) != set(_req_cred_def["type"]):
+                continue
+            matching.append(_cred_def_sup.get("credentialSubject", {}))
+        return matching
+
+    def __call__(self, user_id: str, request: Union[dict, Message]) -> str:
+        # compare what this entity supports with what is requested
+        _matching = self.matching_credentials_supported(request)
+
+        if _matching == []:
+            raise RequestError("unsupported_credential_type")
+
+        _cntxt = self.upstream_get("context")
+        _mngr = _cntxt.session_manager
+        _session_info = _mngr.get_session_info_by_token(
+            request["access_token"], grant=True, handler_key="access_token"
+        )
+
+        # This is what the requester hopes to get
+        if "credential_definition" in request:
+            _req_cd = CredentialDefinition().from_dict(request["credential_definition"])
+            csub = _req_cd.get("credentialSubject", {})
+            if csub:
+                _claims_restriction = {c: None for c in csub.keys()}
+            else:
+                _claims_restriction = {c: None for c in _matching[0].keys()}
+        else:
+            _claims_restriction = {c: None for c in _matching[0].keys()}
+
+        info = _cntxt.claims_interface.get_user_claims(
+            _session_info["user_id"], claims_restriction=_claims_restriction
+        )
+        # create SD-JWT
+        _cntxt = self.upstream_get("context")
+        info = _cntxt.claims_interface.get_user_claims(
+            _session_info["user_id"], claims_restriction=_claims_restriction
+        )
+
+        ci = Issuer(
+            key_jar=get_keyjar(self),
+            iss=self.upstream_get("attribute", "entity_id"),
+            sign_alg="ES256",
+            lifetime=600,
+            holder_key={}
+        )
+        _discl = self.calculate_attribute_disclosure(info)
+        if _discl:
+            ci.objective_disclosure = _discl
+
+        _discl = self.calculate_array_disclosure(info)
+        if _discl:
+            ci.array_disclosure = _discl
+
+        return ci.create_holder_message(payload=info, jws_headers={"typ": "example+sd-jwt"})
 
 
 class Credential(UserInfo):
@@ -44,11 +142,15 @@ class Credential(UserInfo):
         UserInfo.__init__(self, upstream_get, conf=conf, **kwargs)
         # dpop support
         self.post_parse_request.append(self.credential_request)
+        if "credential_constructor" in conf:
+            self.credential_constructor = execute(conf["credential_constructor"])
+        else:
+            self.credential_constructor = CredentialConstructor(upstream_get=upstream_get)
 
     def _verify_proof(self, proof):
         if proof["proof_type"] == "jwt":
             entity_id = self.upstream_get("attribute", "entity_id")
-            key_jar = self.upstream_get("attribute", "keyjar")
+            key_jar = get_keyjar(self)
             # first get the key from JWT:jwk
             _jws = factory(proof["jwt"])
             key_jar.add_key(entity_id, _jws.jwt.payload()["jwk"])
@@ -120,39 +222,6 @@ class Credential(UserInfo):
             #     pass
         return True, _session_info["client_id"]
 
-    def matching_credentials_supported(self, request):
-        _supported = self.upstream_get('context').claims.get_preference(
-            "credentials_supported")
-        matching = []
-        for cs in _supported:
-            if cs["format"] != request["format"]:
-                continue
-            _cred_def_sup = cs["credential_definition"]
-            _req_cred_def = request["credential_definition"]
-            # The set of type values must match
-            if set(_cred_def_sup["type"]) != set(_req_cred_def["type"]):
-                continue
-            matching.append(_cred_def_sup.get("credentialSubject", {}))
-        return matching
-
-    def calculate_attribute_disclosure(self, info):
-        attribute_disclosure = self.upstream_get('context').claims.get_preference(
-            "attribute_disclosure")
-        if attribute_disclosure:
-            return {"": {k: v for k, v in info.items() if k in attribute_disclosure[""]}}
-        else:
-            return {}
-
-    def calculate_array_disclosure(self, info):
-        array_disclosure = self.upstream_get('context').claims.get_preference("array_disclosure")
-        _discl = {}
-        if array_disclosure:
-            for k in array_disclosure:
-                if k in info and len(info[k]) > 1:
-                    _discl[k] = info[k]
-
-        return _discl
-
     def process_request(self, request=None, **kwargs):
         allowed, client_id = self.verify_token_and_authentication(request)
         if not isinstance(allowed, bool):
@@ -161,50 +230,16 @@ class Credential(UserInfo):
         if not allowed:
             return self.error_cls(error="invalid_token", error_description="Access not granted")
 
-        # compare what this entity supports with what is requested
-        _matching = self.matching_credentials_supported(request)
+        try:
+            _mngr = self.upstream_get("context").session_manager
+            _session_info = _mngr.get_session_info_by_token(
+                request["access_token"], grant=True, handler_key="access_token"
+            )
+        except (KeyError, ValueError):
+            return self.error_cls(error="invalid_token", error_description="Invalid Token")
 
-        if _matching == []:
-            return self.error_cls(error="unsupported_credential_type")
+        _msg = self.credential_constructor(user_id=_session_info["user_id"], request=request)
 
-        _cntxt = self.upstream_get("context")
-        _mngr = _cntxt.session_manager
-        _session_info = _mngr.get_session_info_by_token(
-            request["access_token"], grant=True, handler_key="access_token"
-        )
-
-        # This is what the requester hopes to get
-        if "credential_definition" in request:
-            _req_cd = CredentialDefinition().from_dict(request["credential_definition"])
-            csub = _req_cd.get("credentialSubject", {})
-            if csub:
-                _claims_restriction = {c: None for c in csub.keys()}
-            else:
-                _claims_restriction = {c: None for c in _matching[0].keys()}
-        else:
-            _claims_restriction = {c: None for c in _matching[0].keys()}
-
-        info = _cntxt.claims_interface.get_user_claims(
-            _session_info["user_id"], claims_restriction=_claims_restriction
-        )
-
-        # create SD-JWT
-        ci = Issuer(
-            key_jar=self.upstream_get("attribute", "keyjar"),
-            iss=self.upstream_get("attribute", "entity_id"),
-            sign_alg="ES256",
-            lifetime=600,
-            holder_key={}
-        )
-        _discl = self.calculate_attribute_disclosure(info)
-        if _discl:
-            ci.objective_disclosure = _discl
-
-        _discl = self.calculate_array_disclosure(info)
-        if _discl:
-            ci.array_disclosure = _discl
-
-        _msg = ci.create_holder_message(payload=info, jws_headers={"typ": "example+sd-jwt"})
         _resp = {
             "format": "vc+sd-jwt",
             "credential": _msg,

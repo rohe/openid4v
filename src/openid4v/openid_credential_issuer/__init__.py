@@ -1,12 +1,11 @@
 from idpyoidc.metadata import get_encryption_algs
 from idpyoidc.metadata import get_encryption_encs
-from idpyoidc.metadata import get_signing_algs
 from idpyoidc.server import Endpoint
 from idpyoidc.server import EndpointContext
 from idpyoidc.server.claims import Claims
 
-from openid4v import message
 from openid4v import ServerEntity
+from openid4v import message
 
 
 class OpenidCredentialIssuerClaims(Claims):
@@ -16,8 +15,8 @@ class OpenidCredentialIssuerClaims(Claims):
         "credential_endpoint": None,
         "batch_credential_endpoint": None,
         "deferred_credential_endpoint": None,
-        "credential_response_encryption_alg_values_supported": get_encryption_algs,
-        "credential_response_encryption_enc_values_supported": get_encryption_encs,
+        "credential_response_encryption_alg_values_supported": get_encryption_algs(),
+        "credential_response_encryption_enc_values_supported": get_encryption_encs(),
         "require_credential_response_encryption": False,
         "credentials_supported": ["vp_token"],
         "display": None,
