@@ -26,7 +26,7 @@ All of this can be accomplished by using the script `setup.py`.
 ## Starting/stopping entities
 
 For the commands below to work you are supposed to
-stand in the fedservice/example directory.
+stand in the fedservice/example/entities directory.
 
 A simple script for starting/stopping entities:
 
