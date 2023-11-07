@@ -85,8 +85,11 @@ class PidEaaHandler(Unit):
         )
         _consumer.context.issuer = issuer_id
         _consumer.context.claims.prefer["client_id"] = _consumer.entity_id
-        _consumer.context.provider_info = self.upstream_get("unit")[
-            "federation_entity"].get_verified_metadata(issuer_id)["openid_credential_issuer"]
+        _federation_entity = self.upstream_get("unit")["federation_entity"]
+        _entity_metadata = _federation_entity.get_verified_metadata(issuer_id)
+        if _entity_metadata:
+            _consumer.context.provider_info = _entity_metadata["openid_credential_issuer"]
+        # Not doing any registration anyway
         _consumer.context.map_preferred_to_registered()
         if "dpop" in _consumer.context.add_on:
             _cred_srv = _consumer.get_service('credential')

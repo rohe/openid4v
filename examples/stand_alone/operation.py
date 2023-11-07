@@ -15,8 +15,8 @@ from idpyoidc.logging import configure_logging
 from idpyoidc.message import Message
 from idpyoidc.util import rndstr
 
-from examples.federation import federation_setup
-from examples.wallet_setup import wallet_setup
+from examples.stand_alone.federation import federation_setup
+from examples.stand_alone.wallet_setup import wallet_setup
 from openid4v.wallet_provider.token import Token
 
 TA_ID = "https://ta.example.org"
@@ -249,8 +249,10 @@ class Federation():
                 _w_service = self.requestor["wallet"].get_service("wallet_instance_attestation")
                 wia = _w_service.wallet_instance_attestations[kwargs.get('client_assertion_kid')]
                 kwargs["wallet_instance_attestation"] = wia["assertion"]
-            else:
-                kwargs["state"] = self.state
+
+            if not self.state:
+               self.state = rndstr(16)
+            kwargs["state"] = self.state
 
         _service = actor.get_service(service_name)
         if request_args is None:
@@ -383,8 +385,8 @@ def get_credentials(authz_request_args: dict,
 
     # ---------------- Credential request -------------------
 
-    _federation.requestor.keyjar.import_jwks(my_oci["openid_credential_issuer"]["jwks"],
-                                             my_oci["openid_credential_issuer"]["issuer"])
+    _federation.requestor.get_keyjar().import_jwks(my_oci["openid_credential_issuer"]["jwks"],
+                                                   my_oci["openid_credential_issuer"]["issuer"])
 
     credential_request_args = {
         "format": "vc+sd-jwt",

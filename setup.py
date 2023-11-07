@@ -44,7 +44,7 @@ setup(
     author="Roland Hedberg",
     author_email="roland@catalogix.se",
     license="Apache 2.0",
-    url='https://github.com/rohe/oidc4vci/',
+    url='https://github.com/rohe/openid4v/',
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     classifiers=[

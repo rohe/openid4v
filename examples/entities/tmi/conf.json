@@ -1,0 +1,112 @@
+{
+  "logging": {
+    "version": 1,
+    "disable_existing_loggers": false,
+    "root": {
+      "handlers": [
+        "default",
+        "console"
+      ],
+      "level": "DEBUG"
+    },
+    "loggers": {
+      "bobcat_idp": {
+        "level": "DEBUG"
+      }
+    },
+    "handlers": {
+      "default": {
+        "class": "logging.FileHandler",
+        "filename": "log/tmi_debug.log",
+        "formatter": "default"
+      },
+      "console": {
+        "class": "logging.StreamHandler",
+        "stream": "ext://sys.stdout",
+        "formatter": "default"
+      }
+    },
+    "formatters": {
+      "default": {
+        "format": "%(asctime)s %(name)s %(levelname)s %(message)s"
+      }
+    }
+  },
+  "entity": {
+    "entity_id": "https://127.0.0.1:5004",
+    "key_config": {
+      "private_path": "private/tmi_fed_keys.json",
+      "key_defs": [
+        {
+          "type": "RSA",
+          "use": [
+            "sig"
+          ]
+        },
+        {
+          "type": "EC",
+          "crv": "P-256",
+          "use": [
+            "sig"
+          ]
+        }
+      ],
+      "public_path": "static/tmi_fed_keys.json",
+      "read_only": false
+    },
+    "authority_hints": "file:cred/authority_hints_tmi.json",
+    "trust_anchors": "file:cred/trust_anchors_tmi.json",
+    "endpoints": [
+      "entity_configuration",
+      "status"
+    ],
+    "item_args": {
+      "endpoint": {
+        "status": {
+          "trust_mark_issuer": {
+            "class": "fedservice.trust_mark_issuer.TrustMarkIssuer",
+            "kwargs": {
+              "key_conf": {
+                "private_path": "private/tmi_keys.json",
+                "key_defs": [
+                  {
+                    "type": "EC",
+                    "crv": "P-256",
+                    "use": [
+                      "sig"
+                    ]
+                  }
+                ],
+                "public_path": "static/tmi_keys.json",
+                "read_only": false
+              },
+              "trust_mark_specification": {
+                "http://dc4eu.example.com/PersonIdentificationData/se": {
+                  "lifetime": 2592000
+                },
+                "http://dc4eu.example.com/OpenBadgeCredential/se": {
+                  "lifetime": 2592000
+                }
+              },
+              "trust_mark_db": {
+                "class": "fedservice.trust_mark_issuer.FileDB",
+                "kwargs": {
+                  "http://dc4eu.example.com/PersonIdentificationData/se": "tmi/pid_se",
+                  "http://dc4eu.example.com/OpenBadgeCredential/se": "tmi/obc_se"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webserver": {
+    "server_cert": "certs/example.crt",
+    "server_key": "certs/example.key",
+    "cert_chain": null,
+    "port": 5004,
+    "domain": "127.0.0.1",
+    "debug": true
+  }
+}

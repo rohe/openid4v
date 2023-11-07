@@ -6,6 +6,7 @@ from typing import Union
 from cryptojwt import JWT
 from cryptojwt.jws.jws import factory
 from cryptojwt.jwt import utc_time_sans_frac
+from fedservice.entity.utils import get_federation_entity
 from idpyoidc.message import Message
 from idpyoidc.message import oidc
 from idpyoidc.server.oidc.userinfo import UserInfo
@@ -79,7 +80,7 @@ class Credential(UserInfo):
 
         _proof = Proof().from_dict(request["proof"])
         entity_id = self.upstream_get("attribute", "entity_id")
-        keyjar = self.upstream_get("attribute", "keyjar")
+        keyjar = get_federation_entity(self).keyjar
         _proof.verify(keyjar=keyjar, aud=entity_id)
         request["proof"] = _proof
         return request

@@ -58,9 +58,10 @@ class Proof(Message):
             key_jar = kwargs.get("keyjar")
             # first get the key from JWT:jwk
             _jws = factory(self["jwt"])
-            _key = key_from_jwk_dict(_jws.jwt.headers["jwk"])
-            _payload = _jws.jwt.payload()
-            key_jar.add_keys(_payload["iss"], [_key])
+            if "jwk" in _jws.jwt.headers:
+                _key = key_from_jwk_dict(_jws.jwt.headers["jwk"])
+                _payload = _jws.jwt.payload()
+                key_jar.add_keys(_payload["iss"], [_key])
 
             # verify key_proof
             _verifier = JWT(key_jar=key_jar, msg_cls=ProofToken)
@@ -68,7 +69,7 @@ class Proof(Message):
 
             # typ MUST be specified in the JWS header and MUST be 'openid4vci-proof+jwt'
             _header = _proof_token.jws_header
-            if "typ" in _header and _header['typ'] == 'openid4vci-proof-jwt':
+            if "typ" in _header and _header['typ'] == 'openid4vci-proof+jwt':
                 pass
             else:
                 raise ValueError("Wrong value type")
@@ -92,7 +93,7 @@ class ProofJWT(Proof):
     })
 
     def verify(self, **kwargs):
-        super(ProofJWT, self).verify(**kwargs)
+        super().verify(**kwargs)
         _proof_token = ProofToken().from_jwt(self['jwt'], **kwargs)
 
         # typ MUST be specified in the JWS header and MUST be 'openid4vci-proof+jwt'
@@ -263,7 +264,7 @@ class CredentialRequest(Message):
     }
 
     def verify(self, **kwargs):
-        super(CredentialRequest, self).verify(**kwargs)
+        super().verify(**kwargs)
         if "proof" in self:
             self["proof"].verify(**kwargs)
         if "credential_encryption_jwk" in self:
@@ -279,7 +280,7 @@ class CredentialRequestJwtVcJson(CredentialRequest):
     }
 
     def verify(self, **kwargs):
-        super(CredentialRequest, self).verify(**kwargs)
+        super(CredentialRequestJwtVcJson, self).verify(**kwargs)
 
         self['proof'] = ProofJWT(**self['proof'])
         self['proof'].verify(**kwargs)

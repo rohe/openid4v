@@ -8,6 +8,8 @@ from cryptojwt.jwk.ec import new_ec_key
 from fedservice.entity.function import apply_policies
 from fedservice.entity.function import collect_trust_chains
 from fedservice.entity.function import verify_trust_chains
+from fedservice.entity.service import FederationService
+from fedservice.entity.utils import get_federation_entity
 from idpyoidc import verified_claim_name
 from idpyoidc.client.configure import Configuration
 from idpyoidc.client.service import Service
@@ -19,7 +21,7 @@ from openid4v.message import WalletInstanceAttestationResponse
 from openid4v.message import WalletInstanceRequest
 
 
-class WalletInstanceAttestation(Service):
+class WalletInstanceAttestation(FederationService):
     """The service that talks to the Wallet provider."""
 
     msg_type = WalletInstanceRequest
@@ -32,7 +34,7 @@ class WalletInstanceAttestation(Service):
     def __init__(self,
                  upstream_get: Callable,
                  conf: Optional[Union[dict, Configuration]] = None):
-        Service.__init__(self, upstream_get, conf=conf)
+        FederationService.__init__(self, upstream_get, conf=conf)
         self.wallet_provider_id = conf.get("wallet_provider_id", "")
         self.wallet_instance_attestations = {}
 
@@ -66,7 +68,8 @@ class WalletInstanceAttestation(Service):
         :param kwargs: extra keyword arguments
         :return: List of entity IDs
         """
-        keyjar = self.upstream_get("attribute", "keyjar")
+        federation_entity=get_federation_entity(self)
+        keyjar = federation_entity.keyjar
         ec_key = new_ec_key(crv="P-256", use="sig")
 
         entity_id = self.upstream_get("attribute", "entity_id")

@@ -1,4 +1,3 @@
-import json
 from typing import Callable
 from typing import Optional
 from typing import Union
@@ -15,12 +14,17 @@ from cryptojwt.key_bundle import key_gen
 from fedservice.entity.function import apply_policies
 from fedservice.entity.function import collect_trust_chains
 from fedservice.entity.function import verify_trust_chains
+from fedservice.entity.service import FederationService
+from fedservice.entity.utils import get_federation_entity
 from idpyoidc import metadata
 from idpyoidc import verified_claim_name
 from idpyoidc.client.client_auth import get_client_authn_methods
 from idpyoidc.client.configure import Configuration
 from idpyoidc.client.exception import ParameterError
 from idpyoidc.client.oauth2 import access_token
+from idpyoidc.client.oauth2.utils import get_state_parameter
+from idpyoidc.client.oauth2.utils import pre_construct_pick_redirect_uri
+from idpyoidc.client.oauth2.utils import set_state_parameter
 from idpyoidc.client.oidc import IDT2REG
 from idpyoidc.client.service import Service
 from idpyoidc.message import Message
@@ -36,7 +40,7 @@ from openid4v.message import CredentialResponse
 from openid4v.message import CredentialsSupported
 
 
-class Authorization(Service):
+class Authorization(FederationService):
     """The service that talks to the Certificate issuer."""
 
     msg_type = AuthorizationRequest
@@ -45,7 +49,7 @@ class Authorization(Service):
     synchronous = True
     service_name = "authorization"
     http_method = "POST"
-    default_authn_method = "client_assertion"
+    default_authn_method = "openid4v.client.client_authn.ClientAssertion"
 
     _supports = {
         "claims_parameter_supported": True,
@@ -64,9 +68,12 @@ class Authorization(Service):
     def __init__(self,
                  upstream_get: Callable,
                  conf: Optional[Union[dict, Configuration]] = None):
-        Service.__init__(self, upstream_get, conf=conf)
-        self.certificate_issuer_id = conf.get("certificate_issuer_id")
-        self.pre_construct = [self.set_state]
+        FederationService.__init__(self, upstream_get, conf=conf)
+        if conf:
+            self.certificate_issuer_id = conf.get("certificate_issuer_id")
+        self.pre_construct = [pre_construct_pick_redirect_uri, set_state_parameter]
+        self.pre_construct.append(self.set_state)
+        self.post_construct.append(self.store_auth_request)
 
     def set_state(self, request_args, **kwargs):
         _context = self.upstream_get("context")
@@ -96,6 +103,12 @@ class Authorization(Service):
         # pick one
         return trust_chains[0].metadata['wallet_provider']["token_endpoint"]
 
+    def store_auth_request(self, request_args=None, **kwargs):
+        """Store the authorization request in the state DB."""
+        _key = get_state_parameter(request_args, kwargs)
+        self.upstream_get("context").cstate.update(_key, request_args)
+        return request_args
+
 
 class AccessToken(access_token.AccessToken):
     msg_type = oauth2.AccessTokenRequest
@@ -123,12 +136,13 @@ class AccessToken(access_token.AccessToken):
         :return: dictionary with arguments to the verify call
         """
         _context = self.upstream_get("context")
-        _entity = self.upstream_get("entity")
+        #_entity = self.upstream_get("entity")
+        _federation_entity = get_federation_entity(self)
 
         kwargs = {
-            "client_id": _entity.get_client_id(),
+            "client_id": _context.get_client_id(),
             "iss": _context.issuer,
-            "keyjar": self.upstream_get("attribute", "keyjar"),
+            "keyjar": _federation_entity.keyjar,
             "verify": True,
             "skew": _context.clock_skew,
         }
@@ -180,7 +194,7 @@ class PushedAuthorization(pushed_authorization.PushedAuthorization):
         pushed_authorization.PushedAuthorization.__init__(self, upstream_get, **kwargs)
 
 
-class Credential(Service):
+class Credential(FederationService):
     msg_type = CredentialsSupported
     # msg_type = Message
     response_cls = CredentialResponse
@@ -195,7 +209,7 @@ class Credential(Service):
     default_authn_method = "bearer_header"
 
     def __init__(self, upstream_get, conf=None):
-        Service.__init__(self, upstream_get, conf=conf)
+        FederationService.__init__(self, upstream_get, conf=conf)
         self.pre_construct.append(self.create_proof)
 
     def create_key_proof_JWT(self,
@@ -221,7 +235,7 @@ class Credential(Service):
             keyjar.add_keys(entity_id, [key])
 
         requests_info = self.upstream_get("context").cstate.get(kwargs["state"])
-        if not nonce: # look for it in earlier responses
+        if not nonce:  # look for it in earlier responses
             # TODO check that it is still valid
             nonce = requests_info.get("c_nonce")
         if not aud:
@@ -239,7 +253,7 @@ class Credential(Service):
                             kid=key.kid,
                             aud=aud,
                             jws_headers={
-                                "typ": "openid4vci-proof-jwt",
+                                "typ": "openid4vci-proof+jwt",
                                 "jwk": key.serialize()
                             })
         return _jws

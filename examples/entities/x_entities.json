@@ -1,0 +1,58 @@
+{
+  "wp": {
+    "dir": "wp",
+    "config": "conf.json",
+    "authority_hints": [
+      "im1"
+    ],
+    "trust_anchors": [
+      "dc4eu"
+    ]
+  },
+  "pid": {
+    "dir": "cred",
+    "config": "conf_pid.json",
+    "authority_hints": [
+      "im2"
+    ],
+    "trust_anchors": [
+      "dc4eu"
+    ]
+  },
+  "qeaa": {
+    "dir": "cred",
+    "config": "conf_qeaa.json",
+    "authority_hints": [
+      "im2"
+    ],
+    "trust_anchors": [
+      "dc4eu"
+    ]
+  },
+  "im1": {
+    "dir": "intermediate",
+    "config": "conf_1.json",
+    "authority_hints": [
+      "dc4eu"
+    ],
+    "trust_anchors": [
+      "dc4eu"
+    ]
+  },
+  "im2": {
+    "dir": "intermediate",
+    "config": "conf_2.json",
+    "authority_hints": [
+      "dc4eu"
+    ],
+    "trust_anchors": [
+      "dc4eu"
+    ]
+  },
+  "dc4eu": {
+    "dir": "ta",
+    "config": "conf.json",
+    "authority_hints": [],
+    "trust_anchors": []
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "logging": {
+    "version": 1,
+    "disable_existing_loggers": false,
+    "root": {
+      "handlers": [
+        "default",
+        "console"
+      ],
+      "level": "DEBUG"
+    },
+    "loggers": {
+      "entity": {
+        "level": "DEBUG"
+      }
+    },
+    "handlers": {
+      "default": {
+        "class": "logging.FileHandler",
+        "filename": "log/provider_debug.log",
+        "encoding": "utf8",
+        "formatter": "default",
+        "level": "DEBUG"
+      },
+      "console": {
+        "class": "logging.StreamHandler",
+        "stream": "ext://sys.stdout",
+        "formatter": "default"
+      }
+    },
+    "formatters": {
+      "default": {
+        "format": "[%(asctime)s] [%(levelname)s] [%(name)s.%(funcName)s] %(message)s"
+      }
+    }
+  },
+  "entity": {
+    "entity_id": "https://127.0.0.1:6002",
+    "preference": {
+      "organization_name": "The Wallet Providers",
+      "homepage_uri": "https://provider.example.com",
+      "contacts": "operations@provider.example.com"
+    },
+    "key_config": {
+      "private_path": "private/provider_fed_keys.json",
+      "key_defs": [
+        {
+          "type": "RSA",
+          "use": [
+            "sig"
+          ]
+        },
+        {
+          "type": "EC",
+          "crv": "P-256",
+          "use": [
+            "sig"
+          ]
+        }
+      ],
+      "public_path": "static/provider_fed_keys.json",
+      "read_only": false
+    },
+    "authority_hints": "file:intermediate/provider_authority_hints.json",
+    "trust_anchors": "file:intermediate/provider_trust_anchors.json",
+    "subordinate": "file:intermediate/provider_subordinates.json",
+    "endpoints": ["entity_configuration", "fetch", "list"]
+  },
+  "webserver": {
+    "server_cert": "certs/example.crt",
+    "server_key": "certs/example.key",
+    "cert_chain": null,
+    "port": 6002,
+    "domain": "127.0.0.1",
+    "debug": true
+  }
+}

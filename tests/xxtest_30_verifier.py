@@ -59,7 +59,7 @@ class TestEndpoint(object):
             "endpoint": {
                 "resource": {
                     "path": "{}/resource",
-                    "class": "oidc4vci.verifier.resource.Resource",
+                    "class": "openid4v.verifier.resource.Resource",
                     "kwargs": {},
                 }
             },

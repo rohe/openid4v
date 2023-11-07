@@ -1,0 +1,77 @@
+{
+  "logging": {
+    "version": 1,
+    "disable_existing_loggers": false,
+    "root": {
+      "handlers": [
+        "default",
+        "console"
+      ],
+      "level": "DEBUG"
+    },
+    "loggers": {
+      "entity": {
+        "level": "DEBUG"
+      }
+    },
+    "handlers": {
+      "default": {
+        "class": "logging.FileHandler",
+        "filename": "log/issuer_debug.log",
+        "encoding": "utf8",
+        "formatter": "default",
+        "level": "DEBUG"
+      },
+      "console": {
+        "class": "logging.StreamHandler",
+        "stream": "ext://sys.stdout",
+        "formatter": "default"
+      }
+    },
+    "formatters": {
+      "default": {
+        "format": "[%(asctime)s] [%(levelname)s] [%(name)s.%(funcName)s] %(message)s"
+      }
+    }
+  },
+  "entity": {
+    "entity_id": "https://127.0.0.1:6003",
+    "preference": {
+      "organization_name": "The Credential Issuers",
+      "homepage_uri": "https://issuer.example.com",
+      "contacts": "operations@issuer.example.com"
+    },
+    "key_config": {
+      "private_path": "private/issuer_fed_keys.json",
+      "key_defs": [
+        {
+          "type": "RSA",
+          "use": [
+            "sig"
+          ]
+        },
+        {
+          "type": "EC",
+          "crv": "P-256",
+          "use": [
+            "sig"
+          ]
+        }
+      ],
+      "public_path": "static/issuer_fed_keys.json",
+      "read_only": false
+    },
+    "authority_hints": "file:intermediate/issuer_authority_hints.json",
+    "trust_anchors": "file:intermediate/issuer_trust_anchors.json",
+    "subordinate": "file:intermediate/issuer_subordinates.json",
+    "endpoints": ["entity_configuration", "fetch", "list"]
+  },
+  "webserver": {
+    "server_cert": "certs/example.crt",
+    "server_key": "certs/example.key",
+    "cert_chain": null,
+    "port": 6003,
+    "domain": "127.0.0.1",
+    "debug": true
+  }
+}

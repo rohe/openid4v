@@ -1,3 +1,6 @@
+from typing import List
+from typing import Optional
+
 from fedservice.utils import make_federation_combo
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
 from idpyoidc.client.oauth2 import Client
@@ -7,24 +10,20 @@ from openid4v.client.pid_eaa_consumer import PidEaaHandler
 from openid4v.client.wallet_instance_attestation import WalletInstanceAttestation
 
 
-def test_create():
-    entity = make_federation_combo(
-        'https://rp.example.org',
-        key_config={'key_defs': [{'type': 'RSA', 'use': ['sig']},
-                                 {'type': 'EC', 'crv': 'P-256', 'use': ['sig']}]},
-        preference={'organization_name': 'The RP',
-                    'homepage_uri': 'https://rp.example.com',
-                    'contacts': 'operations@rp.example.com'},
-        authority_hints=['https://im1.example.org'],
-        services=["entity_configuration", "entity_statement", "trust_mark_status",
-                  "resolve", "list"],
-        functions=["trust_chain_collector", "verifier", "policy", "trust_mark_verifier"],
+def main(entity_id: str,
+         authority_hints: Optional[List[str]] = None,
+         trust_anchors: Optional[dict] = None,
+         preference: Optional[dict] = None):
+    wallet = make_federation_combo(
+        entity_id,
+        key_config={"key_defs": DEFAULT_KEY_DEFS},
+        trust_anchors=trust_anchors,
         entity_type={
             "wallet": {
                 'class': Client,
                 'kwargs': {
                     'config': {
-                        "key_conf": {"key_defs": DEFAULT_KEY_DEFS},
+                        # "key_conf": {"key_defs": DEFAULT_KEY_DEFS},
                         "services": {
                             "wallet_instance_attestation": {
                                 "class": WalletInstanceAttestation,
@@ -35,12 +34,12 @@ def test_create():
                     }
                 }
             },
-            "pid_eaa_handler": {
+            "pid_eaa_consumer": {
                 'class': PidEaaHandler,
                 'kwargs': {
                     'config': {
-                        "key_conf": {"key_defs": DEFAULT_KEY_DEFS},
                         "base_url": "",
+                        # "key_conf": {"key_defs": DEFAULT_KEY_DEFS},
                         "add_ons": {
                             "pkce": {
                                 "function": "idpyoidc.client.oauth2.add_on.pkce.add_support",
@@ -53,24 +52,29 @@ def test_create():
                                     'dpop_signing_alg_values_supported': ["ES256"]
                                 }
                             },
-                            "pushed_authorization": {
-                                "function": "idpyoidc.client.oauth2.add_on.par.add_support",
-                                "kwargs": {
-                                    "body_format": "jws",
-                                    "signing_algorithm": "RS256",
-                                    "http_client": None,
-                                    "merge_rule": "lax",
-                                },
-                            }
+                            # "pushed_authorization": {
+                            #     "function": "idpyoidc.client.oauth2.add_on.par.add_support",
+                            #     "kwargs": {
+                            #         "body_format": "jws",
+                            #         "signing_algorithm": "RS256",
+                            #         "http_client": None,
+                            #         "merge_rule": "lax",
+                            #     },
+                            # }
+                        },
+                        "preference": {
+                            "client_authn_methods": ["private_key_jwt"],
+                            "response_types_supported": ["code"],
+                            "response_modes_supported": ["query", "form_post"],
+                            "request_parameter_supported": True,
+                            "request_uri_parameter_supported": True,
+                            "token_endpoint_auth_methods_supported": ["private_key_jwt"],
+                            "token_endpoint_auth_signing_alg_values_supported": ["ES256"]
                         },
                         "services": {
                             "pid_eaa_authorization": {
                                 "class": "openid4v.client.pid_eaa.Authorization",
                                 "kwargs": {
-                                    "response_types_supported": ["code"],
-                                    "response_modes_supported": ["query", "form_post"],
-                                    "request_parameter_supported": True,
-                                    "request_uri_parameter_supported": True,
                                     "client_authn_methods": {"client_assertion": ClientAssertion}
                                 },
                             },
@@ -80,8 +84,8 @@ def test_create():
                             },
                             "credential": {
                                 "path": "credential",
-                                "class": "openid4v.client.pid_eaa.Credential",
-                                "kwargs": {},
+                                "class": 'openid4v.client.pid_eaa.Credential',
+                                "kwargs": {}
                             }
                         }
                     }
@@ -89,6 +93,5 @@ def test_create():
             }
         }
     )
-    handler = entity["pid_eaa_handler"]
-    handler.new_consumer("https://wp.example.org")
-    assert handler.get_consumer("https://wp.example.org")
+
+    return wallet

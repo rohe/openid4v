@@ -46,9 +46,9 @@ class TestAuthorizationRequest():
                 }
             },
             "services": {
-                "authorization": {"class": "oidc4vc.pid_provider.authorization.Authorization"},
-                "access_token": {"class": "oidc4vc.pid_provider.access_token.AccessToken"},
-                "credential": {"class": "oidc4vc.pid_provider.credential.Credential"}
+                "authorization": {"class": "openid4v.client.pid_eaa.Authorization"},
+                "access_token": {"class": "openid4v.client.pid_eaa.AccessToken"},
+                "credential": {"class": "openid4v.client.pid_eaa.Credential"}
             },
             "provider_info": {
                 "authorization_endpoint": "https://issuer.example.com/auth",

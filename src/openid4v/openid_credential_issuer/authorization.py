@@ -15,6 +15,8 @@ class Authorization(authorization.Authorization):
     msg_type = AuthorizationRequest
     response_cls = oauth2.AuthorizationResponse
     error_msg = oauth2.AuthorizationErrorResponse
+    service_name = "authorization"
+    name = "authorization"
 
     _supports = {
         "response_types_supported": ["code"],

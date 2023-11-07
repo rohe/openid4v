@@ -130,7 +130,7 @@ def federation_setup():
     # Wallet provider
     ########################################
 
-    logger.info("---- Wallet ----")
+    logger.info("---- Wallet Provider ----")
     logger.info("--- Subordinate to intermediate 2 ---")
 
     kwargs = {
