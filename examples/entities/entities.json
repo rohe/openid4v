@@ -1,0 +1,74 @@
+{
+  "wp": {
+    "dir": "wp",
+    "config": "conf.json",
+    "authority_hints": [
+      "provider"
+    ],
+    "trust_anchors": [
+      "dc4eu"
+    ]
+  },
+  "pid": {
+    "dir": "cred",
+    "config": "conf_pid.json",
+    "authority_hints": [
+      "issuer"
+    ],
+    "trust_anchors": [
+      "dc4eu"
+    ],
+    "trust_marks": {
+      "tmi": "http://dc4eu.example.com/PersonIdentificationData/se"
+    }
+  },
+  "qeaa": {
+    "dir": "cred",
+    "config": "conf_qeaa.json",
+    "authority_hints": [
+      "issuer"
+    ],
+    "trust_anchors": [
+      "dc4eu"
+    ],
+    "trust_marks": {
+      "tmi": "http://dc4eu.example.com/OpenBadgeCredential/se"
+    }
+  },
+  "tmi": {
+    "dir": "tmi",
+    "config": "conf.json",
+    "authority_hints": [
+      "dc4eu"
+    ],
+    "trust_anchors": [
+      "dc4eu"
+    ]
+  },
+  "provider": {
+    "dir": "intermediate",
+    "config": "conf_provider.json",
+    "authority_hints": [
+      "dc4eu"
+    ],
+    "trust_anchors": [
+      "dc4eu"
+    ]
+  },
+  "issuer": {
+    "dir": "intermediate",
+    "config": "conf_issuer.json",
+    "authority_hints": [
+      "dc4eu"
+    ],
+    "trust_anchors": [
+      "dc4eu"
+    ]
+  },
+  "dc4eu": {
+    "dir": "ta",
+    "config": "conf.json",
+    "authority_hints": [],
+    "trust_anchors": []
+  }
+}

@@ -6,7 +6,7 @@ from typing import Union
 from cryptojwt import JWT
 from cryptojwt.jws.jws import factory
 from cryptojwt.jwt import utc_time_sans_frac
-from fedservice.entity import get_federation_entity
+from fedservice.entity.utils import get_federation_entity
 from idpyoidc.exception import RequestError
 from idpyoidc.message import Message
 from idpyoidc.message import oidc
@@ -142,7 +142,7 @@ class Credential(UserInfo):
         UserInfo.__init__(self, upstream_get, conf=conf, **kwargs)
         # dpop support
         self.post_parse_request.append(self.credential_request)
-        if "credential_constructor" in conf:
+        if conf and "credential_constructor" in conf:
             self.credential_constructor = execute(conf["credential_constructor"])
         else:
             self.credential_constructor = CredentialConstructor(upstream_get=upstream_get)

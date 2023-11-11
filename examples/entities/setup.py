@@ -18,11 +18,14 @@ def get_federation_entity(entity):
 
 
 fed_entity = {}
+combo_entity = {}
+
 for ent, info in ENTITY.items():
     _cnf = load_values_from_file(load_config_file(f"{info['dir']}/{info['config']}"))
     _ent = make_federation_combo(**_cnf["entity"])
     if isinstance(_ent, FederationCombo):
         fed_entity[ent] = _ent["federation_entity"]
+        combo_entity[ent] = _ent
     else:
         fed_entity[ent] = _ent
 
@@ -38,10 +41,18 @@ for ent, info in ENTITY.items():
             if auth not in subordinates:
                 subordinates[auth] = {}
             _ent_id = get_federation_entity(fed_entity[ent]).entity_id
-            subordinates[auth][_ent_id] = {
+            _sub_info = {
                 'jwks': get_federation_entity(fed_entity[ent]).keyjar.export_jwks(),
-                'authority_hints': [fed_entity[auth].entity_id]
+                'authority_hints': [fed_entity[auth].entity_id],
             }
+            if fed_entity[ent].server.subordinate != {}:
+                _sub_info["intermediate"] = True
+            if ent in combo_entity:
+                _sub_info["entity_type"] = list(combo_entity[ent]._part.keys())
+            else:
+                _sub_info["entity_type"] = ["federation_entity"]
+
+            subordinates[auth][_ent_id] = _sub_info
         print(f"authority_hints: {authorities}")
         file_name = f"{info['dir']}/{ent}_authority_hints.json"
         with open(file_name, "w") as fp:

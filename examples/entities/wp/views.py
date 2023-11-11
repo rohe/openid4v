@@ -16,7 +16,7 @@ from idpyoidc.server.exception import UnknownClient
 
 logger = logging.getLogger(__name__)
 
-entity = Blueprint('intermediate', __name__, url_prefix='')
+entity = Blueprint('wp', __name__, url_prefix='')
 
 
 def _add_cookie(resp, cookie_spec):
@@ -110,7 +110,7 @@ def service_endpoint(endpoint):
             err_msg = ResponseMessage(error='invalid_request', error_description=str(err))
             return make_response(err_msg.to_json(), 400)
 
-    _log.info('request: {}'.format(req_args))
+    _log.info('parsed request: {}'.format(req_args))
     if isinstance(req_args, ResponseMessage) and 'error' in req_args:
         return make_response(req_args.to_json(), 400)
 
@@ -138,15 +138,9 @@ def send_js(path):
     return send_from_directory('static', path)
 
 
-@entity.route('/fetch')
+@entity.route('/token', methods=['GET', 'POST'])
 def fetch():
-    _endpoint = current_app.federation_entity.get_endpoint('fetch')
-    return service_endpoint(_endpoint)
-
-
-@entity.route('/list')
-def list():
-    _endpoint = current_app.federation_entity.get_endpoint('list')
+    _endpoint = current_app.server["wallet_provider"].get_endpoint('wallet_provider_token')
     return service_endpoint(_endpoint)
 
 
@@ -157,9 +151,9 @@ def handle_bad_request(e):
 
 @entity.route('/.well-known/openid-federation')
 def wkof():
-    _fe = current_app.federation_entity
-    metadata = _fe.get_metadata()
-    _ctx = _fe.context
+    _srv = current_app.server
+    metadata = _srv.get_metadata()
+    _ctx = current_app.federation_entity.context
     iss = sub = _ctx.entity_id
     _statement = _ctx.create_entity_statement(
         metadata=metadata,

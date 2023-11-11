@@ -5,6 +5,7 @@ from urllib.parse import urlencode
 
 from cryptojwt import JWT
 from cryptojwt.jwk.ec import new_ec_key
+from cryptojwt.jws.jws import factory
 from fedservice.entity.function import apply_policies
 from fedservice.entity.function import collect_trust_chains
 from fedservice.entity.function import verify_trust_chains
@@ -12,9 +13,10 @@ from fedservice.entity.service import FederationService
 from fedservice.entity.utils import get_federation_entity
 from idpyoidc import verified_claim_name
 from idpyoidc.client.configure import Configuration
-from idpyoidc.client.service import Service
 from idpyoidc.defaults import JWT_BEARER
+from idpyoidc.message import Message
 from idpyoidc.message.oauth2 import ResponseMessage
+from idpyoidc.node import topmost_unit
 from idpyoidc.util import rndstr
 
 from openid4v.message import WalletInstanceAttestationResponse
@@ -38,19 +40,31 @@ class WalletInstanceAttestation(FederationService):
         self.wallet_provider_id = conf.get("wallet_provider_id", "")
         self.wallet_instance_attestations = {}
 
-    def get_endpoint(self):
-        # get endpoint from the Entity Configuration
+    def get_trust_chains(self):
         chains, leaf_ec = collect_trust_chains(self, self.wallet_provider_id)
         if len(chains) == 0:
             return None
 
         trust_chains = verify_trust_chains(self, chains, leaf_ec)
         trust_chains = apply_policies(self, trust_chains)
-        if len(chains) == 0:
+        if len(trust_chains) == 0:
             return None
 
+        _fe = get_federation_entity(self)
+        _fe.trust_chain[self.wallet_provider_id] = trust_chains
+        _wallet_unit = _fe.upstream_get("unit")["wallet"]
+        _wallet_unit.context.keyjar.import_jwks(
+            trust_chains[0]["metadata"]["wallet_provider"]["jwks"], self.wallet_provider_id)
+        return trust_chains
+
+    def get_endpoint(self):
+        trust_chains = self.get_trust_chains()
+        # get endpoint from the Entity Configuration
         # pick one
-        return trust_chains[0].metadata['wallet_provider']["token_endpoint"]
+        if trust_chains:
+            return trust_chains[0].metadata['wallet_provider']["token_endpoint"]
+        else:
+            return ""
 
     def get_request_parameters(
             self,
@@ -68,8 +82,8 @@ class WalletInstanceAttestation(FederationService):
         :param kwargs: extra keyword arguments
         :return: List of entity IDs
         """
-        federation_entity=get_federation_entity(self)
-        keyjar = federation_entity.keyjar
+        wallet_unit = self.upstream_get("unit")
+        keyjar = wallet_unit.context.keyjar
         ec_key = new_ec_key(crv="P-256", use="sig")
 
         entity_id = self.upstream_get("attribute", "entity_id")
@@ -108,6 +122,37 @@ class WalletInstanceAttestation(FederationService):
             "grant_type": JWT_BEARER})
 
         return {"url": endpoint, 'method': self.http_method, "data": _data}
+
+    def gather_verify_arguments(
+            self, response: Optional[Union[dict, Message]] = None,
+            behaviour_args: Optional[dict] = None
+    ):
+        """
+        Need to add some information before running verify()
+
+        :return: dictionary with arguments to the verify call
+        """
+
+        issuer = self.wallet_provider_id
+
+        _fe = get_federation_entity(self)
+        if issuer not in _fe.trust_chain: # have to fetch trust chain
+            self.get_trust_chains()
+
+        wallet_unit = topmost_unit(self)["wallet"]
+        _keyjar = wallet_unit.context.keyjar
+        if issuer not in _keyjar:
+            _keyjar.import_jwks(_fe.trust_chain[issuer].metadata["wallet_provider"]["jwks"],
+                                issuer)
+
+        kwargs = {
+            "iss": issuer,
+            "keyjar": _keyjar,
+            "verify": True,
+            "client_id": _fe.entity_id,
+        }
+
+        return kwargs
 
     def post_parse_response(self, response, **kwargs):
         kid = response[verified_claim_name("assertion")]['cnf']['jwk']["kid"]

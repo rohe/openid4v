@@ -55,4 +55,4 @@ if __name__ == "__main__":
     print('Listening on {}:{}'.format(_web_conf.get('domain'), _web_conf.get('port')))
     # app.rph.federation_entity.collector.web_cert_path = _cert
     app.run(host=_web_conf.get('domain'), port=_web_conf.get('port'),
-            debug=_web_conf.get("debug"), ssl_context=context)
+            debug=_web_conf.get("debug", False), ssl_context=context)

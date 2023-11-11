@@ -13,11 +13,14 @@ def start(ents):
 
     for ent in ents:
         ent_info = ENTITY[ent]
-        #os.chdir(ent_info["dir"])
+        # os.chdir(ent_info["dir"])
         print(os.getcwd())
         _args = ["./entity.py", ent, ent_info["config"], ent_info["dir"]]
         print(_args)
+        # _res = subprocess.Popen(_args, env=dict(os.environ), stdout=subprocess.DEVNULL,
+        #                         stderr=subprocess.DEVNULL)
         _res = subprocess.Popen(_args, env=dict(os.environ))
+        # _res = subprocess.run(_args, env=dict(os.environ))
         print(_res)
         sleep(1)
 
@@ -32,6 +35,11 @@ def kill(ents):
                 pid = int(line.split(None, 1)[0])
                 os.kill(pid, 9)
                 break
+
+
+def restart(ents):
+    kill(ents)
+    start(ents)
 
 
 if __name__ == "__main__":

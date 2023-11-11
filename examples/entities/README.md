@@ -14,12 +14,14 @@ The **provider** intermediate has one subordinates; the Wallet Provider.
 
 There is a set of information that must be the same in different places in
 the setup. All the superiors must know the entity_id and the federation keys of
-its subordinates. I would also benfit from knowing the entity types of its subordinates
+its subordinates. I would also benefit from knowing the entity types of its subordinates
 and if they in their turn are intermediates.
 
 All of this can be accomplished by using the script `setup.py`. 
 
 `setup.py` **MUST** be run before you attempt to start the entities. 
+
+`setup.py` will create files in the entities directories.
 
 # Testing and verifying the example federation
 

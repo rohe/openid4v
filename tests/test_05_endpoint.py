@@ -33,7 +33,6 @@ def conf():
             },
         },
         "client_authn": verify_client,
-
     }
 
 

@@ -71,7 +71,6 @@
     "server_key": "certs/example.key",
     "cert_chain": null,
     "port": 6002,
-    "domain": "127.0.0.1",
-    "debug": true
+    "domain": "127.0.0.1"
   }
 }
