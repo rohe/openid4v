@@ -56,6 +56,7 @@
     },
     "authority_hints": "file:cred/qeaa_authority_hints.json",
     "trust_anchors": "file:cred/qeaa_trust_anchors.json",
+    "trust_marks": "file:cred/qeaa_trust_marks.json",
     "endpoints": [
       "entity_configuration"
     ],

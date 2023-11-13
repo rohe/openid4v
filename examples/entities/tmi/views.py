@@ -144,16 +144,6 @@ def fetch():
     return service_endpoint(_endpoint)
 
 
-@entity.route('/.well-known/<service>')
-def well_known(service):
-    if service == 'openid-configuration':
-        _endpoint = current_app.federation_entity.get_endpoint('provider_config')
-    else:
-        return make_response(f'Not supported: {service}', 400)
-
-    return service_endpoint(_endpoint)
-
-
 @entity.errorhandler(werkzeug.exceptions.BadRequest)
 def handle_bad_request(e):
     return 'bad request!', 400
@@ -161,14 +151,16 @@ def handle_bad_request(e):
 
 @entity.route('/.well-known/openid-federation')
 def wkof():
-    _fe = current_app.federation_entity
-    metadata = _fe.get_metadata()
-    _ctx = _fe.context
+    _srv = current_app.server
+    metadata = _srv.get_metadata()
+    _ctx = current_app.federation_entity.context
     iss = sub = _ctx.entity_id
     _statement = _ctx.create_entity_statement(
-        metadata=metadata, iss=iss, sub=sub, authority_hints=_ctx.authority_hints,
+        metadata=metadata,
+        iss=iss, sub=sub, authority_hints=_ctx.authority_hints,
         lifetime=_ctx.default_lifetime)
 
     response = make_response(_statement)
     response.headers['Content-Type'] = 'application/jose; charset=UTF-8'
     return response
+

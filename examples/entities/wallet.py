@@ -2,8 +2,11 @@
 
 import json
 
+from cryptojwt import JWT
+from cryptojwt.jws.jws import factory
 from fedservice.utils import make_federation_combo
 from idpyoidc.util import rndstr
+
 
 WALLET_PROVIDER_ID = "https://127.0.0.1:4000"
 TRUST_ANCHORS = json.loads(open("trust_anchors.json", "r").read())
@@ -145,3 +148,15 @@ for pid in res:
             break
 
 print(f"{_oci}")
+
+for eid, metadata in _oci.items():
+    _trust_chain = federation_entity.get_trust_chain(eid)
+    _ec = _trust_chain.verified_chain[-1]
+    if "trust_marks" in _ec:
+        for _mark in _ec["trust_marks"]:
+            _jws = factory(_mark)
+            issuer = _jws.jwt.payload()["iss"]
+            _chains = federation_entity.get_trust_chain(issuer)
+            federation_entity.keyjar.import_jwks(_chains[0].verified_chain[-1]["jwks"], issuer)
+            verifier = JWT(key_jar=federation_entity.keyjar)
+            _mark_payload = verifier.unpack(_mark)

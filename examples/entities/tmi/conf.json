@@ -54,8 +54,8 @@
       "public_path": "static/tmi_fed_keys.json",
       "read_only": false
     },
-    "authority_hints": "file:cred/authority_hints_tmi.json",
-    "trust_anchors": "file:cred/trust_anchors_tmi.json",
+    "authority_hints": "file:tmi/tmi_authority_hints.json",
+    "trust_anchors": "file:tmi/tim_trust_anchors.json",
     "endpoints": [
       "entity_configuration",
       "status"
