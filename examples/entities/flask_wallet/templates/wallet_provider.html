@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Wallet Provider Information</title>
+</head>
+<body>
+<h1>1. Wallet Provider Information</h1>
+<h3>Used the trust layer (OpenID Federation) to gather information</h3>
+<h2>Trust Chain Path: {{ trust_chain_path }}</h2>
+<h3>Metadata</h3>
+<dl>
+    {% for key, value in metadata.items() %}
+    <dt>{{ key }}</dt>
+    <dd>{{ value }}</dd>
+    {% endfor %}
+</dl>
+
+<hr>
+<input type="button" onclick="location.href='wallet_instance_attestation'"
+       value="2. Wallet Instance Attestation"/>
+
+</body>
+</html>

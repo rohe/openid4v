@@ -6,6 +6,7 @@ from cryptojwt.utils import importer
 from idpyoidc.client.configure import Configuration
 from idpyoidc.client.oauth2 import Client
 from idpyoidc.client.oauth2.add_on.dpop import dpop_header
+from idpyoidc.client.oauth2.stand_alone_client import StandAloneClient
 from idpyoidc.node import Unit
 from requests import request
 
@@ -76,7 +77,7 @@ class PidEaaHandler(Unit):
         self._consumer = {}
 
     def new_consumer(self, issuer_id):
-        _consumer = Client(
+        _consumer = StandAloneClient(
             config=self.config,
             httpc=self.httpc,
             httpc_params=self.httpc_params,
@@ -100,3 +101,6 @@ class PidEaaHandler(Unit):
 
     def get_consumer(self, issuer_id):
         return self._consumer.get(issuer_id, None)
+
+    def issuers(self):
+        return list(self._consumer.keys())

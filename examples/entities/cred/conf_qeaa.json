@@ -113,10 +113,7 @@
                     "form_post"
                   ],
                   "request_parameter_supported": true,
-                  "request_uri_parameter_supported": true,
-                  "client_authn_method": [
-                    "client_assertion"
-                  ]
+                  "request_uri_parameter_supported": true
                 }
               },
               "credential": {
@@ -132,9 +129,11 @@
                 "path": "pushed_authorization",
                 "class": "idpyoidc.server.oauth2.pushed_authorization.PushedAuthorization",
                 "kwargs": {
-                  "client_authn_method": [
-                    "client_assertion"
-                  ]
+                  "client_authn_method": {
+                    "client_assertion": {
+                      "class": "openid4v.client.client_authn.ClientAssertion"
+                    }
+                  }
                 }
               }
             },

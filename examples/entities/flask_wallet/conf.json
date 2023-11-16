@@ -1,0 +1,174 @@
+{
+  "logging": {
+    "version": 1,
+    "disable_existing_loggers": false,
+    "root": {
+      "handlers": [
+        "default",
+        "console"
+      ],
+      "level": "DEBUG"
+    },
+    "loggers": {
+      "entity": {
+        "level": "DEBUG"
+      }
+    },
+    "handlers": {
+      "default": {
+        "class": "logging.FileHandler",
+        "filename": "log/dc4eu_debug.log",
+        "formatter": "default"
+      },
+      "console": {
+        "class": "logging.StreamHandler",
+        "stream": "ext://sys.stdout",
+        "formatter": "default"
+      }
+    },
+    "formatters": {
+      "default": {
+        "format": "%(asctime)s %(name)s %(levelname)s %(message)s"
+      }
+    }
+  },
+  "template_dir": "templates",
+  "entity": {
+    "entity_id": "https://127.0.0.1:5005",
+    "httpc_params": {
+      "verify": false
+    },
+    "key_config": {
+      "key_defs": [
+        {
+          "type": "RSA",
+          "use": [
+            "sig"
+          ]
+        },
+        {
+          "type": "EC",
+          "crv": "P-256",
+          "use": [
+            "sig"
+          ]
+        }
+      ]
+    },
+    "trust_anchors": "file:trust_anchors.json",
+    "services": [
+      "entity_configuration",
+      "entity_statement",
+      "list",
+      "trust_mark_status"
+    ],
+    "entity_type": {
+      "wallet": {
+        "class": "idpyoidc.client.oauth2.Client",
+        "kwargs": {
+          "config": {
+            "services": {
+              "wallet_instance_attestation": {
+                "class": "openid4v.client.wallet_instance_attestation.WalletInstanceAttestation"
+              }
+            }
+          },
+          "key_conf": {
+            "key_defs": [
+              {
+                "type": "EC",
+                "crv": "P-256",
+                "use": [
+                  "sig"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "pid_eaa_consumer": {
+        "class": "openid4v.client.pid_eaa_consumer.PidEaaHandler",
+        "kwargs": {
+          "config": {
+            "add_ons": {
+              "pkce": {
+                "function": "idpyoidc.client.oauth2.add_on.pkce.add_support",
+                "kwargs": {
+                  "code_challenge_length": 64,
+                  "code_challenge_method": "S256"
+                }
+              },
+              "dpop": {
+                "function": "idpyoidc.client.oauth2.add_on.dpop.add_support",
+                "kwargs": {
+                  "dpop_signing_alg_values_supported": [
+                    "ES256"
+                  ]
+                }
+              },
+              "pushed_authorization": {
+                "function": "idpyoidc.client.oauth2.add_on.par.add_support",
+                "kwargs": {
+                  "body_format": "urlencoded",
+                  "signing_algorithm": "RS256",
+                  "merge_rule": "lax",
+                  "authn_method": {
+                    "client_assertion": {
+                      "class": "openid4v.client.client_authn.ClientAssertion"
+                    }
+                  }
+                }
+              }
+            },
+            "preference": {
+              "client_authn_methods": [
+                "private_key_jwt"
+              ],
+              "response_types_supported": [
+                "code"
+              ],
+              "response_modes_supported": [
+                "query",
+                "form_post"
+              ],
+              "request_parameter_supported": true,
+              "request_uri_parameter_supported": true,
+              "token_endpoint_auth_methods_supported": [
+                "private_key_jwt"
+              ],
+              "token_endpoint_auth_signing_alg_values_supported": [
+                "ES256"
+              ]
+            },
+            "services": {
+              "pid_eaa_authorization": {
+                "class": "openid4v.client.pid_eaa.Authorization",
+                "kwargs": {
+                  "client_authn_methods": {
+                    "client_assertion": "openid4v.client.client_authn.ClientAssertion"
+                  }
+                }
+              },
+              "pid_eaa_token": {
+                "class": "openid4v.client.pid_eaa.AccessToken",
+                "kwargs": {}
+              },
+              "credential": {
+                "path": "credential",
+                "class": "openid4v.client.pid_eaa.Credential",
+                "kwargs": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webserver": {
+    "server_cert": "certs/example.crt",
+    "server_key": "certs/example.key",
+    "cert_chain": null,
+    "port": 5005,
+    "domain": "127.0.0.1"
+  }
+}

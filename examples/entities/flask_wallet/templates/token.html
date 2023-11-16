@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Access Token Request</title>
+</head>
+<body>
+    <h3>Access Token Response</h3>
+    <dl>
+    {% for key, value in response.items() %}
+    <dt>{{ key }}</dt>
+    <dd>{{ value }}</dd>
+    {% endfor %}
+</dl>
+<hr>
+<input type="button" onclick="location.href='/credential';" value="5. Credential Request"/>
+
+</body>
+</html>

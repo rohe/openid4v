@@ -7,6 +7,7 @@ from cryptojwt.exception import Invalid
 from cryptojwt.exception import IssuerNotFound
 from cryptojwt.exception import MissingKey
 from cryptojwt.jws.jws import factory
+from fedservice.entity import get_verified_trust_chains
 from fedservice.entity.function import verify_trust_chains
 from idpyoidc.message import Message
 from idpyoidc.message.oidc import JsonWebToken
@@ -14,6 +15,7 @@ from idpyoidc.node import topmost_unit
 from idpyoidc.server.client_authn import ClientAuthnMethod
 from idpyoidc.server.exception import ClientAuthenticationError
 
+from openid4v import ASSERTION_TYPE
 from openid4v.message import WalletInstanceAttestationJWT
 
 
@@ -26,6 +28,7 @@ class ClientAssertion(ClientAuthnMethod):
     """
 
     tag = "client_assertion"
+    attestation_class = None
 
     def _verify(
             self,
@@ -44,11 +47,16 @@ class ClientAssertion(ClientAuthnMethod):
                     _entity_conf = _tc[0].verified_chain[-1]
                     _keyjar.import_jwks(_entity_conf["metadata"]["wallet_provider"]["jwks"],
                                         _entity_conf["sub"])
+            else:
+                chains = get_verified_trust_chains(self, _payload["iss"])
+                if chains:
+                    _entity_conf = chains[0].verified_chain[-1]
+                    _keyjar.import_jwks(_entity_conf["metadata"]["wallet_provider"]["jwks"],
+                                        _entity_conf["sub"])
 
         _verifier = JWT(_keyjar)
-        _verifier.typ2msg_cls = {
-            "wallet-attestation+jwt": WalletInstanceAttestationJWT
-        }
+        if self.attestation_class:
+            _verifier.typ2msg_cls = self.attestation_class
 
         try:
             _wia = _verifier.unpack(request["client_assertion"])
@@ -67,6 +75,9 @@ class ClientAssertion(ClientAuthnMethod):
         _cinfo = {k: v for k, v in _wia.items() if k not in JsonWebToken.c_param.keys()}
         _cinfo["client_id"] = _wia["sub"]
         oci.context.cdb[_wia["sub"]] = _cinfo
+        # register under both names
+        _cinfo["client_id"] = request["client_id"]
+        oci.context.cdb[request["client_id"]] = _cinfo
 
         # adding wallet key to keyjar
         _keyjar.import_jwks({"keys": [_wia["cnf"]["jwk"]]}, _wia["sub"])
@@ -79,8 +90,12 @@ class ClientAssertion(ClientAuthnMethod):
             authorization_token: Optional[str] = None,
     ):
         ca_type = request.get("client_assertion_type")
-        if ca_type == "urn:ietf:params:oauth:client-assertion-type:jwt-client-attestation":
+        if ca_type == ASSERTION_TYPE:
             if "client_assertion" in request:
                 return True
 
         return False
+
+
+class WalletInstanceAttestation(ClientAssertion):
+    attestation_class = {"wallet-attestation+jwt": WalletInstanceAttestationJWT}

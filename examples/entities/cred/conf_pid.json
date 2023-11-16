@@ -54,6 +54,7 @@
       "public_path": "static/pid_fed_keys.json",
       "read_only": false
     },
+    "httpc_params": {"verify":  false},
     "authority_hints": "file:cred/pid_authority_hints.json",
     "trust_anchors": "file:cred/pid_trust_anchors.json",
     "trust_marks": "file:cred/pid_trust_marks.json",
@@ -113,28 +114,29 @@
                     "form_post"
                   ],
                   "request_parameter_supported": true,
-                  "request_uri_parameter_supported": true,
-                  "client_authn_method": [
-                    "client_assertion"
-                  ]
+                  "request_uri_parameter_supported": true
                 }
               },
               "credential": {
                 "path": "credential",
                 "class": "openid4v.openid_credential_issuer.credential.Credential",
                 "kwargs": {
-                  "client_authn_method": [
-                    "dpop_client_auth"
-                  ]
+                  "client_authn_method": {
+                    "dpop_client_auth": {
+                      "class": "idpyoidc.server.oauth2.add_on.dpop.DPoPClientAuth"
+                    }
+                  }
                 }
               },
               "pushed_authorization": {
                 "path": "pushed_authorization",
                 "class": "idpyoidc.server.oauth2.pushed_authorization.PushedAuthorization",
                 "kwargs": {
-                  "client_authn_method": [
-                    "client_assertion"
-                  ]
+                  "client_authn_method": {
+                    "client_assertion": {
+                      "class": "openid4v.client.client_authn.ClientAssertion"
+                    }
+                  }
                 }
               }
             },

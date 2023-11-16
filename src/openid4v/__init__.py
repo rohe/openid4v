@@ -19,6 +19,9 @@ from idpyoidc.server.client_authn import client_auth_setup
 from idpyoidc.server.endpoint_context import init_service
 from idpyoidc.server.user_authn.authn_context import populate_authn_broker
 
+
+ASSERTION_TYPE = "urn:ietf:params:oauth:client-assertion-type:jwt-client-attestation"
+
 def do_endpoints(conf, upstream_get):
     _endpoints = conf.get("endpoint")
     if _endpoints:

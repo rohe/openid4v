@@ -13,7 +13,7 @@ from idpyoidc.server.oauth2.add_on.dpop import DPoPClientAuth
 from idpyoidc.server.user_info import UserInfo
 
 from openid4v.openid_credential_issuer import OpenidCredentialIssuer
-from openid4v.openid_credential_issuer.client_authn import ClientAssertion
+from openid4v.openid_credential_issuer.client_authn import WalletInstanceAttestation
 
 SESSION_PARAMS = {
     "encrypter": {
@@ -57,7 +57,7 @@ def main(entity_id: str,
                         "client_authn_methods": {
                             "client_secret_basic": ClientSecretBasic,
                             "client_secret_post": ClientSecretPost,
-                            "client_assertion": ClientAssertion,
+                            "client_assertion": WalletInstanceAttestation,
                             "dpop_client_auth": DPoPClientAuth
                         },
                         "keys": {"key_defs": DEFAULT_KEY_DEFS},

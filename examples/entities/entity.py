@@ -15,20 +15,26 @@ from utils import load_values_from_file
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
-template_dir = os.path.join(dir_path, 'templates')
+#template_dir = os.path.join(dir_path, 'templates')
 
 
 def init_app(config_file, name=None, subdir="", **kwargs) -> Flask:
     name = name or __name__
+    _cnf = load_config_file(f"{subdir}/{config_file}")
+    _cnf = load_values_from_file(_cnf)
+
+    if "template_dir" in _cnf:
+        kwargs["template_folder"] = os.path.join(dir_path, subdir, _cnf["template_dir"])
+
     app = Flask(name, static_url_path='', **kwargs)
     sys.path.insert(0, dir_path)
+    app.config['SECRET_KEY'] = os.urandom(12).hex()
 
     entity = importer(f"{subdir}.views.entity")
     app.register_blueprint(entity)
 
     # Initialize the oidc_provider after views to be able to set correct urls
-    app.cnf = load_config_file(f"{subdir}/{config_file}")
-    app.cnf = load_values_from_file(app.cnf)
+    app.cnf = _cnf
     app.cnf["cwd"] = dir_path
     app.server = make_federation_combo(**app.cnf["entity"])
     if isinstance(app.server, FederationCombo):
@@ -45,7 +51,7 @@ if __name__ == "__main__":
     conf = sys.argv[2]
     subdir = sys.argv[3]
     template_dir = os.path.join(dir_path, 'templates')
-    app = init_app(conf, name, template_folder=template_dir, subdir=subdir)
+    app = init_app(conf, name, subdir=subdir)
     if "logging" in app.cnf:
         configure_logging(config=app.cnf["logging"])
     _web_conf = app.cnf["webserver"]

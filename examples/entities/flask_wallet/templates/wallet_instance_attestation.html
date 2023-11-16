@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Wallet Instance Attestation</title>
+</head>
+<body>
+<h1>2. Wallet Instance Attestation</h1>
+<h3>The Attestation Request: </h3>
+<dl>
+    {% for key, value in req_info.items() %}
+    <dt>{{ key }}</dt>
+    <dd>{{ value }}</dd>
+    {% endfor %}
+</dl>
+<hr>
+
+<h3>The Attestation Response (unpacked)</h3>
+<dl>
+    {% for key, value in wallet_instance_attestation.items() %}
+    <dt>{{ key }}</dt>
+    <dd>{{ value }}</dd>
+    {% endfor %}
+</dl>
+
+<hr>
+<input type="button" onclick="location.href='picking_pid_issuer'"
+       value="3. Find PID Issuer"/>
+
+</body>
+</html>

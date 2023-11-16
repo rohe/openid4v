@@ -7,6 +7,7 @@ import werkzeug
 from flask import Blueprint
 from flask import current_app
 from flask import redirect
+from flask import render_template
 from flask import request
 from flask.helpers import make_response
 from flask.helpers import send_from_directory
@@ -133,13 +134,18 @@ def service_endpoint(endpoint):
     return response
 
 
+@entity.route('/')
+def index():
+    return render_template('index.html')
+
+
 @entity.route('/static/<path:path>')
 def send_js(path):
     return send_from_directory('static', path)
 
 
 @entity.route('/token', methods=['GET', 'POST'])
-def fetch():
+def token():
     _endpoint = current_app.server["wallet_provider"].get_endpoint('wallet_provider_token')
     return service_endpoint(_endpoint)
 

@@ -2,11 +2,9 @@
 
 import json
 
-from cryptojwt import JWT
-from cryptojwt.jws.jws import factory
+from fedservice.entity import get_payload
 from fedservice.utils import make_federation_combo
 from idpyoidc.util import rndstr
-
 
 WALLET_PROVIDER_ID = "https://127.0.0.1:4000"
 TRUST_ANCHORS = json.loads(open("trust_anchors.json", "r").read())
@@ -21,6 +19,7 @@ entity = make_federation_combo(
         ]
     },
     trust_anchors=TRUST_ANCHORS,
+    services=["entity_configuration", "entity_statement", "list", "trust_mark_status"],
     entity_type={
         "wallet": {
             'class': "idpyoidc.client.oauth2.Client",
@@ -124,6 +123,9 @@ print(f"request_info: {req_info}")
 resp = wallet_entity.do_request("wallet_instance_attestation", request_args=request_args,
                                 endpoint=trust_chain.metadata['wallet_provider']['token_endpoint'])
 print(f"Wallet Instance Attestation: {resp}")
+wallet_instance_attestation = resp["assertion"]
+_ass = get_payload(wallet_instance_attestation)
+thumbprint_in_cnf_jwk = _ass["cnf"]["jwk"]["kid"]
 
 # Search for all credential issuers
 print("**** Find one Credential Issuer that issues credentials of type {"
@@ -149,14 +151,54 @@ for pid in res:
 
 print(f"{_oci}")
 
+pid_issuer_to_use = []
+se_pid_issuer_tm = 'http://dc4eu.example.com/PersonIdentificationData/se'
 for eid, metadata in _oci.items():
     _trust_chain = federation_entity.get_trust_chain(eid)
     _ec = _trust_chain.verified_chain[-1]
     if "trust_marks" in _ec:
         for _mark in _ec["trust_marks"]:
-            _jws = factory(_mark)
-            issuer = _jws.jwt.payload()["iss"]
-            _chains = federation_entity.get_trust_chain(issuer)
-            federation_entity.keyjar.import_jwks(_chains[0].verified_chain[-1]["jwks"], issuer)
-            verifier = JWT(key_jar=federation_entity.keyjar)
-            _mark_payload = verifier.unpack(_mark)
+            _verified_trust_mark = federation_entity.verify_trust_mark(_mark,
+                                                                       check_with_issuer=True)
+            print(f"Verified Trust Mark: {_verified_trust_mark}")
+            if _verified_trust_mark.get("id") == se_pid_issuer_tm:
+                pid_issuer_to_use.append(eid)
+
+print(f"PID Issuer to use: {pid_issuer_to_use}")
+
+pid_issuer = pid_issuer_to_use[0]
+actor = entity["pid_eaa_consumer"]
+_actor = actor.get_consumer(pid_issuer)
+if _actor is None:
+    actor = actor.new_consumer(pid_issuer)
+else:
+    actor = _actor
+
+request_args = {
+    "authorization_details": [
+        {
+            "type": "openid_credential",
+            "format": "vc+sd-jwt",
+            "credential_definition": {
+                "type": "PersonIdentificationData"
+            }
+        }
+    ],
+    "response_type": "code",
+    "client_id": thumbprint_in_cnf_jwk,
+    "redirect_uri": "https://start.wallet.example.org"
+}
+kwargs = {
+    "state": rndstr(24),
+    "wallet_instance_attestation": wallet_instance_attestation,
+    #"entity_id": pid_issuer
+}
+_service = actor.get_service("authorization")
+_service.certificate_issuer_id = pid_issuer
+if request_args is None:
+    req_info = _service.get_request_parameters(**kwargs)
+else:
+    req_info = _service.get_request_parameters(request_args, **kwargs)
+
+http_info = {k: v for k, v in req_info.items() if k in ["url", "headers", "method"]}
+

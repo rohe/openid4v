@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Picking PID Issuer</title>
+</head>
+<body>
+<h1>3. Find PID Issuer</h1>
+<h3>Credential Issuers in the federation</h3>
+<ul>
+    {% for key in credential_issuers %}
+    <li>{{ key }}</li>
+    {% endfor %}
+</ul>
+<h3>PID Issuers in the federation</h3>
+    <ul>
+    {% for key in pid_issuers %}
+    <li>{{ key }}</li>
+    {% endfor %}
+    </ul>
+
+<h3>Verified Trust Marks per Issuer</h3>
+<dl>
+    {% for key, value in trust_marks.items() %}
+    <dt>{{ key }}</dt>
+    <dd>{{ value }}</dd>
+    {% endfor %}
+</dl>
+<h3>Chosen PID Isssuer</h3>
+{{ pid_issuer_to_use }}
+<hr>
+<input type="button" onclick="location.href='authz'"
+       value="4. Authorization Request"/>
+
+</body>
+</html>

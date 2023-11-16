@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Authorization succeeded</title>
+</head>
+<body>
+    <h2>Authorization successfully</h2>
+    <h3>Authorization Response</h3>
+    <dl>
+    {% for key, value in response.items() %}
+    <dt>{{ key }}</dt>
+    <dd>{{ value }}</dd>
+    {% endfor %}
+</dl>
+<hr>
+<input type="button" onclick="location.href='/token';" value="5. Token Request"/>
+
+</body>
+</html>

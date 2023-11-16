@@ -164,22 +164,27 @@ def wkof():
     return response
 
 
+@entity.route('/pushed_authorization', methods=['POST'])
+def pushed_authorization():
+    _endpoint = current_app.server["openid_credential_issuer"].get_endpoint('pushed_authorization')
+    return service_endpoint(_endpoint)
+
 @entity.route('/authorization')
 def authorization():
-    return service_endpoint(
-        current_app.server.get_endpoint('authorization'))
+    _endpoint = current_app.server["openid_credential_issuer"].get_endpoint('authorization')
+    return service_endpoint(_endpoint)
 
 
 @entity.route('/token', methods=['GET', 'POST'])
 def token():
     return service_endpoint(
-        current_app.server.get_endpoint('token'))
+        current_app.server["openid_credential_issuer"].get_endpoint('token'))
 
 
 @entity.route('/credential', methods=['POST'])
 def introspection_endpoint():
     return service_endpoint(
-        current_app.server.get_endpoint('credentrial'))
+        current_app.server["openid_credential_issuer"].get_endpoint('credential'))
 
 
 IGNORE = ["cookie", "user-agent"]

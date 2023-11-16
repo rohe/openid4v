@@ -4,6 +4,8 @@ from typing import Union
 
 from cryptojwt import JWK
 from cryptojwt import JWT
+from cryptojwt import KeyJar
+from cryptojwt.jwk.asym import AsymmetricKey
 from cryptojwt.jwk.ec import new_ec_key
 from cryptojwt.jwk.rsa import new_rsa_key
 from cryptojwt.jws.utils import alg2keytype
@@ -48,8 +50,8 @@ class Authorization(FederationService):
     error_msg = ResponseMessage
     synchronous = True
     service_name = "authorization"
-    http_method = "POST"
-    default_authn_method = "openid4v.client.client_authn.ClientAssertion"
+    http_method = "GET"
+    # default_authn_method = "openid4v.client.client_authn.ClientAssertion"
 
     _supports = {
         "claims_parameter_supported": True,
@@ -91,7 +93,7 @@ class Authorization(FederationService):
 
     def get_endpoint(self):
         # get endpoint from the Entity Configuration
-        chains, leaf_ec = collect_trust_chains(self, self.certificate_issuer_id)
+        chains, leaf_ec = collect_trust_chains(self, entity_id=self.certificate_issuer_id)
         if len(chains) == 0:
             return None
 
@@ -101,7 +103,7 @@ class Authorization(FederationService):
             return None
 
         # pick one
-        return trust_chains[0].metadata['wallet_provider']["token_endpoint"]
+        return trust_chains[0].metadata['openid_credential_issuer']["authorization_endpoint"]
 
     def store_auth_request(self, request_args=None, **kwargs):
         """Store the authorization request in the state DB."""
@@ -136,7 +138,7 @@ class AccessToken(access_token.AccessToken):
         :return: dictionary with arguments to the verify call
         """
         _context = self.upstream_get("context")
-        #_entity = self.upstream_get("entity")
+        # _entity = self.upstream_get("entity")
         _federation_entity = get_federation_entity(self)
 
         kwargs = {
@@ -186,6 +188,7 @@ class AccessToken(access_token.AccessToken):
             resp["__expires_at"] = time_sans_frac() + int(resp["expires_in"])
 
         _cstate.update(key, resp)
+
 
 
 class PushedAuthorization(pushed_authorization.PushedAuthorization):

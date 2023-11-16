@@ -104,7 +104,9 @@ class Token(Endpoint):
         }
         keyjar = self.upstream_get("attribute", "keyjar")
         entity_id = self.upstream_get("attribute", "entity_id")
-        _signer = JWT(key_jar=keyjar, sign_alg='ES256', iss=entity_id, lifetime=300)
+        sign_alg = kwargs.get("sign_alg", "ES256")
+        lifetime = kwargs.get("lifetime", 3600)
+        _signer = JWT(key_jar=keyjar, sign_alg=sign_alg, iss=entity_id, lifetime=lifetime)
         _signer.with_jti = True
 
         _jws_header = {"typ": "wallet-attestation+jwt"}

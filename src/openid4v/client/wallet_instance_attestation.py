@@ -36,6 +36,8 @@ class WalletInstanceAttestation(FederationService):
     def __init__(self,
                  upstream_get: Callable,
                  conf: Optional[Union[dict, Configuration]] = None):
+        if conf is None:
+            conf = {}
         FederationService.__init__(self, upstream_get, conf=conf)
         self.wallet_provider_id = conf.get("wallet_provider_id", "")
         self.wallet_instance_attestations = {}
@@ -142,8 +144,8 @@ class WalletInstanceAttestation(FederationService):
         wallet_unit = topmost_unit(self)["wallet"]
         _keyjar = wallet_unit.context.keyjar
         if issuer not in _keyjar:
-            _keyjar.import_jwks(_fe.trust_chain[issuer].metadata["wallet_provider"]["jwks"],
-                                issuer)
+            for _chain in _fe.trust_chain[issuer]:
+                _keyjar.import_jwks(_chain.metadata["wallet_provider"]["jwks"], issuer)
 
         kwargs = {
             "iss": issuer,
@@ -155,6 +157,12 @@ class WalletInstanceAttestation(FederationService):
         return kwargs
 
     def post_parse_response(self, response, **kwargs):
+        _client = self.upstream_get("unit")
         kid = response[verified_claim_name("assertion")]['cnf']['jwk']["kid"]
-        self.wallet_instance_attestations[kid] = response
+        _wia = getattr(_client.context, "wallet_instance_attestations", None)
+        if not _wia:
+            _client.context.wallet_instance_attestations = {}
+
+        _client.context.wallet_instance_attestations[kid] = response["assertion"]
+
         return response
