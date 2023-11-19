@@ -40,7 +40,7 @@ class WalletInstanceAttestation(FederationService):
             conf = {}
         FederationService.__init__(self, upstream_get, conf=conf)
         self.wallet_provider_id = conf.get("wallet_provider_id", "")
-        self.wallet_instance_attestations = {}
+        self.wallet_instance_attestation = {}
 
     def get_trust_chains(self):
         chains, leaf_ec = collect_trust_chains(self, self.wallet_provider_id)
@@ -159,10 +159,12 @@ class WalletInstanceAttestation(FederationService):
     def post_parse_response(self, response, **kwargs):
         _client = self.upstream_get("unit")
         kid = response[verified_claim_name("assertion")]['cnf']['jwk']["kid"]
-        _wia = getattr(_client.context, "wallet_instance_attestations", None)
+        _wia = getattr(_client.context, "wallet_instance_attestation", None)
         if not _wia:
-            _client.context.wallet_instance_attestations = {}
+            _client.context.wallet_instance_attestation = {}
 
-        _client.context.wallet_instance_attestations[kid] = response["assertion"]
-
+        _client.context.wallet_instance_attestation[kid] = {
+            "attestation": response["assertion"],
+            "expires": response[verified_claim_name("assertion")]["exp"]
+        }
         return response

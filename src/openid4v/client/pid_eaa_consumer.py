@@ -4,7 +4,6 @@ from typing import Union
 
 from cryptojwt.utils import importer
 from idpyoidc.client.configure import Configuration
-from idpyoidc.client.oauth2 import Client
 from idpyoidc.client.oauth2.add_on.dpop import dpop_header
 from idpyoidc.client.oauth2.stand_alone_client import StandAloneClient
 from idpyoidc.node import Unit

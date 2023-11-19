@@ -246,12 +246,14 @@ class Federation():
                 actor = _actor
 
             if service_name == "authorization":
-                _w_service = self.requestor["wallet"].get_service("wallet_instance_attestation")
-                wia = _w_service.wallet_instance_attestations[kwargs.get('client_assertion_kid')]
+                _wallet_entity = self.requestor["wallet"]
+                _w_service = _wallet_entity.get_service("wallet_instance_attestation")
+                wia = _wallet_entity.wallet_instance_attestation[
+                    kwargs.get('client_assertion_kid')]
                 kwargs["wallet_instance_attestation"] = wia["assertion"]
 
             if not self.state:
-               self.state = rndstr(16)
+                self.state = rndstr(16)
             kwargs["state"] = self.state
 
         _service = actor.get_service(service_name)

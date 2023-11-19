@@ -19,6 +19,41 @@ from openid4v import ASSERTION_TYPE
 from openid4v.message import WalletInstanceAttestationJWT
 
 
+def verify_wallet_instance_attestation(client_assertion, keyjar, unit, attestation_class):
+    _jws = factory(client_assertion)
+    _payload = _jws.jwt.payload()
+    if _payload["iss"] not in keyjar:
+        if "trust_chain" in _jws.jwt.headers:
+            _tc = verify_trust_chains(unit, [_jws.jwt.headers["trust_chain"]])
+            if _tc:
+                _entity_conf = _tc[0].verified_chain[-1]
+                keyjar.import_jwks(_entity_conf["metadata"]["wallet_provider"]["jwks"],
+                                   _entity_conf["sub"])
+        else:
+            chains = get_verified_trust_chains(unit, _payload["iss"])
+            if chains:
+                _entity_conf = chains[0].verified_chain[-1]
+                keyjar.import_jwks(_entity_conf["metadata"]["wallet_provider"]["jwks"],
+                                   _entity_conf["sub"])
+
+    _verifier = JWT(keyjar)
+    if attestation_class:
+        _verifier.typ2msg_cls = attestation_class
+
+    try:
+        _wia = _verifier.unpack(client_assertion)
+    except (Invalid, MissingKey, BadSignature, IssuerNotFound) as err:
+        # logger.info("%s" % sanitize(err))
+        raise ClientAuthenticationError(f"{err.__class__.__name__} {err}")
+    except Exception as err:
+        raise err
+
+    if isinstance(_wia, Message):
+        _wia.verify()
+
+    return _wia
+
+
 class ClientAssertion(ClientAuthnMethod):
     """
     Clients that have received a client_secret value from the Authorization
@@ -37,41 +72,14 @@ class ClientAssertion(ClientAuthnMethod):
             endpoint=None,  # Optional[Endpoint]
             **kwargs,
     ):
-        _keyjar = self.upstream_get("attribute", "keyjar")
-        _jws = factory(request["client_assertion"])
-        _payload = _jws.jwt.payload()
-        if _payload["iss"] not in _keyjar:
-            if "trust_chain" in _jws.jwt.headers:
-                _tc = verify_trust_chains(self, [_jws.jwt.headers["trust_chain"]])
-                if _tc:
-                    _entity_conf = _tc[0].verified_chain[-1]
-                    _keyjar.import_jwks(_entity_conf["metadata"]["wallet_provider"]["jwks"],
-                                        _entity_conf["sub"])
-            else:
-                chains = get_verified_trust_chains(self, _payload["iss"])
-                if chains:
-                    _entity_conf = chains[0].verified_chain[-1]
-                    _keyjar.import_jwks(_entity_conf["metadata"]["wallet_provider"]["jwks"],
-                                        _entity_conf["sub"])
-
-        _verifier = JWT(_keyjar)
-        if self.attestation_class:
-            _verifier.typ2msg_cls = self.attestation_class
-
-        try:
-            _wia = _verifier.unpack(request["client_assertion"])
-        except (Invalid, MissingKey, BadSignature, IssuerNotFound) as err:
-            # logger.info("%s" % sanitize(err))
-            raise ClientAuthenticationError(f"{err.__class__.__name__} {err}")
-        except Exception as err:
-            raise err
-
-        if isinstance(_wia, Message):
-            _wia.verify()
+        oci = topmost_unit(self)["openid_credential_issuer"]
+        _keyjar = oci.context.keyjar
+        _wia = verify_wallet_instance_attestation(request["client_assertion"],
+                                                  _keyjar,
+                                                  self,
+                                                  self.attestation_class)
 
         # Automatic registration
-        root = topmost_unit(self)
-        oci = root["openid_credential_issuer"]  # Should not be static
         _cinfo = {k: v for k, v in _wia.items() if k not in JsonWebToken.c_param.keys()}
         _cinfo["client_id"] = _wia["sub"]
         oci.context.cdb[_wia["sub"]] = _cinfo
@@ -80,7 +88,9 @@ class ClientAssertion(ClientAuthnMethod):
         oci.context.cdb[request["client_id"]] = _cinfo
 
         # adding wallet key to keyjar
-        _keyjar.import_jwks({"keys": [_wia["cnf"]["jwk"]]}, _wia["sub"])
+        _jwk = _wia["cnf"]["jwk"]
+        _keyjar.import_jwks({"keys": [_jwk]}, _jwk["kid"])
+        _keyjar.import_jwks({"keys": [_jwk]}, _wia["sub"])
 
         return {"client_id": _wia["sub"], "jwt": _wia}
 
@@ -98,4 +108,37 @@ class ClientAssertion(ClientAuthnMethod):
 
 
 class WalletInstanceAttestation(ClientAssertion):
+    tag = "wallet_instance_attestation"
+
     attestation_class = {"wallet-attestation+jwt": WalletInstanceAttestationJWT}
+
+    def _verify(
+            self,
+            request: Optional[Union[dict, Message]] = None,
+            authorization_token: Optional[str] = None,
+            endpoint=None,  # Optional[Endpoint]
+            **kwargs,
+    ):
+        wia, pop = request["client_assertion"].split("~")
+        oci = topmost_unit(self)["openid_credential_issuer"]
+        _keyjar = oci.context.keyjar
+        _wia = verify_wallet_instance_attestation(wia,
+                                                  _keyjar,
+                                                  self,
+                                                  self.attestation_class)
+
+        # have already saved the key that comes in the wia
+        _verifier = JWT(_keyjar)
+
+        try:
+            _pop = _verifier.unpack(pop)
+        except (Invalid, MissingKey, BadSignature, IssuerNotFound) as err:
+            # logger.info("%s" % sanitize(err))
+            raise ClientAuthenticationError(f"{err.__class__.__name__} {err}")
+        except Exception as err:
+            raise err
+
+        if isinstance(_pop, Message):
+            _pop.verify()
+
+        return {"client_id": _wia["sub"], "jwt": _wia}

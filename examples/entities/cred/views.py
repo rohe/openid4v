@@ -183,8 +183,8 @@ def token():
 
 @entity.route('/credential', methods=['POST'])
 def introspection_endpoint():
-    return service_endpoint(
-        current_app.server["openid_credential_issuer"].get_endpoint('credential'))
+    endpoint = current_app.server["openid_credential_issuer"].get_endpoint('credential')
+    return service_endpoint(endpoint)
 
 
 IGNORE = ["cookie", "user-agent"]

@@ -54,7 +54,9 @@
       "public_path": "static/pid_fed_keys.json",
       "read_only": false
     },
-    "httpc_params": {"verify":  false},
+    "httpc_params": {
+      "verify": false
+    },
     "authority_hints": "file:cred/pid_authority_hints.json",
     "trust_anchors": "file:cred/pid_trust_anchors.json",
     "trust_marks": "file:cred/pid_trust_marks.json",
@@ -70,7 +72,8 @@
               "client_secret_basic": "idpyoidc.server.client_authn.ClientSecretBasic",
               "client_secret_post": "idpyoidc.server.client_authn.ClientSecretPost",
               "client_assertion": "openid4v.openid_credential_issuer.client_authn.ClientAssertion",
-              "dpop_client_auth": "idpyoidc.server.oauth2.add_on.dpop.DPoPClientAuth"
+              "dpop_client_auth": "idpyoidc.server.oauth2.add_on.dpop.DPoPClientAuth",
+              "wallet_instance_attestation": "openid4v.openid_credential_issuer.client_authn.WalletInstanceAttestation"
             },
             "keys": {
               "key_defs": [
@@ -97,9 +100,7 @@
                 "path": "token",
                 "class": "openid4v.openid_credential_issuer.access_token.Token",
                 "kwargs": {
-                  "client_authn_method": [
-                    "private_key_jwt"
-                  ]
+                  "client_authn_method": ["wallet_instance_attestation"]
                 }
               },
               "authorization": {
@@ -134,7 +135,7 @@
                 "kwargs": {
                   "client_authn_method": {
                     "client_assertion": {
-                      "class": "openid4v.client.client_authn.ClientAssertion"
+                      "class": "openid4v.openid_credential_issuer.client_authn.ClientAssertion"
                     }
                   }
                 }

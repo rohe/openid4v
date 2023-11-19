@@ -1,5 +1,4 @@
 import logging
-from urllib.parse import splitquery
 
 import werkzeug
 from cryptojwt import JWT
@@ -11,10 +10,8 @@ from flask import redirect
 from flask import render_template
 from flask import request
 from flask import session
-from flask.helpers import make_response
 from flask.helpers import send_from_directory
 from idpyoidc.client.defaults import CC_METHOD
-from idpyoidc.client.exception import OidcServiceError
 from idpyoidc.util import rndstr
 
 logger = logging.getLogger(__name__)
@@ -80,7 +77,6 @@ def wallet_instance_attestation():
         endpoint=trust_chain.metadata['wallet_provider']['token_endpoint'])
 
     wallet_instance_attestation = resp["assertion"]
-    session["wallet_instance_attestation"] = wallet_instance_attestation
 
     _jwt = JWT(key_jar=wallet_entity.keyjar)
     _ass = _jwt.unpack(token=wallet_instance_attestation)
@@ -153,7 +149,7 @@ def authz():
     b64hash = hash_func(pid_issuer)
     _redirect_uri = f"https://127.0.0.1:5005/authz_cb/{b64hash}"
     session["redirect_uri"] = _redirect_uri
-    _id = session["thumbprint_in_cnf_jwk"]
+    _thumbprint = session["thumbprint_in_cnf_jwk"]
     wallet_entity = current_app.server["wallet"]
     request_args = {
         "authorization_details": [
@@ -166,9 +162,10 @@ def authz():
             }
         ],
         "response_type": "code",
-        "client_id": _id,
+        "client_id": _thumbprint,
         "redirect_uri": _redirect_uri,
-        "client_assertion": wallet_entity.context.wallet_instance_attestation[_id]
+        "client_assertion": wallet_entity.context.wallet_instance_attestation[_thumbprint][
+            "attestation"]
     }
     kwargs = {
         "state": rndstr(24),
@@ -196,6 +193,7 @@ def get_consumer(issuer):
 
     return _consumer
 
+
 @entity.route('/authz_cb/<issuer>')
 def authz_cb(issuer):
     _consumer = get_consumer(issuer)
@@ -207,21 +205,42 @@ def authz_cb(issuer):
     session["issuer"] = issuer
     return render_template('authorization.html', response=request.args.to_dict())
 
+
 @entity.route('/token')
 def token():
     consumer = get_consumer(session["issuer"])
-    _args = consumer.context.cstate.get_set(session["state"], claim=["redirect_uri", "code"])
+    _req_args = consumer.context.cstate.get_set(session["state"], claim=["redirect_uri", "code",
+                                                                         "nonce"])
     trust_chains = get_verified_trust_chains(consumer, consumer.context.issuer)
     trust_chain = trust_chains[0]
+    _thumbprint = session["thumbprint_in_cnf_jwk"]
+    wallet_entity = current_app.server["wallet"]
+    _args = {
+        "audience": consumer.context.issuer,
+        "thumbprint": _thumbprint,
+        "wallet_instance_attestation":
+            wallet_entity.context.wallet_instance_attestation[_thumbprint]["attestation"],
+        "signing_key": wallet_entity.keyjar.get_signing_key(kid=_thumbprint)[0]
+    }
+    _nonce = _req_args.get("nonce", "")
+    if _nonce:
+        _args["nonce"] = _nonce
+    _lifetime = consumer.context.config["conf"].get("jwt_lifetime")
+    if _lifetime:
+        _args["lifetime"] = _lifetime
+
     resp = consumer.do_request(
         "accesstoken",
         request_args={
-            "code": _args["code"],
+            "code": _req_args["code"],
             "grant_type": "authorization_code",
-            "redirect_uri": _args["redirect_uri"],
+            "redirect_uri": _req_args["redirect_uri"],
             "state": session["state"]
         },
-        endpoint=trust_chain.metadata['openid_credential_issuer']['token_endpoint'])
+        endpoint=trust_chain.metadata['openid_credential_issuer']['token_endpoint'],
+        state=session["state"],
+        **_args
+    )
 
     return render_template('token.html', response=resp)
 
@@ -229,7 +248,7 @@ def token():
 @entity.route('/credential')
 def credential():
     consumer = get_consumer(session["issuer"])
-    _args = consumer.context.cstate.get_set(session["state"], claim=["redirect_uri", "code"])
+    _req_args = consumer.context.cstate.get_set(session["state"], claim=["access_token"])
     trust_chains = get_verified_trust_chains(consumer, consumer.context.issuer)
     trust_chain = trust_chains[0]
     resp = consumer.do_request(
@@ -240,7 +259,10 @@ def credential():
                 "type": ["PersonIdentificationData"]
             }
         },
-        endpoint=trust_chain.metadata['openid_credential_issuer']['token_endpoint'])
+        access_token=_req_args["access_token"],
+        state=session["state"],
+        endpoint=trust_chain.metadata['openid_credential_issuer']['credential_endpoint']
+    )
 
     return render_template('credential.html', response=resp)
 

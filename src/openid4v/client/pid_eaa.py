@@ -116,7 +116,6 @@ class AccessToken(access_token.AccessToken):
     msg_type = oauth2.AccessTokenRequest
     response_cls = oauth2.AccessTokenResponse
     error_msg = oauth2.ResponseMessage
-    default_authn_method = "private_key_jwt"
     service_name = "accesstoken"
 
     _supports = {
@@ -127,6 +126,14 @@ class AccessToken(access_token.AccessToken):
 
     def __init__(self, upstream_get, conf: Optional[dict] = None, **kwargs):
         access_token.AccessToken.__init__(self, upstream_get, conf=conf, **kwargs)
+
+    def get_authn_method(self) -> str:
+        _context = self.upstream_get("context")
+        _methods = list(_context.client_authn_methods.keys())
+        if len(_methods) >= 1:
+            return _methods[0]
+
+        return self.default_authn_method
 
     def gather_verify_arguments(
             self, response: Optional[Union[dict, Message]] = None,
@@ -171,23 +178,9 @@ class AccessToken(access_token.AccessToken):
 
     def update_service_context(self, resp, key: Optional[str] = "", **kwargs):
         _cstate = self.upstream_get("context").cstate
-        try:
-            _idt = resp[verified_claim_name("id_token")]
-        except KeyError:
-            pass
-        else:
-            try:
-                if _cstate.get_base_key(_idt["nonce"]) != key:
-                    raise ParameterError('Someone has messed with "nonce"')
-            except KeyError:
-                raise ValueError("Invalid nonce value")
-
-            _cstate.bind_key(_idt["sub"], key)
-
-        if "expires_in" in resp:
-            resp["__expires_at"] = time_sans_frac() + int(resp["expires_in"])
-
-        _cstate.update(key, resp)
+        _ava = {k:v for k,v in resp.items() if k in {"token_type", "access_token", "c_nonce",
+                                                     "c_nonce_expires_in"}}
+        _cstate.update(key, _ava)
 
 
 

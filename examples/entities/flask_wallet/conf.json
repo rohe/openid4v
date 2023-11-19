@@ -64,7 +64,7 @@
     ],
     "entity_type": {
       "wallet": {
-        "class": "idpyoidc.client.oauth2.Client",
+        "class": "openid4v.client.Wallet",
         "kwargs": {
           "config": {
             "services": {
@@ -121,9 +121,6 @@
               }
             },
             "preference": {
-              "client_authn_methods": [
-                "private_key_jwt"
-              ],
               "response_types_supported": [
                 "code"
               ],
@@ -132,13 +129,7 @@
                 "form_post"
               ],
               "request_parameter_supported": true,
-              "request_uri_parameter_supported": true,
-              "token_endpoint_auth_methods_supported": [
-                "private_key_jwt"
-              ],
-              "token_endpoint_auth_signing_alg_values_supported": [
-                "ES256"
-              ]
+              "request_uri_parameter_supported": true
             },
             "services": {
               "pid_eaa_authorization": {
@@ -151,12 +142,18 @@
               },
               "pid_eaa_token": {
                 "class": "openid4v.client.pid_eaa.AccessToken",
-                "kwargs": {}
+                "kwargs": {
+                  "client_authn_methods": {
+                    "client_assertion": "openid4v.client.client_authn.ClientAuthenticationAttestation"
+                  }
+                }
               },
               "credential": {
                 "path": "credential",
                 "class": "openid4v.client.pid_eaa.Credential",
-                "kwargs": {}
+                "kwargs": {
+                  "client_auth_methods": ["bearer_header"]
+                }
               }
             }
           }
@@ -169,6 +166,7 @@
     "server_key": "certs/example.key",
     "cert_chain": null,
     "port": 5005,
-    "domain": "127.0.0.1"
+    "domain": "127.0.0.1",
+    "debug": true
   }
 }
