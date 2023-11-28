@@ -75,6 +75,7 @@
               "dpop_client_auth": "idpyoidc.server.oauth2.add_on.dpop.DPoPClientAuth",
               "wallet_instance_attestation": "openid4v.openid_credential_issuer.client_authn.WalletInstanceAttestation"
             },
+            "vct": "https://credentials.example.com/identity_credential",
             "keys": {
               "key_defs": [
                 {

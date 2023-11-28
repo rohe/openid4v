@@ -220,8 +220,11 @@ def service_endpoint(endpoint):
             }), 400)
     else:
         if request.data:
-            if isinstance(request.data, str):
-                req_args = request.data
+            if isinstance(request.data, (str, bytes)):
+                try:
+                    req_args = json.loads(request.data)
+                except Exception as err:
+                    req_args = request.data
             else:
                 req_args = request.data.decode()
         else:

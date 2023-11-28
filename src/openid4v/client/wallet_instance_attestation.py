@@ -1,11 +1,9 @@
 from typing import Callable
 from typing import Optional
 from typing import Union
-from urllib.parse import urlencode
 
 from cryptojwt import JWT
 from cryptojwt.jwk.ec import new_ec_key
-from cryptojwt.jws.jws import factory
 from fedservice.entity.function import apply_policies
 from fedservice.entity.function import collect_trust_chains
 from fedservice.entity.function import verify_trust_chains
@@ -68,36 +66,28 @@ class WalletInstanceAttestation(FederationService):
         else:
             return ""
 
-    def get_request_parameters(
-            self,
-            request_args: Optional[dict] = None,
-            authn_method: Optional[str] = "",
-            endpoint: Optional[str] = "",
-            **kwargs
-    ) -> dict:
+    def construct(self, request_args=None, **kwargs) -> Message:
         """
-        Builds the request message and constructs the HTTP headers.
+        Instantiate the request as a message class instance with
+        attribute values gathered in a pre_construct method or in the
+        gather_request_args method.
 
-        :param request_args: Message arguments
-        :param authn_method: Client authentication method
-        :param endpoint:
+        :param request_args:
         :param kwargs: extra keyword arguments
-        :return: List of entity IDs
+        :return: message class instance
         """
         wallet_unit = self.upstream_get("unit")
         keyjar = wallet_unit.context.keyjar
         ec_key = new_ec_key(crv="P-256", use="sig")
 
         entity_id = self.upstream_get("attribute", "entity_id")
+        self.thumbprint_in_cnf_jwk = ec_key.kid
 
-        keyjar.add_keys(issuer_id=entity_id, keys=[ec_key])
+        keyjar.add_keys(issuer_id=ec_key.kid, keys=[ec_key])
         keyjar.add_keys(issuer_id="", keys=[ec_key])
 
-        _jwt = JWT(key_jar=keyjar, sign_alg='ES256', iss=entity_id)
+        _jwt = JWT(key_jar=keyjar, sign_alg='ES256', iss=ec_key.kid)
         _jwt.with_jti = True
-
-        if not endpoint:
-            endpoint = self.get_endpoint()
 
         payload = request_args.copy()
         # Should have gotten nonce out-of-bounds
@@ -115,15 +105,13 @@ class WalletInstanceAttestation(FederationService):
         _jws = _jwt.pack(payload,
                          aud=self.wallet_provider_id,
                          kid=ec_key.kid,
-                         issuer_id=entity_id,
+                         issuer_id=ec_key.kid,
                          jws_headers={"typ": "wiar+jwt"}
                          )
 
-        _data = urlencode({
-            "assertion": _jws,
-            "grant_type": JWT_BEARER})
+        _data = WalletInstanceRequest(assertion=_jws, grant_type=JWT_BEARER)
 
-        return {"url": endpoint, 'method': self.http_method, "data": _data}
+        return _data
 
     def gather_verify_arguments(
             self, response: Optional[Union[dict, Message]] = None,
@@ -138,7 +126,7 @@ class WalletInstanceAttestation(FederationService):
         issuer = self.wallet_provider_id
 
         _fe = get_federation_entity(self)
-        if issuer not in _fe.trust_chain: # have to fetch trust chain
+        if issuer not in _fe.trust_chain:  # have to fetch trust chain
             self.get_trust_chains()
 
         wallet_unit = topmost_unit(self)["wallet"]

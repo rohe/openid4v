@@ -1,5 +1,7 @@
 import logging
 
+from cryptojwt.jws.jws import factory
+from idpysdjwt.verifier import display_sdjwt
 import werkzeug
 from cryptojwt import JWT
 from cryptojwt.utils import b64e
@@ -13,6 +15,8 @@ from flask import session
 from flask.helpers import send_from_directory
 from idpyoidc.client.defaults import CC_METHOD
 from idpyoidc.util import rndstr
+
+from openid4v.message import WalletInstanceAttestationJWT
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +62,8 @@ def wallet_provider():
 
 @entity.route('/wallet_instance_attestation')
 def wallet_instance_attestation():
+    # This is where the attestation request is constructed and sent to the Wallet Provider.
+    # And where the response is unpacked.
     wallet_entity = current_app.server["wallet"]
     wallet_provider_id = session["wallet_provider_id"]
 
@@ -67,10 +73,15 @@ def wallet_instance_attestation():
     _service.wallet_provider_id = wallet_provider_id
 
     request_args = {"nonce": rndstr(), "aud": wallet_provider_id}
+
+    # this is just to be able to show what's sent
     req_info = _service.get_request_parameters(
         request_args,
         endpoint=trust_chain.metadata['wallet_provider']['token_endpoint'])
+    _ra_jwt = factory(req_info["request"]["assertion"])
+    req_assertion = _ra_jwt.jwt.payload()
 
+    # This is where the request is actually sent
     resp = wallet_entity.do_request(
         "wallet_instance_attestation",
         request_args=request_args,
@@ -79,12 +90,16 @@ def wallet_instance_attestation():
     wallet_instance_attestation = resp["assertion"]
 
     _jwt = JWT(key_jar=wallet_entity.keyjar)
+    _jwt.msg_cls = WalletInstanceAttestationJWT
     _ass = _jwt.unpack(token=wallet_instance_attestation)
     session["thumbprint_in_cnf_jwk"] = _ass["cnf"]["jwk"]["kid"]
 
     return render_template('wallet_instance_attestation.html',
+                           req_assertion = req_assertion,
+                           request_headers=_ra_jwt.jwt.headers,
                            req_info=req_info,
-                           wallet_instance_attestation=_ass)
+                           wallet_instance_attestation=_ass,
+                           response_headers=_ass.jws_header)
 
 
 @entity.route('/picking_pid_issuer')
@@ -264,7 +279,9 @@ def credential():
         endpoint=trust_chain.metadata['openid_credential_issuer']['credential_endpoint']
     )
 
-    return render_template('credential.html', response=resp)
+    _jwt, _displ = display_sdjwt(resp["credential"])
+    return render_template('credential.html', response=resp, signed_jwt=_jwt,
+                           display=_displ)
 
 
 @entity.errorhandler(werkzeug.exceptions.BadRequest)

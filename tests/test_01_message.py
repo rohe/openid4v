@@ -3,14 +3,13 @@ import os
 from urllib.parse import quote_plus
 from urllib.parse import unquote_plus
 
-import pytest
 from cryptojwt import JWT
 from cryptojwt.jwt import utc_time_sans_frac
 from cryptojwt.key_jar import build_keyjar
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
+import pytest
 
 from openid4v.message import AuthorizationDetail
-from openid4v.message import ClaimsSupport
 from openid4v.message import CredentialDefinition
 from openid4v.message import CredentialIssuerMetadata
 from openid4v.message import CredentialMetadata

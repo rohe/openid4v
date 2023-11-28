@@ -13,11 +13,34 @@
     <dd>{{ value }}</dd>
     {% endfor %}
 </dl>
+<br>
+<h3>The Request Assertion: </h3>
+<dl>
+    {% for key, value in req_assertion.items() %}
+    <dt>{{ key }}</dt>
+    <dd>{{ value }}</dd>
+    {% endfor %}
+</dl>
+<h3>JWT headers</h3>
+<dl>
+    {% for key, value in request_headers.items() %}
+    <dt>{{ key }}</dt>
+    <dd>{{ value }}</dd>
+    {% endfor %}
+</dl>
+
 <hr>
 
 <h3>The Attestation Response (unpacked)</h3>
 <dl>
     {% for key, value in wallet_instance_attestation.items() %}
+    <dt>{{ key }}</dt>
+    <dd>{{ value }}</dd>
+    {% endfor %}
+</dl>
+<h3>JWT headers</h3>
+<dl>
+    {% for key, value in response_headers.items() %}
     <dt>{{ key }}</dt>
     <dd>{{ value }}</dd>
     {% endfor %}

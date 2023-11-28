@@ -102,6 +102,8 @@ class Token(Endpoint):
             "attested_security_context": "https://wallet-provider.example.org/LoA/basic",
             "type": "WalletInstanceAttestation",
         }
+        payload.update(self.upstream_get("unit").wallet_instance_discovery(req_args['iss']))
+
         keyjar = self.upstream_get("attribute", "keyjar")
         entity_id = self.upstream_get("attribute", "entity_id")
         sign_alg = kwargs.get("sign_alg", "ES256")

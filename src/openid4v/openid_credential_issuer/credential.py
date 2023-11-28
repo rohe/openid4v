@@ -109,15 +109,36 @@ class CredentialConstructor(object):
             lifetime=600,
             holder_key={}
         )
+        must_display = info.copy()
+
         _discl = self.calculate_attribute_disclosure(info)
         if _discl:
             ci.objective_disclosure = _discl
+            for part, spec in _discl.items():
+                if part == "":
+                    for key, val in spec.items():
+                        _val = must_display.get(key)
+                        if _val == val:
+                            del must_display[key]
+                        elif isinstance(_val, list) and val in _val:
+                            _val.remove(val)
+                else:
+                    _dict = must_display.get(part)
+                    if _dict:
+                        for key, val in spec.items():
+                            _val = _dict.get(key)
+                            if _val == val:
+                                del _dict[part][key]
+                            elif isinstance(_val, list) and val in _val:
+                                _val.remove(val)
+                    if dict == {}:
+                        del must_display[part]
 
         _discl = self.calculate_array_disclosure(info)
         if _discl:
             ci.array_disclosure = _discl
 
-        return ci.create_holder_message(payload=info, jws_headers={"typ": "example+sd-jwt"})
+        return ci.create_holder_message(payload=must_display, jws_headers={"typ": "example+sd-jwt"})
 
 
 class Credential(UserInfo):
