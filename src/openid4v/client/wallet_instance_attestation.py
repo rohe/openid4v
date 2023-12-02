@@ -80,7 +80,6 @@ class WalletInstanceAttestation(FederationService):
         keyjar = wallet_unit.context.keyjar
         ec_key = new_ec_key(crv="P-256", use="sig")
 
-        entity_id = self.upstream_get("attribute", "entity_id")
         self.thumbprint_in_cnf_jwk = ec_key.kid
 
         keyjar.add_keys(issuer_id=ec_key.kid, keys=[ec_key])
@@ -89,7 +88,11 @@ class WalletInstanceAttestation(FederationService):
         _jwt = JWT(key_jar=keyjar, sign_alg='ES256', iss=ec_key.kid)
         _jwt.with_jti = True
 
-        payload = request_args.copy()
+        if request_args:
+            payload = request_args.copy()
+        else:
+            payload = {}
+
         # Should have gotten nonce out-of-bounds
         if "nonce" not in payload:
             payload["nonce"] = rndstr()

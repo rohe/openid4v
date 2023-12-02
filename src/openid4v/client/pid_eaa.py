@@ -4,8 +4,6 @@ from typing import Union
 
 from cryptojwt import JWK
 from cryptojwt import JWT
-from cryptojwt import KeyJar
-from cryptojwt.jwk.asym import AsymmetricKey
 from cryptojwt.jwk.ec import new_ec_key
 from cryptojwt.jwk.rsa import new_rsa_key
 from cryptojwt.jws.utils import alg2keytype
@@ -19,10 +17,8 @@ from fedservice.entity.function import verify_trust_chains
 from fedservice.entity.service import FederationService
 from fedservice.entity.utils import get_federation_entity
 from idpyoidc import metadata
-from idpyoidc import verified_claim_name
 from idpyoidc.client.client_auth import get_client_authn_methods
 from idpyoidc.client.configure import Configuration
-from idpyoidc.client.exception import ParameterError
 from idpyoidc.client.oauth2 import access_token
 from idpyoidc.client.oauth2.utils import get_state_parameter
 from idpyoidc.client.oauth2.utils import pre_construct_pick_redirect_uri
@@ -35,7 +31,6 @@ from idpyoidc.message.oauth2 import AuthorizationResponse
 from idpyoidc.message.oauth2 import ResponseMessage
 from idpyoidc.metadata import get_signing_algs
 from idpyoidc.server.oauth2 import pushed_authorization
-from idpyoidc.time_util import time_sans_frac
 
 from openid4v.message import AuthorizationRequest
 from openid4v.message import CredentialResponse
@@ -178,13 +173,13 @@ class AccessToken(access_token.AccessToken):
 
     def update_service_context(self, resp, key: Optional[str] = "", **kwargs):
         _cstate = self.upstream_get("context").cstate
-        _ava = {k:v for k,v in resp.items() if k in {"token_type", "access_token", "c_nonce",
-                                                     "c_nonce_expires_in"}}
+        _ava = {k: v for k, v in resp.items() if k in {"token_type", "access_token", "c_nonce",
+                                                       "c_nonce_expires_in"}}
         _cstate.update(key, _ava)
 
 
-
 class PushedAuthorization(pushed_authorization.PushedAuthorization):
+    default_authn_method = "client_secret_basic"
 
     def __init__(self, upstream_get, **kwargs):
         pushed_authorization.PushedAuthorization.__init__(self, upstream_get, **kwargs)
