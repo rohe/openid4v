@@ -127,6 +127,10 @@ class WalletInstanceAttestation(ClientAssertion):
                                                   self,
                                                   self.attestation_class)
 
+        # Should be a key in there
+        _jwk = _wia["cnf"]["jwk"]
+        _keyjar.import_jwks({"keys":[_jwk]}, _wia["sub"])
+
         # have already saved the key that comes in the wia
         _verifier = JWT(_keyjar)
 
@@ -140,5 +144,8 @@ class WalletInstanceAttestation(ClientAssertion):
 
         if isinstance(_pop, Message):
             _pop.verify()
+
+        # Dynamically add/register client
+        oci.context.cdb[_wia["sub"]] = {"client_id": _wia["sub"]}
 
         return {"client_id": _wia["sub"], "jwt": _wia}
