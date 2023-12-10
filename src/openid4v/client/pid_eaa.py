@@ -123,10 +123,16 @@ class AccessToken(access_token.AccessToken):
         access_token.AccessToken.__init__(self, upstream_get, conf=conf, **kwargs)
 
     def get_authn_method(self) -> str:
-        _context = self.upstream_get("context")
-        _methods = list(_context.client_authn_methods.keys())
+        _methods = getattr(self, "client_authn_methods", None)
+        if not _methods:
+            _context = self.upstream_get("context")
+            _methods = list(_context.client_authn_methods.keys())
+
         if len(_methods) >= 1:
-            return _methods[0]
+            if isinstance(_methods, dict):
+                return list(_methods.keys())[0]
+            else:
+                return _methods[0]
 
         return self.default_authn_method
 
