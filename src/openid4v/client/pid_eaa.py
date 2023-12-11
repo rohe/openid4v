@@ -262,3 +262,17 @@ class Credential(FederationService):
         # static for the time being
         request_args["proof"] = {"proof_type": "jwt", "jwt": self.create_key_proof_JWT(**kwargs)}
         return request_args, {}
+
+    def get_authn_method(self) -> str:
+        _methods = getattr(self, "client_authn_methods", None)
+        if not _methods:
+            _context = self.upstream_get("context")
+            _methods = list(_context.client_authn_methods.keys())
+
+        if len(_methods) >= 1:
+            if isinstance(_methods, dict):
+                return list(_methods.keys())[0]
+            else:
+                return _methods[0]
+
+        return self.default_authn_method

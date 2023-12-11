@@ -4,7 +4,9 @@ from typing import Union
 from cryptojwt import JWT
 from cryptojwt import KeyJar
 from cryptojwt.jwk.asym import AsymmetricKey
+from idpyoidc.client.client_auth import BearerHeader
 from idpyoidc.client.client_auth import ClientAuthnMethod
+from idpyoidc.client.client_auth import find_token_info
 from idpyoidc.message import Message
 
 from openid4v import ASSERTION_TYPE
@@ -56,3 +58,42 @@ class ClientAuthenticationAttestation(ClientAuthnMethod):
             payload["nonce"] = nonce
 
         return _signer.pack(payload, kid=signing_key.kid)
+
+class DPoPHeader(ClientAuthnMethod):
+    """The bearer header authentication method."""
+
+    def construct(self, request=None, service=None, http_args=None, **kwargs):
+        """
+        Constructing the Authorization header. The value of
+        the Authorization header is "DPoP <access_token>".
+
+        :param request: Request class instance
+        :param service: The service this authentication method applies to.
+        :param http_args: HTTP header arguments
+        :param kwargs: extra keyword arguments
+        :return:
+        """
+
+        _token_type = "access_token"
+
+        _token_info = find_token_info(request, _token_type, service, **kwargs)
+
+        if not _token_info:
+            raise KeyError("No bearer token available")
+        if _token_info["token_type"] not in ["Bearer", "DPoP"]:
+            raise ValueError("Wrong token type")
+
+        # The authorization value starts with DPoP
+        _bearer = f"DPoP {_token_info[_token_type]}"
+
+        # Add 'Authorization' to the headers
+        if http_args is None:
+            http_args = {"headers": {}}
+            http_args["headers"]["Authorization"] = _bearer
+        else:
+            try:
+                http_args["headers"]["Authorization"] = _bearer
+            except KeyError:
+                http_args["headers"] = {"Authorization": _bearer}
+
+        return http_args

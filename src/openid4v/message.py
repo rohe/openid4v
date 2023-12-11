@@ -265,8 +265,23 @@ class CredentialRequest(Message):
 
     def verify(self, **kwargs):
         super().verify(**kwargs)
+        if "credential_response_encryption_alg" in self:
+            if "credential_response_encryption_enc" not in self:
+                self["credential_response_encryption_enc"] = "A256GCM"
+        if "credential_response_encryption_enc" in self:
+            if "credential_response_encryption_alg" not in self:
+                raise MissingAttribute(
+                    "Missing credential_response_encryption_alg specification")
+
         if "proof" in self:
-            self["proof"].verify(**kwargs)
+            _proof = self["proof"]
+            if "proof_type" not in _proof:
+                raise MissingAttribute("Missing proof_type in proof")
+            if _proof["proof_type"] == "jwt":
+                if "jwt" not in _proof:
+                    raise MissingAttribute("Expected 'jwt' claim")
+                _jwt_proof = JwtKeyProof().from_jwt(_proof["jwt"], kwargs.get("keyjar"))
+
         if "credential_encryption_jwk" in self:
             # Verify that it is a JWK
             self["_key"] = key_from_jwk_dict(self["credential_encryption_jwk"])
@@ -675,31 +690,31 @@ class JwtKeyJOSEHeader(Message):
     }
 
 
-class CredentialRequest(Message):
-    c_param = {
-        "format": SINGLE_REQUIRED_STRING,
-        "proof": SINGLE_OPTIONAL_JSON,
-        "credential_encryption_jwk": SINGLE_OPTIONAL_JSON,
-        "credential_response_encryption_alg": SINGLE_OPTIONAL_STRING,
-        "credential_response_encryption_enc": SINGLE_OPTIONAL_STRING
-    }
-
-    def verify(self, **kwargs):
-        if "credential_response_encryption_alg" in self:
-            if "credential_response_encryption_enc" not in self:
-                self["credential_response_encryption_enc"] = "A256GCM"
-        if "credential_response_encryption_enc" in self:
-            if "credential_response_encryption_alg" not in self:
-                raise MissingAttribute("Missing credential_response_encryption_alg specification")
-
-        if "proof" in self:
-            _proof = self["proof"]
-            if "proof_type" not in _proof:
-                raise MissingAttribute("Missing proof_type in proof")
-            if _proof["proof_type"] == "jwt":
-                if "jwt" not in _proof:
-                    raise MissingAttribute("Expected 'jwt' claim")
-                _jwt_proof = JwtKeyProof().from_jwt(_proof["jwt"], kwargs.get("keyjar"))
+# class CredentialRequest(Message):
+#     c_param = {
+#         "format": SINGLE_REQUIRED_STRING,
+#         "proof": SINGLE_OPTIONAL_JSON,
+#         "credential_encryption_jwk": SINGLE_OPTIONAL_JSON,
+#         "credential_response_encryption_alg": SINGLE_OPTIONAL_STRING,
+#         "credential_response_encryption_enc": SINGLE_OPTIONAL_STRING
+#     }
+#
+#     def verify(self, **kwargs):
+#         if "credential_response_encryption_alg" in self:
+#             if "credential_response_encryption_enc" not in self:
+#                 self["credential_response_encryption_enc"] = "A256GCM"
+#         if "credential_response_encryption_enc" in self:
+#             if "credential_response_encryption_alg" not in self:
+#                 raise MissingAttribute("Missing credential_response_encryption_alg specification")
+#
+#         if "proof" in self:
+#             _proof = self["proof"]
+#             if "proof_type" not in _proof:
+#                 raise MissingAttribute("Missing proof_type in proof")
+#             if _proof["proof_type"] == "jwt":
+#                 if "jwt" not in _proof:
+#                     raise MissingAttribute("Expected 'jwt' claim")
+#                 _jwt_proof = JwtKeyProof().from_jwt(_proof["jwt"], kwargs.get("keyjar"))
 
 
 MAP_TYP_MSG = {
