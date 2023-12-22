@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 from typing import Union
 
@@ -9,6 +10,7 @@ from cryptojwt.exception import MissingKey
 from cryptojwt.jws.jws import factory
 from fedservice.entity import get_verified_trust_chains
 from fedservice.entity.function import verify_trust_chains
+from fedservice.exception import NoTrustedChains
 from idpyoidc.message import Message
 from idpyoidc.message.oidc import JsonWebToken
 from idpyoidc.node import topmost_unit
@@ -18,6 +20,7 @@ from idpyoidc.server.exception import ClientAuthenticationError
 from openid4v import ASSERTION_TYPE
 from openid4v.message import WalletInstanceAttestationJWT
 
+logger = logging.getLogger(__name__)
 
 def verify_wallet_instance_attestation(client_assertion, keyjar, unit, attestation_class):
     _jws = factory(client_assertion)
@@ -35,6 +38,9 @@ def verify_wallet_instance_attestation(client_assertion, keyjar, unit, attestati
                 _entity_conf = chains[0].verified_chain[-1]
                 keyjar.import_jwks(_entity_conf["metadata"]["wallet_provider"]["jwks"],
                                    _entity_conf["sub"])
+            else:
+                logger.debug(f"Found no Trust Chains for {_payload['iss']}")
+                raise NoTrustedChains(_payload['iss'])
 
     _verifier = JWT(keyjar)
     if attestation_class:
@@ -81,11 +87,20 @@ class ClientAssertion(ClientAuthnMethod):
 
         # Automatic registration
         _cinfo = {k: v for k, v in _wia.items() if k not in JsonWebToken.c_param.keys()}
-        _cinfo["client_id"] = _wia["sub"]
-        oci.context.cdb[_wia["sub"]] = _cinfo
+        _client_id = _wia["sub"]
+        _cinfo["client_id"] = _client_id
+
+        # Add info from the request
+        if "redirect_uri" in request:
+            _cinfo["redirect_uris"] = [request["redirect_uri"]]
+        if "response_type" in request:
+            _cinfo["response_types"] = [" ".join(request["response_type"])]
+
+        oci.context.cdb[_client_id] = _cinfo
         # register under both names
-        _cinfo["client_id"] = request["client_id"]
-        oci.context.cdb[request["client_id"]] = _cinfo
+        if request["client_id"] != _client_id:
+            oci.context.cdb[request["client_id"]] = _cinfo
+        logger.debug(f"Storing the following client information about {_client_id}: {_cinfo}")
 
         # adding wallet key to keyjar
         _jwk = _wia["cnf"]["jwk"]

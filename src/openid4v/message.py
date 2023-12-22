@@ -240,8 +240,11 @@ class CredentialDefinition(Message):
             self["credentialSubject"].verify(**kwargs)
 
 
-def cred_def_deser(val, sformat="dict"):
-    return deserialize_from_one_of(val, CredentialDefinition, sformat)
+def cred_def_deser(val, sformat="json"):
+    if sformat == "dict":
+        return deserialize_from_one_of(val, CredentialDefinition, "dict")
+    else:
+        return deserialize_from_one_of(val, CredentialDefinition, "json")
 
 
 SINGLE_REQUIRED_CREDENTIAL_DEFINITION = (
@@ -354,6 +357,10 @@ def auth_detail_list_deser(val, sformat="dict"):
     if isinstance(val, list):
         return [auth_detail_deser(v, sformat) for v in val]
     else:
+        if val.startswith("[") and val.endswith("]"):
+            val = val[2:-2].split(",")
+            return [auth_detail_deser(v, sformat) for v in val]
+
         return [auth_detail_deser(val, sformat)]
 
 

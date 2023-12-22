@@ -3,13 +3,14 @@ import os
 from urllib.parse import quote_plus
 from urllib.parse import unquote_plus
 
+import pytest
 from cryptojwt import JWT
 from cryptojwt.jwt import utc_time_sans_frac
 from cryptojwt.key_jar import build_keyjar
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
-import pytest
 
 from openid4v.message import AuthorizationDetail
+from openid4v.message import AuthorizationRequest
 from openid4v.message import CredentialDefinition
 from openid4v.message import CredentialIssuerMetadata
 from openid4v.message import CredentialMetadata
@@ -284,3 +285,34 @@ def test_credential_issuer_metadata():
     assert len(metadata["credentials_supported"]) == 2
     # One I can deal with
     assert len([c for c in metadata["credentials_supported"] if c["format"] == "jwt_vc"]) == 2
+
+
+def test_authorization_details():
+    authz_req = {
+        'authorization_details': [
+            {
+                'type': "openid_credential",
+                "format": "vc+sd-jwt",
+                "credential_definition": {
+                    "type": "PersonIdentificationData"}
+            }
+        ],
+        'response_type': 'code', 'client_id': 'YWw5eXVhMElfNWVQZXB4ZVdBTTFxaDNEdXZDOWxNUklGaWhQUTAtNmpOaw',
+        'redirect_uri': 'https://127.0.0.1:5005/authz_cb/qoY_THoYZlRRJXth_314qanSMpn_9MFe1uGV7TF5K4M',
+        'client_assertion': 'eyJ0eXAiOiJ3YWxsZXQtYXR0ZXN0YXRpb24rand0IiwiYWxnIjoiRVMyNTYiLCJraWQiOiJNWGRxT1RoZk5URkJiVEJTZERKU04ydHJkbmh0UzFGc1RXUjZjM0JYZWxWaFNYaGFPV0phWTBGNGF3In0.eyJzdWIiOiAiWVd3NWVYVmhNRWxmTldWUVpYQjRaVmRCVFRGeGFETkVkWFpET1d4TlVrbEdhV2hRVVRBdE5tcE9hdyIsICJjbmYiOiB7Imp3ayI6IHsia3R5IjogIkVDIiwgInVzZSI6ICJzaWciLCAia2lkIjogIllXdzVlWFZoTUVsZk5XVlFaWEI0WlZkQlRURnhhRE5FZFhaRE9XeE5Va2xHYVdoUVVUQXRObXBPYXciLCAiY3J2IjogIlAtMjU2IiwgIngiOiAiTFJrMFN4Q2VQeFNZZmY0RENuRzJDcXFUMnVZODB2UUZZcDVuY0U3dzRSdyIsICJ5IjogIlM0WnpETVROWXVlVXpTYVVHdEJfb3NCUzhjNUVaaUZZSkxUdXc4RnBXVEEifX0sICJhdHRlc3RlZF9zZWN1cml0eV9jb250ZXh0IjogImh0dHBzOi8vd2FsbGV0LXByb3ZpZGVyLmV4YW1wbGUub3JnL0xvQS9iYXNpYyIsICJ0eXBlIjogIldhbGxldEluc3RhbmNlQXR0ZXN0YXRpb24iLCAiYWFsIjogImh0dHBzOi8vdHJ1c3QtbGlzdC5ldS9hYWwvaGlnaCIsICJpc3MiOiAiaHR0cHM6Ly8xMjcuMC4wLjE6NDAwMCIsICJpYXQiOiAxNzAzMTc3MzUyLCAiZXhwIjogMTcwMzE4MDk1MiwgImF1ZCI6ICJZV3c1ZVhWaE1FbGZOV1ZRWlhCNFpWZEJUVEZ4YURORWRYWkRPV3hOVWtsR2FXaFFVVEF0Tm1wT2F3IiwgImp0aSI6ICJiNDU4Yzc0NjM2OTE0OTM4YWVkM2U0NGM2ZDAwZTY1YyJ9.bHYoA0aoEDrshjBW5h-XgR_-zTRjneEJTf45bua7TAmuZS2VUcxEFbuKI1fJtkMZWrr8Xkl46uVCm_3Pwsef8Q',
+        'state': 'abuPlQ2kGv4FLfyV6KgPtqCbi8g2tbcH', 'code_challenge': 'tP0BUBkSheFNRQSPKat7877UyTuQHBZpelqGgoemAcY',
+        'code_challenge_method': 'S256',
+        'client_assertion_type': 'urn:ietf:params:oauth:client-assertion-type:jwt-client-attestation'}
+
+    areq = AuthorizationRequest(**authz_req)
+    _str = areq.to_urlencoded()
+    areq_after = AuthorizationRequest().from_urlencoded(_str)
+    assert areq_after
+
+
+def test_authorization_details():
+    _info = [{'type': 'openid_credential', 'format': 'vc+sd-jwt',
+              'credential_definition': {'type': ['PersonIdentificationData']}}]
+
+    adl = [AuthorizationDetail(**item) for item in _info]
+    assert adl
