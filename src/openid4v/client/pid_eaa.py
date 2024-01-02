@@ -191,7 +191,7 @@ class PushedAuthorization(pushed_authorization.PushedAuthorization):
         pushed_authorization.PushedAuthorization.__init__(self, upstream_get, **kwargs)
 
 
-class Credential(FederationService):
+class Credential(Service):
     msg_type = CredentialsSupported
     # msg_type = Message
     response_cls = CredentialResponse
@@ -206,8 +206,22 @@ class Credential(FederationService):
     default_authn_method = "bearer_header"
 
     def __init__(self, upstream_get, conf=None):
-        FederationService.__init__(self, upstream_get, conf=conf)
+        Service.__init__(self, upstream_get, conf=conf)
         self.pre_construct.append(self.create_proof)
+
+    def get_authn_method(self) -> str:
+        _methods = getattr(self, "client_authn_methods", None)
+        if not _methods:
+            _context = self.upstream_get("context")
+            _methods = list(_context.client_authn_methods.keys())
+
+        if len(_methods) >= 1:
+            if isinstance(_methods, dict):
+                return list(_methods.keys())[0]
+            else:
+                return _methods[0]
+
+        return self.default_authn_method
 
     def create_key_proof_JWT(self,
                              aud: Optional[str] = "",

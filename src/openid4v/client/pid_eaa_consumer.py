@@ -60,7 +60,7 @@ class PidEaaHandler(Unit):
         else:
             self.httpc = request
 
-        self.httpc_params = httpc_params
+        self.httpc_params = httpc_params or config.get("httpc_params", {})
         self.kwargs = kwargs
 
         Unit.__init__(self,

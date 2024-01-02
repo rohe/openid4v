@@ -4,7 +4,6 @@ from typing import Union
 from cryptojwt import JWT
 from cryptojwt import KeyJar
 from cryptojwt.jwk.asym import AsymmetricKey
-from idpyoidc.client.client_auth import BearerHeader
 from idpyoidc.client.client_auth import ClientAuthnMethod
 from idpyoidc.client.client_auth import find_token_info
 from idpyoidc.message import Message

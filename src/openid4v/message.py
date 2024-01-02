@@ -34,6 +34,9 @@ from idpyoidc.message.oidc import SINGLE_OPTIONAL_BOOLEAN
 from idpyoidc.message.oidc.identity_assurance import REQUIRED_VERIFIED_CLAIMS
 from idpysdjwt.holder import Holder
 
+from openid4v import extract_key_from_jws
+from openid4v import jws_issuer
+
 
 class ProofToken(JsonWebToken):
     c_param = {
@@ -255,26 +258,32 @@ SINGLE_OPTIONAL_CREDENTIAL_DEFINITION = (
 )
 
 
+class CredentialResponseEncryption(Message):
+    c_param = {
+        "jwk": SINGLE_REQUIRED_STRING,
+        "alg": SINGLE_REQUIRED_STRING,
+        "enc": SINGLE_REQUIRED_STRING
+    }
+
 class CredentialRequest(Message):
     c_param = {
         "format": SINGLE_REQUIRED_STRING,
         "proof": SINGLE_OPTIONAL_PROOF,
-        "credential_encryption_jwk": SINGLE_OPTIONAL_JSON,
-        "credential_response_encryption_alg": SINGLE_OPTIONAL_STRING,
-        "credential_response_encryption_enc": SINGLE_OPTIONAL_STRING
-        # "doc_type": SINGLE_OPTIONAL_STRING,
-        # "claims": SINGLE_OPTIONAL_CLAIMS
+        "credential_response_encryption": SINGLE_OPTIONAL_JSON,
+        "credential_identifier": SINGLE_OPTIONAL_STRING
     }
 
     def verify(self, **kwargs):
         super().verify(**kwargs)
-        if "credential_response_encryption_alg" in self:
-            if "credential_response_encryption_enc" not in self:
-                self["credential_response_encryption_enc"] = "A256GCM"
-        if "credential_response_encryption_enc" in self:
-            if "credential_response_encryption_alg" not in self:
-                raise MissingAttribute(
-                    "Missing credential_response_encryption_alg specification")
+        _cre_spec = self.get("credential_response_encryption", None)
+        if _cre_spec:
+            if isinstance(_cre_spec, str):
+                _cre = CredentialResponseEncryption(**json.loads(_cre_spec))
+            else:
+                _cre = CredentialResponseEncryption(**_cre_spec)
+            _cre.verify()
+            self["credential_response_encryption"] = _cre
+            self["_key"] = key_from_jwk_dict(_cre["jwk"])
 
         if "proof" in self:
             _proof = self["proof"]
@@ -283,11 +292,13 @@ class CredentialRequest(Message):
             if _proof["proof_type"] == "jwt":
                 if "jwt" not in _proof:
                     raise MissingAttribute("Expected 'jwt' claim")
-                _jwt_proof = JwtKeyProof().from_jwt(_proof["jwt"], kwargs.get("keyjar"))
+                _keyjar = kwargs.get("keyjar")
+                _key = extract_key_from_jws(_proof["jwt"])
+                _iss = jws_issuer(_proof["jwt"])
+                _keyjar.add_keys(_iss, [_key])
+                _jwt_proof = JwtKeyProof().from_jwt(_proof["jwt"], _keyjar)
 
-        if "credential_encryption_jwk" in self:
-            # Verify that it is a JWK
-            self["_key"] = key_from_jwk_dict(self["credential_encryption_jwk"])
+
 
 
 class CredentialRequestJwtVcJson(CredentialRequest):

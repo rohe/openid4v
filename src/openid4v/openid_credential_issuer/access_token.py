@@ -22,7 +22,7 @@ LOGGER = logging.getLogger(__name__)
 class Token(Endpoint):
     """The access token service."""
 
-    msg_type = message.AccessTokenRequest
+    request_cls = message.AccessTokenRequest
     response_cls = message.AccessTokenResponse
     error_msg = ResponseMessage
     error_cls = TokenErrorResponse

@@ -58,7 +58,7 @@ CONF = {
                         "dpop_client_auth": "idpyoidc.server.oauth2.add_on.dpop.DPoPClientAuth",
                         "wallet_instance_attestation":
                             "openid4v.openid_credential_issuer.client_authn"
-                            ".WalletInstanceAttestation"
+                            ".ClientAuthenticationAttestation"
                     },
                     "keys": {
                         "key_defs": [
@@ -336,10 +336,145 @@ CONF = {
     }
 }
 
+WALLET_CONF ={
+    "entity_id": "https://127.0.0.1:5005",
+    "httpc_params": {
+      "verify": False
+    },
+    "key_config": {
+      "key_defs": [
+        {
+          "type": "RSA",
+          "use": [
+            "sig"
+          ]
+        },
+        {
+          "type": "EC",
+          "crv": "P-256",
+          "use": [
+            "sig"
+          ]
+        }
+      ]
+    },
+    "trust_anchors": "file:trust_anchors.json",
+    "services": [
+      "entity_configuration",
+      "entity_statement",
+      "list",
+      "trust_mark_status"
+    ],
+    "entity_type": {
+      "wallet": {
+        "class": "openid4v.client.Wallet",
+        "kwargs": {
+          "config": {
+            "services": {
+              "wallet_instance_attestation": {
+                "class": "openid4v.client.wallet_instance_attestation.WalletInstanceAttestation"
+              }
+            }
+          },
+          "key_conf": {
+            "key_defs": [
+              {
+                "type": "EC",
+                "crv": "P-256",
+                "use": [
+                  "sig"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "pid_eaa_consumer": {
+        "class": "openid4v.client.pid_eaa_consumer.PidEaaHandler",
+        "kwargs": {
+          "config": {
+            "add_ons": {
+              "pkce": {
+                "function": "idpyoidc.client.oauth2.add_on.pkce.add_support",
+                "kwargs": {
+                  "code_challenge_length": 64,
+                  "code_challenge_method": "S256"
+                }
+              },
+              "dpop": {
+                "function": "idpyoidc.client.oauth2.add_on.dpop.add_support",
+                "kwargs": {
+                  "dpop_signing_alg_values_supported": [
+                    "ES256"
+                  ]
+                }
+              },
+              "pushed_authorization": {
+                "function": "idpyoidc.client.oauth2.add_on.par.add_support",
+                "kwargs": {
+                  "body_format": "urlencoded",
+                  "signing_algorithm": "RS256",
+                  "merge_rule": "lax",
+                  "authn_method": {
+                    "client_assertion": {
+                      "class": "openid4v.client.client_authn.ClientAssertion"
+                    }
+                  }
+                }
+              }
+            },
+            "preference": {
+              "response_types_supported": [
+                "code"
+              ],
+              "response_modes_supported": [
+                "query",
+                "form_post"
+              ],
+              "request_parameter_supported": True,
+              "request_uri_parameter_supported": True
+            },
+            "services": {
+              "pid_eaa_authorization": {
+                "class": "openid4v.client.pid_eaa.Authorization",
+                "kwargs": {
+                  "client_authn_methods": {
+                    "client_assertion": "openid4v.client.client_authn.ClientAssertion"
+                  }
+                }
+              },
+              "pid_eaa_token": {
+                "class": "openid4v.client.pid_eaa.AccessToken",
+                "kwargs": {
+                  "client_authn_methods": {
+                    "client_assertion": "openid4v.client.client_authn.ClientAuthenticationAttestation"
+                  }
+                }
+              },
+              "credential": {
+                "path": "credential",
+                "class": "openid4v.client.pid_eaa.Credential",
+                "kwargs": {
+                  "client_auth_methods": ["bearer_header"]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 
 def test_create():
-    entity = make_federation_combo(**CONF)
-    oic = entity["openid_credential_issuer"]
+    server = make_federation_combo(**CONF)
+    oic = server["openid_credential_issuer"]
+
+    wallet = make_federation_combo(**WALLET_CONF)
+    _handler = wallet["pid_eaa_consumer"]
+    _actor = _handler.get_consumer(oic.context.entity_id)
+    if _actor is None:
+        _actor = _handler.new_consumer(oic.context.entity_id)
+
     endpoint = oic.get_endpoint("credential")
     request = {'format': 'vc+sd-jwt',
                'credential_definition': {'type': ['PersonIdentificationData']}}
