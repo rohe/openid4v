@@ -6,7 +6,7 @@ from fedservice.combo import FederationCombo
 from fedservice.utils import make_federation_combo
 from idpyoidc.util import load_config_file
 
-from utils import load_values_from_file
+from tests import load_values_from_file
 
 subdir = sys.argv[1]
 config_file =  sys.argv[2]

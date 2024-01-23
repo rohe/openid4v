@@ -1,4 +1,11 @@
+import os
+
 from fedservice.utils import make_federation_combo
+BASEDIR = os.path.abspath(os.path.dirname(__file__))
+
+
+def full_path(local_file):
+    return os.path.join(BASEDIR, local_file)
 
 CONF = {
     "entity_id": "https://127.0.0.1:5001",
@@ -276,7 +283,7 @@ CONF = {
                     "userinfo": {
                         "class": "idpyoidc.server.user_info.UserInfo",
                         "kwargs": {
-                            "db_file": "users.json"
+                            "db_file": full_path("users.json")
                         }
                     },
                     "authz": {
@@ -358,7 +365,20 @@ WALLET_CONF ={
         }
       ]
     },
-    "trust_anchors": "file:trust_anchors.json",
+    "trust_anchors": {
+        "https://127.0.0.1:7001": {
+            "keys": [
+                {"kty": "RSA", "use": "sig",
+                 "kid":
+                     "cGE4b3Q2ZWpLWk1TUDdiLTlkREwybVBOLTlFVjVWWlRIVG1uaklSYTBBdw",
+                 "n":
+                     "jvhiHm-DYFUOv3Qc_KfycsEvE5Njuc4sSQMs1HCpwztGJbRLMNr9F424T9szvPsqAGGJjsbOCnmQj2RgpDS5R5smDF7CBsNtYpsqk-OUKzUru5UrmdAVQEavDHPSEBeZrj-DMdqpKxxCncVCda8wqKhQUWw6HZL7WD9rBKFi1ZfTXMNWCYGgiyeOdc8QBexCXtyohgEUeGRZvDVAc7bsVeLfVoeIBquh7URW3Dh8vmG6Hf0Hlr34nVyOpvLiG7qBAfkM8Jg-EY_Z3IjyIDJUX9ADh7fPTcGA1iKXgxR7DY48MbvWqa6pFUFNWYx0ehRXMb20_6xWN7ZviCFP83L7kw",
+                 "e": "AQAB"},
+                {"kty": "EC", "use": "sig",
+                 "kid": "Z0RPTmdSQkhkb2VtdmhPMlNBdm1ZUi1NdTR2eEtvS2c1bkVSTUNpVFdzOA",
+                 "crv": "P-256",
+                 "x": "PWFFcxsLL9TML_sKWVsywOn5FArRBysXIuvCuObxcL0",
+                 "y": "UP3Tqem0ZRwuufo-9zkMawJ2pW_MJjvyFBxSWFj3r-0"}]}},
     "services": [
       "entity_configuration",
       "entity_statement",
@@ -465,7 +485,7 @@ WALLET_CONF ={
     }
   }
 
-def test_create():
+def test_create_id_token():
     server = make_federation_combo(**CONF)
     oic = server["openid_credential_issuer"]
 

@@ -170,11 +170,9 @@ class ClientAssertion(ClientAuthnMethod):
 class ClientAuthenticationAttestation(ClientAuthnMethod):
     # based on https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-01.html
     tag = "client_authentication_attestation"
-
     assertion_type = "urn:ietf:params:oauth:client-assertion-type:jwt-client-attestation"
-
     attestation_class = {"wallet-attestation+jwt": WalletInstanceAttestationJWT}
-
+    metadata = {}
     def is_usable(self, request=None, authorization_token=None):
         if request is None:
             return False
@@ -221,6 +219,13 @@ class ClientAuthenticationAttestation(ClientAuthnMethod):
             _pop.verify()
 
         # Dynamically add/register client
-        oci.context.cdb[_wia["sub"]] = {"client_id": _wia["sub"]}
+        _c_info = {"client_id": _wia["sub"]}
+        # Add metadata from the WIE/WIA
+        for key, val in self.metadata.items():
+            _val = _wia.get(key, None)
+            if _val:
+                _c_info[key] = _val
+
+        oci.context.cdb[_wia["sub"]] = _c_info
 
         return {"client_id": _wia["sub"], "jwt": _wia}

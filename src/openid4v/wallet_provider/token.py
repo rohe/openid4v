@@ -1,5 +1,4 @@
 """Implements the service that talks to the Access Token endpoint."""
-import json
 import logging
 from typing import Optional
 from typing import Union
@@ -8,6 +7,7 @@ from urllib.parse import parse_qs
 from cryptojwt import JWT
 from cryptojwt.jwk.jwk import key_from_jwk_dict
 from cryptojwt.jws.jws import factory
+from fedservice.entity import get_verified_trust_chains
 from idpyoidc import verified_claim_name
 from idpyoidc.client.client_auth import get_client_authn_methods
 from idpyoidc.defaults import JWT_BEARER
@@ -21,6 +21,10 @@ from openid4v.message import WalletInstanceRequest
 from openid4v.message import WalletInstanceRequestJWT
 
 LOGGER = logging.getLogger(__name__)
+
+
+class InvalidNonce(ValueError):
+    pass
 
 
 class Token(Endpoint):
@@ -77,9 +81,17 @@ class Token(Endpoint):
         if isinstance(request, str):  # json
             request = {k: v[0] for k, v in parse_qs(request).items()}
 
-        request[verified_claim_name("assertion")] = self.verify_self_signed_signature(
-            request["assertion"])
+        _ver_request = self.verify_self_signed_signature(request["assertion"])
+        request[verified_claim_name("assertion")] = _ver_request
 
+        if 'nonce' in _ver_request:
+            # Find the AppAttestation endpoint in the same server
+            app_attestation = self.upstream_get("unit").get_endpoint("app_attestation")
+            iccid = app_attestation.attestation_service.verify_nonce(_ver_request["nonce"])
+
+            if not iccid:
+                raise InvalidNonce("Nonce invalid")
+            request["__iccid"] = iccid
         return request
 
     def process_request(self, request: Optional[Union[Message, dict]] = None, **kwargs):
@@ -107,7 +119,7 @@ class Token(Endpoint):
         keyjar = self.upstream_get("attribute", "keyjar")
         entity_id = self.upstream_get("attribute", "entity_id")
         sign_alg = kwargs.get("sign_alg", "ES256")
-        lifetime = kwargs.get("lifetime", 3600)
+        lifetime = kwargs.get("lifetime", 86400)
         _signer = JWT(key_jar=keyjar, sign_alg=sign_alg, iss=entity_id, lifetime=lifetime)
         _signer.with_jti = True
 
@@ -115,6 +127,10 @@ class Token(Endpoint):
         _trust_chain = kwargs.get("trust_chain")
         if _trust_chain:
             _jws_header["trust_chain"] = _trust_chain
+        else: # Collect Trust Chain
+            _trust_chains = get_verified_trust_chains(self, entity_id=entity_id)
+            if len(_trust_chains) >= 1:
+                _jws_header["trust_chain"] = _trust_chains[0].chain
 
         _wallet_instance_attestation = _signer.pack(payload,
                                                     aud=req_args['iss'],

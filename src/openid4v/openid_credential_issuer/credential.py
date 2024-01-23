@@ -1,16 +1,11 @@
 import logging
-from datetime import datetime
 from typing import Optional
 from typing import Union
 
-from cryptojwt import JWT
-from cryptojwt.jws.jws import factory
-from cryptojwt.jwt import utc_time_sans_frac
 from fedservice.entity.utils import get_federation_entity
 from idpyoidc.exception import RequestError
 from idpyoidc.message import Message
 from idpyoidc.message import oidc
-from idpyoidc.message.oauth2 import ResponseMessage
 from idpyoidc.server import Endpoint
 from idpyoidc.server.util import execute
 from idpyoidc.util import rndstr
@@ -19,8 +14,6 @@ from idpysdjwt.issuer import Issuer
 from openid4v.message import CredentialDefinition
 from openid4v.message import CredentialRequest
 from openid4v.message import CredentialResponse
-from openid4v.message import CredentialsSupported
-from openid4v.message import Proof
 
 logger = logging.getLogger(__name__)
 
@@ -71,8 +64,16 @@ class CredentialConstructor(object):
                 matching.append(_cred_def_sup.get("credentialSubject", {}))
         return matching
 
-    def __call__(self, user_id: str, request: Union[dict, Message]) -> str:
+    def __call__(self,
+                 user_id: str,
+                 request: Union[dict, Message],
+                 auth_info: Optional[dict] = None,
+                 id_token: Optional[str] = None) -> str:
         logger.debug(":" * 20 + f"Credential constructor" + ":" * 20)
+
+        # If an OP was used to handle the authentication then an id_token is provided
+        # In the SAML case it's SATOSA internal_data.auth_info
+
         # compare what this entity supports with what is requested
         _matching = self.matching_credentials_supported(request)
 
@@ -81,12 +82,6 @@ class CredentialConstructor(object):
 
         _cntxt = self.upstream_get("context")
         _mngr = _cntxt.session_manager
-        _session_info = _mngr.get_session_info_by_token(
-            request["access_token"], grant=True, handler_key="access_token"
-        )
-
-        logger.debug(f"session info: {_session_info}")
-        logger.debug(f"userinfo: {_session_info['user']}")
 
         # This is what the requester hopes to get
         if "credential_definition" in request:
@@ -100,17 +95,16 @@ class CredentialConstructor(object):
             _claims_restriction = {c: None for c in _matching[0].keys()}
 
         logger.debug(f"claims_restriction: {_claims_restriction}")
-        # create SD-JWT
-        info = _cntxt.claims_interface.get_user_claims(
-            _session_info["user_id"], claims_restriction=_claims_restriction
-        )
-        logger.debug(f"user claims [{_session_info['user_id']}]: {info}")
+        # Collect user info
+        info = _cntxt.claims_interface.get_user_claims(user_id, claims_restriction=_claims_restriction)
+        logger.debug(f"user claims [{user_id}]: {info}")
 
+        # Initiate the Issuer
         ci = Issuer(
             key_jar=self.upstream_get("attribute", "keyjar"),
             iss=self.upstream_get("attribute", "entity_id"),
             sign_alg="ES256",
-            lifetime=600,
+            lifetime=900,
             holder_key={}
         )
         must_display = info.copy()
@@ -142,6 +136,7 @@ class CredentialConstructor(object):
         if _discl:
             ci.array_disclosure = _discl
 
+        # create SD-JWT
         return ci.create_holder_message(payload=must_display, jws_headers={"typ": "example+sd-jwt"})
 
 
@@ -178,7 +173,7 @@ class Credential(Endpoint):
         )
         return _info["client_id"]
 
-    def add_access_token_to_request(self,request, client_id, context, **kwargs):
+    def add_access_token_to_request(self, request, client_id, context, **kwargs):
         request["access_token"] = kwargs["auth_info"]["token"]
         return request
 
@@ -228,7 +223,8 @@ class Credential(Endpoint):
         except (KeyError, ValueError):
             return self.error_cls(error="invalid_token", error_description="Invalid Token")
 
-        _msg = self.credential_constructor(user_id=_session_info["user_id"], request=request)
+        _msg = self.credential_constructor(user_id=_session_info["user_id"], request=request,
+                                           auth_info=_session_info["grant"].authentication_event)
 
         _resp = {
             "format": "vc+sd-jwt",

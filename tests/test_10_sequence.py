@@ -80,17 +80,15 @@ class TestAuthorizationRequest():
         with responses.RequestsMock() as rsps:
             _resp = {"request_uri": "urn:example:bwc4JK-ESC0w8acc191e-Y1LTC2", "expires_in": 3600}
             rsps.add(
-                "GET",
-                auth_service.upstream_get("context").provider_info[
-                    "pushed_authorization_request_endpoint"
-                ],
+                "POST",
+                auth_service.upstream_get("context").provider_info["pushed_authorization_request_endpoint"],
                 body=json.dumps(_resp),
                 status=200,
             )
-
-            _req = auth_service.construct(request_args=req_args, state="state")
+            # part of constructing the authorization request is a request to pushed authorization endpoint
+            _req = auth_service.construct(request_args=req_args, state="state_id")
 
         assert set(_req.keys()) == {"request_uri", "response_type", "client_id"}
-        _item = self.entity.context.cstate.get('state')
+        _item = self.entity.context.cstate.get('state_id')
         assert _item['response_type'] == "code"
         assert _item['redirect_uri'] == 'https://example.com/cli/authz_cb'

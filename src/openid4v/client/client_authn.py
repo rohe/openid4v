@@ -1,15 +1,18 @@
+import logging
 from typing import Optional
 from typing import Union
 
+from cryptojwt import JWK
 from cryptojwt import JWT
 from cryptojwt import KeyJar
-from cryptojwt.jwk.asym import AsymmetricKey
 from idpyoidc.client.client_auth import ClientAuthnMethod
 from idpyoidc.client.client_auth import find_token_info
 from idpyoidc.message import Message
+from idpyoidc.node import topmost_unit
 
 from openid4v import ASSERTION_TYPE
 
+logger = logging.getLogger(__name__)
 
 class ClientAssertion(ClientAuthnMethod):
 
@@ -28,17 +31,33 @@ class ClientAuthenticationAttestation(ClientAuthnMethod):
                   service=None,
                   http_args: Optional[dict] = None,
                   **kwargs) -> dict:
-        entity_id = kwargs.get("thumbprint")
-        wia = kwargs["wallet_instance_attestation"]
+        logging.debug(f"kwargs: {kwargs}")
+        entity_id = request.get("client_id", kwargs.get("thumbprint"))
+
+        if kwargs.get("audience", None) is None:
+            _aud = getattr(service, "certificate_issuer_id", None)
+            if not _aud:
+                _aud = service.upstream_get("context").issuer
+            if _aud:
+                kwargs["audience"] = _aud
+
+        if kwargs.get("signing_key"):
+            pass
+        else:
+            _wallet = topmost_unit(service)["wallet"]
+            signing_keys = _wallet.keyjar.get_signing_key(kid=entity_id)
+            kwargs["signing_key"] = signing_keys[0]
+
         part2 = self.construct_client_attestation_pop_jwt(entity_id, **kwargs)
-        request["client_assertion"] = f"{wia}~{part2}"
+        _att = kwargs.get("attestation", kwargs.get("wallet_instance_attestation"))
+        request["client_assertion"] = f"{_att}~{part2}"
         request["client_assertion_type"] = ASSERTION_TYPE
         return {}
 
     def construct_client_attestation_pop_jwt(self,
                                              entity_id: str,
-                                             signing_key: AsymmetricKey,
                                              audience: str,
+                                             signing_key: JWK,
                                              lifetime: Optional[int] = 300,
                                              nonce: Optional[str] = "",
                                              **kwargs):
@@ -57,6 +76,7 @@ class ClientAuthenticationAttestation(ClientAuthnMethod):
             payload["nonce"] = nonce
 
         return _signer.pack(payload, kid=signing_key.kid)
+
 
 class DPoPHeader(ClientAuthnMethod):
     """The bearer header authentication method."""

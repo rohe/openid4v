@@ -18,7 +18,6 @@ from idpyoidc.message import OPTIONAL_LIST_OF_STRINGS
 from idpyoidc.message import OPTIONAL_MESSAGE
 from idpyoidc.message import REQUIRED_LIST_OF_STRINGS
 from idpyoidc.message import REQUIRED_MESSAGE
-from idpyoidc.message import SINGLE_OPTIONAL_ANY
 from idpyoidc.message import SINGLE_OPTIONAL_INT
 from idpyoidc.message import SINGLE_OPTIONAL_JSON
 from idpyoidc.message import SINGLE_OPTIONAL_STRING
@@ -28,9 +27,9 @@ from idpyoidc.message import SINGLE_REQUIRED_STRING
 from idpyoidc.message.oauth2 import deserialize_from_one_of
 from idpyoidc.message.oauth2 import ResponseMessage
 from idpyoidc.message.oidc import JsonWebToken
-from idpyoidc.message.oidc import SINGLE_OPTIONAL_DICT
 from idpyoidc.message.oidc import jwt_deser
 from idpyoidc.message.oidc import SINGLE_OPTIONAL_BOOLEAN
+from idpyoidc.message.oidc import SINGLE_OPTIONAL_DICT
 from idpyoidc.message.oidc.identity_assurance import REQUIRED_VERIFIED_CLAIMS
 from idpysdjwt.holder import Holder
 
@@ -265,6 +264,7 @@ class CredentialResponseEncryption(Message):
         "enc": SINGLE_REQUIRED_STRING
     }
 
+
 class CredentialRequest(Message):
     c_param = {
         "format": SINGLE_REQUIRED_STRING,
@@ -290,15 +290,14 @@ class CredentialRequest(Message):
             if "proof_type" not in _proof:
                 raise MissingAttribute("Missing proof_type in proof")
             if _proof["proof_type"] == "jwt":
-                if "jwt" not in _proof:
+                _jwt = _proof.get("jwt", None)
+                if not _jwt:
                     raise MissingAttribute("Expected 'jwt' claim")
                 _keyjar = kwargs.get("keyjar")
-                _key = extract_key_from_jws(_proof["jwt"])
-                _iss = jws_issuer(_proof["jwt"])
+                _key = extract_key_from_jws(_jwt)
+                _iss = jws_issuer(_jwt)
                 _keyjar.add_keys(_iss, [_key])
-                _jwt_proof = JwtKeyProof().from_jwt(_proof["jwt"], _keyjar)
-
-
+                _jwt_proof = JwtKeyProof().from_jwt(_jwt, _keyjar)
 
 
 class CredentialRequestJwtVcJson(CredentialRequest):
@@ -552,6 +551,7 @@ class CredentialDefinition(Message):
         "type": REQUIRED_LIST_OF_STRINGS
     }
 
+
 class CredentialResponse(ResponseMessage):
     c_param = {
         "format": SINGLE_REQUIRED_STRING,
@@ -571,6 +571,7 @@ class CredentialResponse(ResponseMessage):
             recv = Holder(key_jar=kwargs.get("keyjar"))
             _msg = recv.parse(self["credential"])
             self[verified_claim_name("credential")] = recv.payload
+
 
 class WalletProviderMetadata(Message):
     c_param = {
@@ -708,31 +709,10 @@ class JwtKeyJOSEHeader(Message):
     }
 
 
-# class CredentialRequest(Message):
-#     c_param = {
-#         "format": SINGLE_REQUIRED_STRING,
-#         "proof": SINGLE_OPTIONAL_JSON,
-#         "credential_encryption_jwk": SINGLE_OPTIONAL_JSON,
-#         "credential_response_encryption_alg": SINGLE_OPTIONAL_STRING,
-#         "credential_response_encryption_enc": SINGLE_OPTIONAL_STRING
-#     }
-#
-#     def verify(self, **kwargs):
-#         if "credential_response_encryption_alg" in self:
-#             if "credential_response_encryption_enc" not in self:
-#                 self["credential_response_encryption_enc"] = "A256GCM"
-#         if "credential_response_encryption_enc" in self:
-#             if "credential_response_encryption_alg" not in self:
-#                 raise MissingAttribute("Missing credential_response_encryption_alg specification")
-#
-#         if "proof" in self:
-#             _proof = self["proof"]
-#             if "proof_type" not in _proof:
-#                 raise MissingAttribute("Missing proof_type in proof")
-#             if _proof["proof_type"] == "jwt":
-#                 if "jwt" not in _proof:
-#                     raise MissingAttribute("Expected 'jwt' claim")
-#                 _jwt_proof = JwtKeyProof().from_jwt(_proof["jwt"], kwargs.get("keyjar"))
+class AppAttestationResponse(Message):
+    c_param = {
+        "nonce": SINGLE_REQUIRED_STRING
+    }
 
 
 MAP_TYP_MSG = {

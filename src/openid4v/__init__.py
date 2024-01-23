@@ -16,7 +16,7 @@ from idpyoidc.server import authz
 from idpyoidc.server import build_endpoints
 from idpyoidc.server import Endpoint
 from idpyoidc.server import EndpointContext
-from idpyoidc.server.claims import Claims
+from idpyoidc.server.claims.oauth2 import Claims as OAUTH2_Claims
 from idpyoidc.server.client_authn import client_auth_setup
 from idpyoidc.server.endpoint_context import init_service
 from idpyoidc.server.user_authn.authn_context import populate_authn_broker
@@ -35,7 +35,7 @@ def do_endpoints(conf, upstream_get):
 class ServerEntity(ServerUnit):
     name = 'eudi_server'
     parameter = {"endpoint": [Endpoint], "context": EndpointContext}
-    claims_class = Claims
+    claims_class = OAUTH2_Claims
 
     def __init__(
             self,
