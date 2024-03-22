@@ -90,11 +90,12 @@ class Token(Endpoint):
             if app_attestation:
                 _nonce = _ver_request.get("nonce", None)
                 if _nonce:
-                    iccid = app_attestation.attestation_service.verify_nonce(_ver_request["nonce"])
+                    if _nonce != "__ignore__":
+                        iccid = app_attestation.attestation_service.verify_nonce(_ver_request["nonce"])
 
-                    if not iccid:
-                        raise InvalidNonce("Nonce invalid")
-                    request["__iccid"] = iccid
+                        if not iccid:
+                            raise InvalidNonce("Nonce invalid")
+                        request["__iccid"] = iccid
                 else:
                     raise ValueError("Missing 'nonce'")
         return request

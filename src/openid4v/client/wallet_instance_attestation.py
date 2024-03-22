@@ -94,17 +94,11 @@ class WalletInstanceAttestation(FederationService):
             payload = {}
 
         # Should have gotten nonce out-of-bounds
-        if "nonce" not in payload:
-            payload["nonce"] = rndstr()
+        # if "nonce" not in payload:
+        #     payload["nonce"] = rndstr()
 
-        payload.update(
-            {
-                # "type": "WalletInstanceAttestationRequest",
-                "cnf": {
-                    "jwk": ec_key.serialize()
-                }
-            }
-        )
+        payload["cnf"] = {"jwk": ec_key.serialize()}
+
         _jws = _jwt.pack(payload,
                          aud=self.wallet_provider_id,
                          kid=ec_key.kid,
