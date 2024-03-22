@@ -679,6 +679,7 @@ class PidEaaJWT(Message):
         "jti": SINGLE_REQUIRED_STRING,
         "status": SINGLE_OPTIONAL_STRING,
         "cnf": SINGLE_REQUIRED_JSON,
+        "vct": SINGLE_REQUIRED_STRING,
         "verified_claims": REQUIRED_VERIFIED_CLAIMS
     }
 

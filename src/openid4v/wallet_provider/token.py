@@ -87,11 +87,16 @@ class Token(Endpoint):
         if 'nonce' in _ver_request:
             # Find the AppAttestation endpoint in the same server
             app_attestation = self.upstream_get("unit").get_endpoint("app_attestation")
-            iccid = app_attestation.attestation_service.verify_nonce(_ver_request["nonce"])
+            if app_attestation:
+                _nonce = _ver_request.get("nonce", None)
+                if _nonce:
+                    iccid = app_attestation.attestation_service.verify_nonce(_ver_request["nonce"])
 
-            if not iccid:
-                raise InvalidNonce("Nonce invalid")
-            request["__iccid"] = iccid
+                    if not iccid:
+                        raise InvalidNonce("Nonce invalid")
+                    request["__iccid"] = iccid
+                else:
+                    raise ValueError("Missing 'nonce'")
         return request
 
     def process_request(self, request: Optional[Union[Message, dict]] = None, **kwargs):
