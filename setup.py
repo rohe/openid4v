@@ -37,8 +37,7 @@ with open(os.path.join(os.path.dirname(__file__), 'README.md')) as readme:
 setup(
     name="openid4v",
     version=version,
-    description="Python implementation of OpenID Verifiable Credentials and Verifiable "
-                "Presentation",
+    description="Python implementation of OpenID Verifiable Credentials Issuer, Wallet and Wallet Provider",
     long_description=README,
     long_description_content_type='text/markdown',
     author="Roland Hedberg",
@@ -55,7 +54,7 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Topic :: Software Development :: Libraries :: Python Modules"],
     install_requires=[
-        "idpyoidc>=3.0.0"
+        "idpyoidc>=4.0.0"
     ],
     zip_safe=False,
 )
