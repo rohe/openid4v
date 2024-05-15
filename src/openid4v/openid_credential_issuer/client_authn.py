@@ -173,6 +173,7 @@ class ClientAuthenticationAttestation(ClientAuthnMethod):
     assertion_type = "urn:ietf:params:oauth:client-assertion-type:jwt-client-attestation"
     attestation_class = {"wallet-attestation+jwt": WalletInstanceAttestationJWT}
     metadata = {}
+
     def is_usable(self, request=None, authorization_token=None):
         if request is None:
             return False

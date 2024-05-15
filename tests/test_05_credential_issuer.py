@@ -7,7 +7,8 @@ from fedservice.entity import get_verified_trust_chains
 from fedservice.utils import make_federation_combo
 from fedservice.utils import make_federation_entity
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
-from idpyoidc.client.oauth2.add_on.par import get_request_parameters
+from idpyoidc.client.oauth2.add_on.par import push_authorization
+from idpyoidc.message.oauth2 import AuthorizationRequest
 from idpyoidc.util import rndstr
 
 from examples import create_trust_chain_messages
@@ -117,9 +118,6 @@ WALLET_CONFIG = {
                         "pushed_authorization": {
                             "function": "idpyoidc.client.oauth2.add_on.par.add_support",
                             "kwargs": {
-                                "body_format": "urlencoded",
-                                "signing_algorithm": "RS256",
-                                "merge_rule": "lax",
                                 "authn_method": {
                                     "client_authentication_attestation": {
                                         "class": "openid4v.client.client_authn.ClientAuthenticationAttestation"
@@ -383,7 +381,10 @@ CREDENTIAL_ISSUER_CONF = {
                                     "form_post"
                                 ],
                                 "request_parameter_supported": True,
-                                "request_uri_parameter_supported": True
+                                "request_uri_parameter_supported": True,
+                                "automatic_registration": {
+                                    "class": "openid4v.openid_credential_issuer.AutomaticRegistration"
+                                }
                             }
                         },
                         "credential": {
@@ -694,8 +695,9 @@ class TestCredentialIssuer():
         # First get the nonce
         _server = self.wallet_provider["wallet_provider"]
         _endpoint = _server.get_endpoint("app_attestation")
-        _aa_response = _endpoint.process_request({"client_id": "urn:foo:bar"})
-        _nonce = _aa_response["nonce"]
+        _aa_response = _endpoint.process_request({"client_id": "urn:foo:bar", "iccid": "89900123450004598765"})
+        _msg = json.loads(_aa_response["response_msg"])
+        _nonce = _msg["nonce"]
 
         # Now for the Wallet Instance Attestation
         wallet_entity = self.wallet["wallet"]
@@ -708,7 +710,7 @@ class TestCredentialIssuer():
 
         _endpoint = _server.get_endpoint("wallet_provider_token")
         _wia_request = _endpoint.parse_request(req_info["request"])
-        assert set(_wia_request.keys()) == {'assertion', 'grant_type', '__verified_assertion', '__client_id'}
+        assert set(_wia_request.keys()) == {'assertion', 'grant_type', '__verified_assertion', '__iccid'}
         # __verified_assertion is the unpacked assertion after the signature has been verified
         # __client_id is carried in the nonce
         _msgs = create_trust_chain_messages(self.wallet_provider, self.ta)
@@ -770,22 +772,25 @@ class TestCredentialIssuer():
             "redirect_uri": "eudiw://wallet.example.org",
         }
 
-        # PAR request
-        _req_info = get_request_parameters(request_args=req_args, service=_service,
-                                           wallet_instance_attestation=_wia)
-
         _par_endpoint = oic.get_endpoint("pushed_authorization")
-        _msgs = create_trust_chain_messages(self.wallet_provider, self.ta)
+        _request_uri = "urn:uuid:bwc4JK-ESC0w8acc191e-Y1LTC2"
+        # The response from the PAR endpoint
+        _resp = {"request_uri": _request_uri, "expires_in": 3600}
+        # the authorization stored on the server
+        oic.context.par_db[_request_uri] = req_args
 
-        _req = _par_endpoint.parse_request(_req_info["body"], http_info=_req_info["headers"])
-        _resp = _par_endpoint.process_request(_req)
+        with responses.RequestsMock() as rsps:
+            rsps.add("POST", _par_endpoint.full_path, body=json.dumps(_resp),
+                     adding_headers={"Content-Type": "application/json"}, status=200)
 
-        _context.add_on["pushed_authorization"]["apply"] = False
-        _req_2 = _service.get_request_parameters(request_args=json.loads(_resp["http_response"]))
+            # PAR request
+            _req = push_authorization(request_args=AuthorizationRequest(**req_args),
+                                      service=_service,
+                                      wallet_instance_attestation=_wia)
 
         _authz_endpoint = oic.get_endpoint("authorization")
-        _req = _authz_endpoint.parse_request(_req_2["request"])
-        _resp = _authz_endpoint.process_request(_req)
+        _p_req = _authz_endpoint.parse_request(_req)
+        _resp = _authz_endpoint.process_request(_p_req)
         assert "code" in _resp["response_args"]
         _code = _resp["response_args"]["code"]
 
@@ -794,11 +799,12 @@ class TestCredentialIssuer():
         _service = _actor.get_service("accesstoken")
         assert _service
         token_req_info = _service.get_request_parameters(
-            request_args={"code": _code,
-                          "redirect_uri": _req_2["request"]["redirect_uri"],
-                          "grant_type": "authorization_code",
-                          "state": _req_2["request"]["state"]
-                          },
+            request_args={
+                "code": _code,
+                "redirect_uri": req_args["redirect_uri"],
+                "grant_type": "authorization_code",
+                "state": req_args["state"]
+            },
             attestation=_wia
         )
 
@@ -807,11 +813,11 @@ class TestCredentialIssuer():
         _token_resp = _endp.process_request(_req)
         assert _token_resp
         assert set(_token_resp["response_args"].keys()) == {'access_token',
-                                                      'c_nonce',
-                                                      'c_nonce_expires_in',
-                                                      'expires_in',
-                                                      'scope',
-                                                      'token_type'}
+                                                            'c_nonce',
+                                                            'c_nonce_expires_in',
+                                                            'expires_in',
+                                                            'scope',
+                                                            'token_type'}
 
         # and now for the credential endpoint
 
@@ -824,8 +830,8 @@ class TestCredentialIssuer():
                     "type": ["PersonIdentificationData"]
                 },
                 "access_token": _token_resp["response_args"]["access_token"]
-        },
-            state=_req_2["request"]["state"],
+            },
+            state=req_args["state"],
             endpoint=_metadata['openid_credential_issuer']['credential_endpoint']
         )
 

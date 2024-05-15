@@ -64,11 +64,35 @@ class CredentialConstructor(object):
                 matching.append(_cred_def_sup.get("credentialSubject", {}))
         return matching
 
+    def _must_display(self, disclose, must_display):
+        for part, spec in disclose.items():
+            if part == "":
+                for key, val in spec.items():
+                    _val = must_display.get(key)
+                    if _val == val:
+                        del must_display[key]
+                    elif isinstance(_val, list) and val in _val:
+                        _val.remove(val)
+            else:
+                _dict = must_display.get(part)
+                if _dict:
+                    for key, val in spec.items():
+                        _val = _dict.get(key)
+                        if _val == val:
+                            del _dict[part][key]
+                        elif isinstance(_val, list) and val in _val:
+                            _val.remove(val)
+                if dict == {}:
+                    del must_display[part]
+        return must_display
+
     def __call__(self,
                  user_id: str,
+                 client_id: str,
                  request: Union[dict, Message],
                  auth_info: Optional[dict] = None,
-                 id_token: Optional[str] = None) -> str:
+                 id_token: Optional[str] = None
+                 ) -> str:
         logger.debug(":" * 20 + f"Credential constructor" + ":" * 20)
 
         # If an OP was used to handle the authentication then an id_token is provided
@@ -96,7 +120,9 @@ class CredentialConstructor(object):
 
         logger.debug(f"claims_restriction: {_claims_restriction}")
         # Collect user info
-        info = _cntxt.claims_interface.get_user_claims(user_id, claims_restriction=_claims_restriction)
+        info = _cntxt.claims_interface.get_user_claims(user_id, claims_restriction=_claims_restriction,
+                                                       client_id=client_id)
+
         logger.debug(f"user claims [{user_id}]: {info}")
 
         # Initiate the Issuer
@@ -109,32 +135,18 @@ class CredentialConstructor(object):
         )
         must_display = info.copy()
 
-        _discl = self.calculate_attribute_disclosure(info)
-        if _discl:
-            ci.objective_disclosure = _discl
-            for part, spec in _discl.items():
-                if part == "":
-                    for key, val in spec.items():
-                        _val = must_display.get(key)
-                        if _val == val:
-                            del must_display[key]
-                        elif isinstance(_val, list) and val in _val:
-                            _val.remove(val)
-                else:
-                    _dict = must_display.get(part)
-                    if _dict:
-                        for key, val in spec.items():
-                            _val = _dict.get(key)
-                            if _val == val:
-                                del _dict[part][key]
-                            elif isinstance(_val, list) and val in _val:
-                                _val.remove(val)
-                    if dict == {}:
-                        del must_display[part]
+        # First object disclosure
+        _attribute_disclose = self.calculate_attribute_disclosure(info)
 
-        _discl = self.calculate_array_disclosure(info)
-        if _discl:
-            ci.array_disclosure = _discl
+        if _attribute_disclose:
+            # Figure out what must be displayed
+            ci.objective_disclosure = _attribute_disclose
+            must_display = self._must_display(_attribute_disclose, must_display)
+
+        # Then array disclosure
+        _array_disclosure = self.calculate_array_disclosure(info)
+        if _array_disclosure:
+            ci.array_disclosure = _array_disclosure
 
         # create SD-JWT
         return ci.create_holder_message(payload=must_display, jws_headers={"typ": "example+sd-jwt"})
@@ -177,41 +189,6 @@ class Credential(Endpoint):
         request["access_token"] = kwargs["auth_info"]["token"]
         return request
 
-    # def verify_token_and_authentication(self, request):
-    #     _mngr = self.upstream_get("context").session_manager
-    #     try:
-    #         _session_info = _mngr.get_session_info_by_token(
-    #             request["access_token"], grant=True, handler_key="access_token"
-    #         )
-    #     except (KeyError, ValueError):
-    #         return self.error_cls(error="invalid_token", error_description="Invalid Token")
-    #
-    #     _grant = _session_info["grant"]
-    #     token = _grant.get_token(request["access_token"])
-    #     # should be an access token
-    #     if token and token.token_class != "access_token":
-    #         return self.error_cls(error="invalid_token", error_description="Wrong type of token")
-    #
-    #     # And it should be valid
-    #     if token.is_active() is False:
-    #         return self.error_cls(error="invalid_token", error_description="Invalid Token")
-    #
-    #     _auth_event = _grant.authentication_event
-    #     # if the authentication is still active or offline_access is granted.
-    #     if not _auth_event["valid_until"] >= utc_time_sans_frac():
-    #         logger.debug(
-    #             "authentication not valid: {} > {}".format(
-    #                 datetime.fromtimestamp(_auth_event["valid_until"]),
-    #                 datetime.fromtimestamp(utc_time_sans_frac()),
-    #             )
-    #         )
-    #         return False, None
-    #
-    #         # This has to be made more finegrained.
-    #         # if "offline_access" in session["authn_req"]["scope"]:
-    #         #     pass
-    #     return True, _session_info["client_id"]
-
     def process_request(self, request=None, **kwargs):
         logger.debug(f"process_request: {request}")
 
@@ -224,7 +201,8 @@ class Credential(Endpoint):
             return self.error_cls(error="invalid_token", error_description="Invalid Token")
 
         _msg = self.credential_constructor(user_id=_session_info["user_id"], request=request,
-                                           auth_info=_session_info["grant"].authentication_event)
+                                           auth_info=_session_info["grant"].authentication_event,
+                                           client_id=_session_info["client_id"])
 
         _resp = {
             "format": "vc+sd-jwt",

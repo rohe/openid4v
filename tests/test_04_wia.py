@@ -1,3 +1,5 @@
+import json
+
 import pytest
 import responses
 from cryptojwt.jws.jws import factory
@@ -344,12 +346,13 @@ class TestWIA():
     def test_wallet_instance_attestation_response(self):
         _server = self.wallet_provider["wallet_provider"]
         _endpoint = _server.get_endpoint("app_attestation")
-        _aa_response = _endpoint.process_request({"client_id": "urn:foo:bar"})
-        req_info = self._wallet_instance_attestation_request(_aa_response["nonce"])
+        _aa_response = _endpoint.process_request({"client_id": "urn:foo:bar", "iccid": "01234567890"})
+        _resp = json.loads(_aa_response["response_msg"])
+        req_info = self._wallet_instance_attestation_request(_resp["nonce"])
 
         _endpoint = _server.get_endpoint("wallet_provider_token")
         _wia_request = _endpoint.parse_request(req_info["request"])
-        assert set(_wia_request.keys()) == {'assertion', 'grant_type', '__verified_assertion', '__client_id'}
+        assert set(_wia_request.keys()) == {'grant_type', '__iccid', '__verified_assertion', 'assertion'}
         # __verified_assertion is the unpacked assertion after the signature has been verified
         # __client_id is carried in the nonce
         _msgs = create_trust_chain_messages(self.wallet_provider, self.ta)
