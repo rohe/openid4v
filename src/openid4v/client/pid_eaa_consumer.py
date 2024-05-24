@@ -52,6 +52,8 @@ class PidEaaHandler(Unit):
         """
 
         self.entity_id = entity_id or config.get("entity_id")
+        if not self.entity_id:
+            self.entity_id = self.upstream_get("attribute", "entity_id")
         self.key_conf = key_conf
         self.config = config
 
