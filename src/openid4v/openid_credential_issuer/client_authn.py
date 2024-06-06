@@ -79,8 +79,8 @@ class ClientAssertion(ClientAuthnMethod):
             endpoint=None,  # Optional[Endpoint]
             **kwargs,
     ):
-        oci = topmost_unit(self)["openid_credential_issuer"]
-        _keyjar = oci.context.keyjar
+        oas = topmost_unit(self)["oauth_authorization_server"]
+        _keyjar = oas.context.keyjar
         _wia = verify_wallet_instance_attestation(request["client_assertion"],
                                                   _keyjar,
                                                   self,
@@ -97,10 +97,10 @@ class ClientAssertion(ClientAuthnMethod):
         if "response_type" in request:
             _cinfo["response_types"] = [" ".join(request["response_type"])]
 
-        oci.context.cdb[_client_id] = _cinfo
+        oas.context.cdb[_client_id] = _cinfo
         # register under both names
         if request["client_id"] != _client_id:
-            oci.context.cdb[request["client_id"]] = _cinfo
+            oas.context.cdb[request["client_id"]] = _cinfo
         logger.debug(f"Storing the following client information about {_client_id}: {_cinfo}")
 
         # adding wallet key to keyjar
@@ -194,8 +194,8 @@ class ClientAuthenticationAttestation(ClientAuthnMethod):
             **kwargs,
     ):
         wia, pop = request["client_assertion"].split("~")
-        oci = topmost_unit(self)["openid_credential_issuer"]
-        _keyjar = oci.context.keyjar
+        oas = topmost_unit(self)['oauth_authorization_server']
+        _keyjar = oas.context.keyjar
         _wia = verify_wallet_instance_attestation(wia,
                                                   _keyjar,
                                                   self,
@@ -227,6 +227,6 @@ class ClientAuthenticationAttestation(ClientAuthnMethod):
             if _val:
                 _c_info[key] = _val
 
-        oci.context.cdb[_wia["sub"]] = _c_info
+        oas.context.cdb[_wia["sub"]] = _c_info
 
         return {"client_id": _wia["sub"], "jwt": _wia}

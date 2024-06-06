@@ -64,6 +64,7 @@ class ServerEntity(ServerUnit):
         self.config = config
 
         self.endpoint = do_endpoints(config, self.unit_get)
+        server_type = config.get("server_type", config["conf"].get("server_type", ""))
 
         self.context = EndpointContext(
             conf=config,
@@ -71,7 +72,8 @@ class ServerEntity(ServerUnit):
             cwd=cwd,
             cookie_handler=cookie_handler,
             httpc=httpc,
-            claims_class=self.claims_class()
+            claims_class=self.claims_class(),
+            server_type=server_type
         )
 
         self.context.claims_interface = init_service(
@@ -97,7 +99,10 @@ class ServerEntity(ServerUnit):
 
     def get_metadata(self, *args):
         # static ! Should this be done dynamically ?
-        return {'openid_provider': self.context.provider_info}
+        if args:
+            return {args[0]: self.context.provider_info}
+        else:
+            return {'openid_provider': self.context.provider_info}
 
     def setup_authz(self):
         authz_spec = self.config.get("authz")

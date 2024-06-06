@@ -2,6 +2,7 @@ import logging
 from typing import Optional
 from typing import Union
 
+from cryptojwt.jws.jws import factory
 from fedservice.entity.utils import get_federation_entity
 from idpyoidc.exception import RequestError
 from idpyoidc.message import Message
@@ -179,10 +180,33 @@ class Credential(Endpoint):
         else:
             self.credential_constructor = CredentialConstructor(upstream_get=upstream_get)
 
+    def _get_session_info(self, endpoint_context, token):
+        _jws = factory(token)
+        if _jws:
+            _sid = _jws.jwt.payload().get("sid")
+            _info = endpoint_context.session_manager.get_session_info(session_id=_sid)
+        else:
+            _info = endpoint_context.session_manager.get_session_info_by_token(
+                token, handler_key="access_token"
+            )
+
+        return _info
+
     def get_client_id_from_token(self, endpoint_context, token, request=None):
-        _info = endpoint_context.session_manager.get_session_info_by_token(
-            token, handler_key="access_token"
-        )
+        _jws = factory(token)
+        if _jws:
+            _payload = _jws.jwt.payload()
+            _client_id = _payload.get("client_id", "")
+            if _client_id:
+                return _client_id
+            else:
+                _sid = _jws.jwt.payload().get("sid")
+                _info = endpoint_context.session_manager.get_session_info(session_id=_sid)
+        else:
+            _info = endpoint_context.session_manager.get_session_info_by_token(
+                token, handler_key="access_token"
+            )
+
         return _info["client_id"]
 
     def add_access_token_to_request(self, request, client_id, context, **kwargs):
@@ -193,10 +217,8 @@ class Credential(Endpoint):
         logger.debug(f"process_request: {request}")
 
         try:
-            _mngr = self.upstream_get("context").session_manager
-            _session_info = _mngr.get_session_info_by_token(
-                request["access_token"], grant=True, handler_key="access_token"
-            )
+            _session_info = self._get_session_info(self.upstream_get("context"),
+                                                   request["access_token"])
         except (KeyError, ValueError):
             return self.error_cls(error="invalid_token", error_description="Invalid Token")
 

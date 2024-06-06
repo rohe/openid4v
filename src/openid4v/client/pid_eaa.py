@@ -97,8 +97,8 @@ class Authorization(FederationService):
         if len(chains) == 0:
             return None
 
-        # pick one
-        return trust_chains[0].metadata['openid_credential_issuer']["authorization_endpoint"]
+        # pick one. The authorization endpoint belongs to an OAuth2 server
+        return trust_chains[0].metadata['oauth_authorization_server']["authorization_endpoint"]
 
     def store_auth_request(self, request_args=None, **kwargs):
         """Store the authorization request in the state DB."""
@@ -208,6 +208,8 @@ class Credential(Service):
     def __init__(self, upstream_get, conf=None):
         Service.__init__(self, upstream_get, conf=conf)
         self.pre_construct.append(self.create_proof)
+        if conf:
+            self.certificate_issuer_id = conf.get("certificate_issuer_id")
 
     def get_authn_method(self) -> str:
         _methods = getattr(self, "client_authn_methods", None)
@@ -290,3 +292,21 @@ class Credential(Service):
                 return _methods[0]
 
         return self.default_authn_method
+
+    def get_endpoint(self):
+        _context = self.upstream_get("context")
+        if _context.issuer:
+            self.certificate_issuer_id = _context.issuer
+
+        # get endpoint from the Entity Configuration
+        chains, leaf_ec = collect_trust_chains(self, entity_id=self.certificate_issuer_id)
+        if len(chains) == 0:
+            return None
+
+        trust_chains = verify_trust_chains(self, chains, leaf_ec)
+        trust_chains = apply_policies(self, trust_chains)
+        if len(chains) == 0:
+            return None
+
+        # pick one. The authorization endpoint belongs to an OAuth2 server
+        return trust_chains[0].metadata['openid_credential_issuer']["credential_endpoint"]
