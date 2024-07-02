@@ -70,6 +70,9 @@
             "services": {
               "wallet_instance_attestation": {
                 "class": "openid4v.client.wallet_instance_attestation.WalletInstanceAttestation"
+              },
+              "app_attestation": {
+                "class": "openid4v.client.app_attestation_service.AppAttestationService"
               }
             }
           },

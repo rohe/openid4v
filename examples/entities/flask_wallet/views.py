@@ -52,12 +52,16 @@ def index():
 @entity.route('/wallet_provider')
 def wallet_provider():
     wp_id = request.args["entity_id"]
+    if wp_id.endswith('/'):
+        wp_id = wp_id[:-1]
     session["wallet_provider_id"] = wp_id
-    trust_chain = current_app.federation_entity.get_trust_chain(wp_id)
-
-    return render_template('wallet_provider.html',
-                           trust_chain_path=trust_chain.iss_path,
-                           metadata=trust_chain.metadata)
+    trust_chains = current_app.federation_entity.get_trust_chains(wp_id)
+    if not trust_chains:
+        return "Could not collect Trust Chain", 400
+    else:
+        return render_template('wallet_provider.html',
+                               trust_chain_path=trust_chains[0].iss_path,
+                               metadata=trust_chains[0].metadata)
 
 
 @entity.route('/wallet_instance_attestation')
@@ -67,12 +71,22 @@ def wallet_instance_attestation():
     wallet_entity = current_app.server["wallet"]
     wallet_provider_id = session["wallet_provider_id"]
 
-    trust_chain = current_app.federation_entity.get_trust_chain(wallet_provider_id)
+    trust_chains = current_app.federation_entity.get_trust_chains(wallet_provider_id)
+    if not trust_chains:
+        return "Couldn't collect Trust Chains", 400
+    else:
+        trust_chain = trust_chains[0]
 
     _service = wallet_entity.get_service("wallet_instance_attestation")
     _service.wallet_provider_id = wallet_provider_id
+    request_args = {}
 
-    request_args = {"nonce": rndstr(), "aud": wallet_provider_id}
+    resp = wallet_entity.do_request(
+        "app_attestation",
+        request_args=request_args,
+        endpoint=trust_chain.metadata['wallet_provider']['app_attestation_endpoint'])
+
+    request_args = {"nonce": resp["nonce"], "aud": wallet_provider_id}
 
     # this is just to be able to show what's sent
     req_info = _service.get_request_parameters(
@@ -131,7 +145,12 @@ def picking_pid_issuer():
     tmi = {}
     se_pid_issuer_tm = 'http://dc4eu.example.com/PersonIdentificationData/se'
     for eid, metadata in _oci.items():
-        _trust_chain = current_app.federation_entity.get_trust_chain(eid)
+        _trust_chains = current_app.federation_entity.get_trust_chains(eid)
+        if not _trust_chains:
+            return "Couldn't collect Trust Chains", 400
+        else:
+            _trust_chain = _trust_chains[0]
+
         _ec = _trust_chain.verified_chain[-1]
         if "trust_marks" in _ec:
             tmi[eid] = []

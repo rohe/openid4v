@@ -1,20 +1,19 @@
 {
-  "https://127.0.0.1:7001": {
+  "https://openidfed-test-1.sunet.se:7001": {
     "keys": [
       {
         "kty": "RSA",
         "use": "sig",
-        "kid": "VEhkNWFFSzVnS3B5cDlxMGR0RHhwM0EzQzF3MFUwV09xNGQwV1F4NkRaWQ",
-        "n": "ii6GjcoPMtM92VS-Ig0P7ULEDyRNIVbOJFm1CTHtfuLMFct-kMe-cMC2RVqRZZnIbixU78WV6c7tWBxjvFw4fIEecSPxrrWpDTRMeQlsIleh1dySneZhATa5E6lWXKmspfznBVmypafnaWVGH5agWcOJpAYGreHxZPvD_GnVgNoUrcB0xHJc3Rt7U4Fbe1tYvS318hbgJk5sPTo1TnjgRUTOt88gvV8o0eOg0tG2Qm71Q6p14yEi_vZPq0nwLMg5MIwxjTHyFIkhlPraKpV-mO3FriKiWOVvxNlqZkclwO62plJkhH1uowE5nVnmAYwH4uXyLNyqPh8JSLycxNvQfw",
+        "kid": "UFpoajluZU42dTNUUXo5RnhBVEJnRk9JY2NtU1JKdlVYUk1RUFRyVkFFRQ",
+        "n": "p9S2whcSjmBdxerp80tIJreUUmZiGNGXIocJlNjx9pgD5_WD2l6mBNuEZMpP-QUB_TSV3VesNiqmOdydGp1wkfQ-NmVdoso29FjEdgrckLIwirAVmVQ6bGQQnXJrR56mRz0QqENi11vVpbDj6hsprxK1EZBQL-sQ2kem289B_BCNT-NvwVHrYJlaQA32z7cs1a7W8wt9eLxA10PeiYMgDVU_69wKBw4YrjjozOHKMRGchUQEjQhfSZfk49bip_5TNz4dmBmSCIbdE2yilFrfRSNrh7q2myuyDE3k2QZbSOXXGGT1LtHO74WIY58v-M3A7_zxp0f2Eo9ZD3N4h-InIw",
         "e": "AQAB"
-      },
-      {
+      }, {
         "kty": "EC",
         "use": "sig",
-        "kid": "ekV1UUhhYVlESHAtUkxQR2lSWElSSXpaRzdqM2VFQ1Y0d0JTUmJjRjBBUQ",
+        "kid": "Nm82cTJKMDkydXhxOUMtTm0teFpMWlZiR0ZVa2U3YVVtbkJTV3hBd3FqOA",
         "crv": "P-256",
-        "x": "IQ1Wea8xZuf5SGUuh9uKTQ7C_-_uTtOADd1TcsyJHF4",
-        "y": "REIWFydYKHM1zjRhmoHP-n_mjrCOPn-1fG3trz0R7MU"
+        "x": "69XlQkKYfWJDXAv_Vbrqyfz9gfAhu1qQ4mtLde18-Cg",
+        "y": "ntBwdhy4_cS2PRBS-xdKkNwcO1yQP8TdoOHbHN9Yjv8"
       }
     ]
   }

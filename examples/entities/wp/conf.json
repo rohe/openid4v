@@ -125,6 +125,10 @@
                   "lifetime": 3600,
                   "sign_alg": "ES256"
                 }
+              },
+              "app_attestation": {
+                "path": "app_attestation",
+                "class": "openid4v.wallet_provider.app_attestation.AppAttestation"
               }
             },
             "wallet_provider_id": "https://127.0.0.1:4000"
