@@ -16,9 +16,9 @@ from idpyoidc.message.oauth2 import ResponseMessage
 from idpyoidc.metadata import get_signing_algs
 from idpyoidc.server import Endpoint
 
+from openid4v.message import WalletAttestationRequestJWT
 from openid4v.message import WalletInstanceAttestationResponse
 from openid4v.message import WalletInstanceRequest
-from openid4v.message import WalletInstanceRequestJWT
 
 LOGGER = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ class Token(Endpoint):
         # basically verifies that the sender has control of the key included in the message.
         _verifier = JWT(key_jar=keyjar)
         _verifier.typ2msg_cls = {
-            "wiar+jwt": WalletInstanceRequestJWT
+            "wiar+jwt": WalletAttestationRequestJWT
         }
         _val = _verifier.unpack(self_signed_jwt)
         return _val
@@ -84,18 +84,17 @@ class Token(Endpoint):
         _ver_request = self.verify_self_signed_signature(request["assertion"])
         request[verified_claim_name("assertion")] = _ver_request
 
-        if 'nonce' in _ver_request:
-            # Find the AppAttestation endpoint in the same server
-            app_attestation = self.upstream_get("unit").get_endpoint("app_attestation")
-            if app_attestation:
-                _nonce = _ver_request.get("nonce", None)
-                if _nonce:
-                    if _nonce != "__ignore__":
-                        iccid = app_attestation.attestation_service.verify_nonce(_ver_request["nonce"])
-
-                        if not iccid:
+        if 'challenge' in _ver_request:
+            # Find the nonce endpoint in the same server
+            nonce_endpoint = self.upstream_get("unit").get_endpoint("challenge")
+            if nonce_endpoint:
+                _challenge = _ver_request.get("challenge", None)
+                if _challenge:
+                    if _challenge != "__ignore__":
+                        if nonce_endpoint.challenge_service.verify_nonce(_challenge):
+                            pass
+                        else:
                             raise InvalidNonce("Nonce invalid")
-                        request["__iccid"] = iccid
                 else:
                     raise ValueError("Missing 'nonce'")
         return request
@@ -117,8 +116,8 @@ class Token(Endpoint):
         payload = {
             "sub": req_args['iss'],
             "cnf": req_args["cnf"],
-            "attested_security_context": "https://wallet-provider.example.org/LoA/basic",
-            "type": "WalletInstanceAttestation",
+            # "aal": "https://wallet-provider.example.org/LoA/basic",
+            # "type": "WalletInstanceAttestation",
         }
         payload.update(self.upstream_get("unit").wallet_instance_discovery(req_args['iss']))
 
@@ -133,13 +132,12 @@ class Token(Endpoint):
         _trust_chain = kwargs.get("trust_chain")
         if _trust_chain:
             _jws_header["trust_chain"] = _trust_chain
-        else: # Collect Trust Chain
+        else:  # Collect Trust Chain
             _trust_chains = get_verified_trust_chains(self, entity_id=entity_id)
             if len(_trust_chains) >= 1:
                 _jws_header["trust_chain"] = _trust_chains[0].chain
 
         _wallet_instance_attestation = _signer.pack(payload,
-                                                    aud=req_args['iss'],
                                                     issuer_id=entity_id,
                                                     jws_headers=_jws_header)
 
@@ -154,7 +152,7 @@ class Token(Endpoint):
         _headers = [("Content-type", "application/json")]
         # resp = {"response": json.dumps(response_args), "http_headers": _headers}
         LOGGER.debug(f"Process request returned: {response_args}")
-        return {"response_args": response_args}
+        return {"http_headers": _headers, "response_args": response_args}
 
     def supports(self):
         return {"grant_types_supported": self._include["grant_types_supported"]}

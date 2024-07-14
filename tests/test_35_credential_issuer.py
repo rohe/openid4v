@@ -11,7 +11,10 @@ from idpyoidc.client.oauth2.add_on.par import push_authorization
 from idpyoidc.message.oauth2 import AuthorizationRequest
 from idpyoidc.util import rndstr
 
+import openid4v.openid_credential_issuer.revocation
 from examples import create_trust_chain_messages
+from openid4v.message import AuthorizationServerMetadata
+from openid4v.message import OpenidCredentialIssuer
 
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -273,28 +276,316 @@ WALLET_PROVIDER_CONFIG = {
                                 "sign_alg": "ES256"
                             }
                         },
-                        "app_attestation": {
-                            "class": "openid4v.wallet_provider.app_attestation.AppAttestation",
+                        "challenge": {
+                            "class": "openid4v.wallet_provider.challenge.Challenge",
                             "kwargs": {
-                                "app_attestation_service": {
-                                    "class": "openid4v.wallet_provider.app_attestation.AppAttestationService",
+                                "challenge_service": {
+                                    "class": "openid4v.wallet_provider.challenge.ChallengeService",
                                     "kwargs": {
                                         "crypt_config": {
                                             "key_defs": [
                                                 {"type": "OCT", "use": ["enc"], "kid": "password"},
                                                 {"type": "OCT", "use": ["enc"], "kid": "salt"},
                                             ]
-                                        }
+                                        },
+                                        "nonce_lifetime": 86400
                                     }
                                 }
                             }
                         }
                     },
-                    "wallet_provider_id": "https://127.0.0.1:4000"
+                    "wallet_provider_id": "https://127.0.0.1:4000",
+                    "metadata_schema": 'openid4v.message.WalletProvider'
                 }
             }
         },
     }
+}
+
+OAUTH_SERVER_CONF = {
+    "client_authn_methods": {
+        "client_secret_basic": "idpyoidc.server.client_authn.ClientSecretBasic",
+        "client_secret_post": "idpyoidc.server.client_authn.ClientSecretPost",
+        "client_assertion": "openid4v.openid_credential_issuer.client_authn.ClientAssertion",
+        "dpop_client_auth": "idpyoidc.server.oauth2.add_on.dpop.DPoPClientAuth",
+        "attest_jwt_client_auth": "openid4v.openid_credential_issuer.client_authn.ClientAuthenticationAttestation"
+    },
+    "keys": {
+        "key_defs": [
+            {
+                "type": "RSA",
+                "use": [
+                    "sig"
+                ]
+            },
+            {
+                "type": "EC",
+                "crv": "P-256",
+                "use": [
+                    "sig"
+                ]
+            }
+        ],
+        "private_path": "private/as_keys.json",
+        "public_path": "static/as_keys.json",
+        "read_only": False
+    },
+    "endpoint": {
+        "token": {
+            "path": "token",
+            "class": "openid4v.openid_credential_issuer.access_token.Token",
+            "kwargs": {
+                "client_authn_method": [
+                    "client_authentication_attestation"
+                ]
+            }
+        },
+        "authorization": {
+            "path": "authorization",
+            "class": "openid4v.openid_credential_issuer.authorization.Authorization",
+            "kwargs": {
+                "response_types_supported": [
+                    "code"
+                ],
+                "response_modes_supported": [
+                    "query",
+                    "form_post"
+                ],
+                "request_parameter_supported": True,
+                "request_uri_parameter_supported": True,
+                "automatic_registration": {
+                    "class": "openid4v.openid_credential_issuer.AutomaticRegistration"
+                }
+            }
+        },
+        "pushed_authorization": {
+            "path": "pushed_authorization",
+            "class": "idpyoidc.server.oauth2.pushed_authorization.PushedAuthorization",
+            "kwargs": {
+                "client_authn_method": [
+                    "client_authentication_attestation"
+                ]
+            }
+        }
+    },
+    "add_ons": {
+        "pkce": {
+            "function": "idpyoidc.server.oauth2.add_on.pkce.add_support",
+            "kwargs": {
+                "code_challenge_length": 64,
+                "code_challenge_method": "S256"
+            }
+        },
+        "dpop": {
+            "function": "idpyoidc.server.oauth2.add_on.dpop.add_support",
+            "kwargs": {
+                "dpop_signing_alg_values_supported": ["ES256"],
+                "dpop_endpoints": ["credential"]
+            }
+        }
+    },
+    "authentication": {
+        "anon": {
+            "acr": "http://www.swamid.se/policy/assurance/al1",
+            "class": "idpyoidc.server.user_authn.user.NoAuthn",
+            "kwargs": {
+                "user": "diana"
+            }
+        }
+    },
+    "userinfo": {
+        "class": "idpyoidc.server.user_info.UserInfo",
+        "kwargs": {
+            "db_file": full_path("users.json")
+        }
+    },
+    "authz": {
+        "class": "idpyoidc.server.authz.AuthzHandling",
+        "kwargs": {
+            "grant_config": {
+                "usage_rules": {
+                    "authorization_code": {
+                        "supports_minting": [
+                            "access_token",
+                            "refresh_token",
+                            "id_token"
+                        ],
+                        "max_usage": 1
+                    },
+                    "access_token": {},
+                    "refresh_token": {
+                        "supports_minting": [
+                            "access_token",
+                            "refresh_token",
+                            "id_token"
+                        ]
+                    }
+                },
+                "expires_in": 43200
+            }
+        }
+    },
+    "session_params": {
+        "encrypter": {
+            "kwargs": {
+                "keys": {
+                    "key_defs": [
+                        {
+                            "type": "OCT",
+                            "use": [
+                                "enc"
+                            ],
+                            "kid": "password"
+                        },
+                        {
+                            "type": "OCT",
+                            "use": [
+                                "enc"
+                            ],
+                            "kid": "salt"
+                        }
+                    ]
+                },
+                "iterations": 1
+            }
+        }
+    },
+    "preference": {
+        "acr_values_supported": [
+            "https://www.spid.gov.it/SpidL1",
+            "https://www.spid.gov.it/SpidL2",
+            "https://www.spid.gov.it/SpidL3"
+        ],
+        "token_endpoint_auth_methods_supported": ['attest_jwt_client_auth'],
+    },
+    "metadata_schema": 'openid4v.message.AuthorizationServerMetadata'
+}
+
+OPENID_CREDENTIAL_ISSUER_CONFIG = {
+    "client_authn_methods": {
+        "dpop_client_auth": "idpyoidc.server.oauth2.add_on.dpop.DPoPClientAuth",
+    },
+    "keys": {
+        "key_defs": [
+            {
+                "type": "RSA",
+                "use": [
+                    "sig"
+                ]
+            },
+            {
+                "type": "EC",
+                "crv": "P-256",
+                "use": [
+                    "sig"
+                ]
+            }
+        ],
+        "private_path": "private/ci_keys.json",
+        "public_path": "static/ci_keys.json",
+        "read_only": False
+    },
+    "endpoint": {
+        "credential": {
+            "path": "credential",
+            "class": "openid4v.openid_credential_issuer.credential.Credential",
+            "kwargs": {
+                "client_authn_method": [
+                    "dpop_client_auth"
+                ]
+            }
+        },
+        "revocation": {
+            'path': 'revocation',
+            'class': 'openid4v.openid_credential_issuer.revocation.Revocation',
+            "kwargs": {}
+        },
+        "status_attestation": {
+            'path': 'status_attestation',
+            'class': 'openid4v.openid_credential_issuer.status_attestation.StatusAttestation',
+            "kwargs": {}
+        }
+    },
+    "preference": {
+        "attribute_disclosure": {
+            "": [
+                "given_name",
+                "family_name",
+                "birthdate",
+                "place_of_birth",
+                "unique_id",
+                "tax_id_code"
+            ]
+        },
+        "display": [
+            {
+                "name": "EAA Provider",
+                "locale": "en-US"
+            }
+        ],
+        "credential_configurations_supported": [
+            {
+                "format": "vc+sd-jwt",
+                "id": "eudiw.pid.se",
+                "cryptographic_binding_methods_supported": [
+                    "jwk"
+                ],
+                "credential_signing_alg_values_supported": [
+                    "ES256",
+                    "ES512"
+                ],
+                "display": [
+                    {
+                        "name": "Example Swedish QEEA Provider",
+                        "locale": "en-US"
+                    }
+                ],
+                "credential_definition": {
+                    "type": [
+                        "VerifiableCredential",
+                        "PersonIdentificationData"
+                    ],
+                    "credentialSubject": {
+                        "given_name": {
+                            "display": [
+                                {
+                                    "name": "Given Name",
+                                    "locale": "en-US"
+                                }
+                            ]
+                        },
+                        "family_name": {
+                            "display": [
+                                {
+                                    "name": "Surname",
+                                    "locale": "en-US"
+                                }
+                            ]
+                        },
+                        "unique_id": {
+                            "display": [{
+                                "name": "Unique Identifier",
+                                "locale": "en-US"
+                            }]
+                        },
+                        "tax_id_code": {
+                            "display": [{
+                                "name": "Tax Id Number",
+                                "locale": "en-US"
+                            }]
+                        }
+                    }
+                }
+            }
+        ]
+    },
+    "userinfo": {
+        "class": "idpyoidc.server.user_info.UserInfo",
+        "kwargs": {
+            "db_file": full_path("users.json")
+        }
+    },
+    "metadata_schema": 'openid4v.message.OpenidCredentialIssuer'
 }
 
 TA_ID = "https://ta.example.org"
@@ -328,324 +619,16 @@ CREDENTIAL_ISSUER_CONF = {
         "entity_configuration"
     ],
     "entity_type": {
+        "oauth_authorization_server": {
+            "class": "openid4v.ServerEntity",
+            "kwargs": {
+                "config": OAUTH_SERVER_CONF
+            }
+        },
         "openid_credential_issuer": {
             "class": "openid4v.openid_credential_issuer.OpenidCredentialIssuer",
             "kwargs": {
-                "config": {
-                    "client_authn_methods": {
-                        "client_secret_basic": "idpyoidc.server.client_authn.ClientSecretBasic",
-                        "client_secret_post": "idpyoidc.server.client_authn.ClientSecretPost",
-                        "client_assertion": "openid4v.openid_credential_issuer.client_authn.ClientAssertion",
-                        "dpop_client_auth": "idpyoidc.server.oauth2.add_on.dpop.DPoPClientAuth",
-                        "client_authentication_attestation": "openid4v.openid_credential_issuer.client_authn.ClientAuthenticationAttestation"
-                    },
-                    "keys": {
-                        "key_defs": [
-                            {
-                                "type": "RSA",
-                                "use": [
-                                    "sig"
-                                ]
-                            },
-                            {
-                                "type": "EC",
-                                "crv": "P-256",
-                                "use": [
-                                    "sig"
-                                ]
-                            }
-                        ],
-                        "private_path": "private/qeaa_fed_keys.json",
-                        "public_path": "static/qeaa_fed_keys.json",
-                        "read_only": False
-                    },
-                    "endpoint": {
-                        "token": {
-                            "path": "token",
-                            "class": "openid4v.openid_credential_issuer.access_token.Token",
-                            "kwargs": {
-                                "client_authn_method": [
-                                    "client_authentication_attestation"
-                                ]
-                            }
-                        },
-                        "authorization": {
-                            "path": "authorization",
-                            "class": "openid4v.openid_credential_issuer.authorization.Authorization",
-                            "kwargs": {
-                                "response_types_supported": [
-                                    "code"
-                                ],
-                                "response_modes_supported": [
-                                    "query",
-                                    "form_post"
-                                ],
-                                "request_parameter_supported": True,
-                                "request_uri_parameter_supported": True,
-                                "automatic_registration": {
-                                    "class": "openid4v.openid_credential_issuer.AutomaticRegistration"
-                                }
-                            }
-                        },
-                        "credential": {
-                            "path": "credential",
-                            "class": "openid4v.openid_credential_issuer.credential.Credential",
-                            "kwargs": {
-                                "client_authn_method": [
-                                    "dpop_client_auth"
-                                ]
-                            }
-                        },
-                        "pushed_authorization": {
-                            "path": "pushed_authorization",
-                            "class": "idpyoidc.server.oauth2.pushed_authorization.PushedAuthorization",
-                            "kwargs": {
-                                "client_authn_method": [
-                                    "client_authentication_attestation"
-                                ]
-                            }
-                        }
-                    },
-                    "add_ons": {
-                        "pkce": {
-                            "function": "idpyoidc.server.oauth2.add_on.pkce.add_support",
-                            "kwargs": {
-                                "code_challenge_length": 64,
-                                "code_challenge_method": "S256"
-                            }
-                        },
-                        "dpop": {
-                            "function": "idpyoidc.server.oauth2.add_on.dpop.add_support",
-                            "kwargs": {
-                                "dpop_signing_alg_values_supported": [
-                                    "ES256"
-                                ]
-                            }
-                        }
-                    },
-                    "preference": {
-                        "credentials_supported": [
-                            {
-                                "format": "vc+sd-jwt",
-                                "id": "eudiw.pid.se",
-                                "cryptographic_binding_methods_supported": [
-                                    "jwk"
-                                ],
-                                "cryptographic_suites_supported": [
-                                    "RS256",
-                                    "RS512",
-                                    "ES256",
-                                    "ES512"
-                                ],
-                                "display": [
-                                    {
-                                        "name": "Example Swedish QEEA Provider",
-                                        "locale": "en-US"
-                                    }
-                                ],
-                                "credential_definition": {
-                                    "type": [
-                                        "OpenBadgeCredential"
-                                    ],
-                                    "credentialSubject": {
-                                        "type": {
-                                            "mandatory": True,
-                                            "display": [
-                                                {
-                                                    "name": "Type of achievement",
-                                                    "locale": "en-US"
-                                                }
-                                            ]
-                                        },
-                                        "achievement": {
-                                            "mandatory": True,
-                                            "display": [
-                                                {
-                                                    "name": "Achievement description",
-                                                    "locale": "en-US"
-                                                }
-                                            ]
-                                        }
-                                    }
-                                }
-                            },
-                            {
-                                "format": "vc+sd-jwt",
-                                "id": "eudiw.pid.se",
-                                "cryptographic_binding_methods_supported": [
-                                    "jwk"
-                                ],
-                                "cryptographic_suites_supported": [
-                                    "RS256",
-                                    "RS512",
-                                    "ES256",
-                                    "ES512"
-                                ],
-                                "display": [
-                                    {
-                                        "name": "Example Swedish PID Provider",
-                                        "locale": "en-US"
-                                    }
-                                ],
-                                "credential_definition": {
-                                    "type": [
-                                        "PersonIdentificationData"
-                                    ],
-                                    "credentialSubject": {
-                                        "given_name": {
-                                            "mandatory": True,
-                                            "display": [{
-                                                "name": "Current First Name",
-                                                "locale": "en-US"
-                                            },
-                                                {
-                                                    "name": "Nome",
-                                                    "locale": "it-IT"
-                                                }
-                                            ]
-                                        },
-                                        "family_name": {
-                                            "mandatory": True,
-                                            "display": [{
-                                                "name": "Current Family Name",
-                                                "locale": "en-US"
-                                            },
-                                                {
-                                                    "name": "Cognome",
-                                                    "locale": "it-IT"
-                                                }
-                                            ]
-                                        },
-                                        "birthdate": {
-                                            "mandatory": True,
-                                            "display": [{
-                                                "name": "Date of Birth",
-                                                "locale": "en-US"
-                                            },
-                                                {
-                                                    "name": "Data di Nascita",
-                                                    "locale": "it-IT"
-                                                }
-                                            ]
-                                        },
-                                        "place_of_birth": {
-                                            "mandatory": True,
-                                            "display": [{
-                                                "name": "Place of Birth",
-                                                "locale": "en-US"
-                                            },
-                                                {
-                                                    "name": "Luogo di Nascita",
-                                                    "locale": "it-IT"
-                                                }
-                                            ]
-                                        },
-                                        "unique_id": {
-                                            "mandatory": True,
-                                            "display": [{
-                                                "name": "Unique Identifier",
-                                                "locale": "en-US"
-                                            },
-                                                {
-                                                    "name": "Identificativo univoco",
-                                                    "locale": "it-IT"
-                                                }
-                                            ]
-                                        },
-                                        "tax_id_code": {
-                                            "mandatory": True,
-                                            "display": [{
-                                                "name": "Tax Id Number",
-                                                "locale": "en-US"
-                                            },
-                                                {
-                                                    "name": "Codice Fiscale",
-                                                    "locale": "it-IT"
-                                                }
-                                            ]
-                                        }
-                                    }
-                                }
-                            }
-                        ],
-                        "attribute_disclosure": {
-                            "": [
-                                "given_name",
-                                "family_name",
-                                "birthdate",
-                                "place_of_birth",
-                                "unique_id",
-                                "tax_id_code"
-                            ]
-                        }
-                    },
-                    "authentication": {
-                        "anon": {
-                            "acr": "http://www.swamid.se/policy/assurance/al1",
-                            "class": "idpyoidc.server.user_authn.user.NoAuthn",
-                            "kwargs": {
-                                "user": "diana"
-                            }
-                        }
-                    },
-                    "userinfo": {
-                        "class": "idpyoidc.server.user_info.UserInfo",
-                        "kwargs": {
-                            "db_file": full_path("users.json")
-                        }
-                    },
-                    "authz": {
-                        "class": "idpyoidc.server.authz.AuthzHandling",
-                        "kwargs": {
-                            "grant_config": {
-                                "usage_rules": {
-                                    "authorization_code": {
-                                        "supports_minting": [
-                                            "access_token",
-                                            "refresh_token",
-                                            "id_token"
-                                        ],
-                                        "max_usage": 1
-                                    },
-                                    "access_token": {},
-                                    "refresh_token": {
-                                        "supports_minting": [
-                                            "access_token",
-                                            "refresh_token",
-                                            "id_token"
-                                        ]
-                                    }
-                                },
-                                "expires_in": 43200
-                            }
-                        }
-                    },
-                    "session_params": {
-                        "encrypter": {
-                            "kwargs": {
-                                "keys": {
-                                    "key_defs": [
-                                        {
-                                            "type": "OCT",
-                                            "use": [
-                                                "enc"
-                                            ],
-                                            "kid": "password"
-                                        },
-                                        {
-                                            "type": "OCT",
-                                            "use": [
-                                                "enc"
-                                            ],
-                                            "kid": "salt"
-                                        }
-                                    ]
-                                },
-                                "iterations": 1
-                            }
-                        }
-                    }
-                }
+                "config": OPENID_CREDENTIAL_ISSUER_CONFIG
             }
         }
     }
@@ -691,11 +674,21 @@ class TestCredentialIssuer():
             'authority_hints': [TA_ID]
         }
 
+    def test_metadata(self):
+        metadata = self.credential_issuer.get_metadata()
+        assert set(metadata.keys()) == {'federation_entity', "oauth_authorization_server", "openid_credential_issuer"}
+
+        as_metadata = AuthorizationServerMetadata(**metadata["oauth_authorization_server"])
+        as_metadata.verify()
+
+        ci_metadata = OpenidCredentialIssuer(**metadata["openid_credential_issuer"])
+        ci_metadata.verify()
+
     def _create_wia(self):
         # First get the nonce
         _server = self.wallet_provider["wallet_provider"]
-        _endpoint = _server.get_endpoint("app_attestation")
-        _aa_response = _endpoint.process_request({"client_id": "urn:foo:bar", "iccid": "89900123450004598765"})
+        _endpoint = _server.get_endpoint("challenge")
+        _aa_response = _endpoint.process_request()
         _msg = json.loads(_aa_response["response_msg"])
         _nonce = _msg["nonce"]
 
@@ -703,7 +696,7 @@ class TestCredentialIssuer():
         wallet_entity = self.wallet["wallet"]
         _service = wallet_entity.get_service("wallet_instance_attestation")
         _service.wallet_provider_id = WALLET_PROVIDER_ID
-        request_args = {"nonce": _nonce, "aud": WALLET_PROVIDER_ID}
+        request_args = {"challenge": _nonce, "aud": WALLET_PROVIDER_ID}
         req_info = _service.get_request_parameters(
             request_args,
             endpoint=f"{WALLET_PROVIDER_ID}/token")
@@ -724,7 +717,7 @@ class TestCredentialIssuer():
 
         return _response["response_args"]["assertion"], _wia_request['__verified_assertion']["iss"]
 
-    def test_process(self):
+    def test_qeaa_flow(self):
         _wia, _thumbprint = self._create_wia()
         assert _wia
 

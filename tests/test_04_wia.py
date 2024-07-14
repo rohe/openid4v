@@ -264,18 +264,19 @@ WALLET_PROVIDER_CONFIG = {
                                 "sign_alg": "ES256"
                             }
                         },
-                        "app_attestation": {
-                            "class": "openid4v.wallet_provider.app_attestation.AppAttestation",
+                        "challenge": {
+                            "class": "openid4v.wallet_provider.challenge.Challenge",
                             "kwargs": {
-                                "app_attestation_service": {
-                                    "class": "openid4v.wallet_provider.app_attestation.AppAttestationService",
+                                "challenge_service": {
+                                    "class": "openid4v.wallet_provider.challenge.ChallengeService",
                                     "kwargs": {
                                         "crypt_config": {
                                             "key_defs": [
                                                 {"type": "OCT", "use": ["enc"], "kid": "password"},
                                                 {"type": "OCT", "use": ["enc"], "kid": "salt"},
                                             ]
-                                        }
+                                        },
+                                        "nonce_lifetime": 86400
                                     }
                                 }
                             }
@@ -328,7 +329,10 @@ class TestWIA():
         _service = wallet_entity.get_service("wallet_instance_attestation")
         _service.wallet_provider_id = WALLET_PROVIDER_ID
 
-        request_args = {"nonce": nonce, "aud": WALLET_PROVIDER_ID}
+        request_args = {"challenge": nonce, "aud": WALLET_PROVIDER_ID}
+        request_args["hardware_signature"] = rndstr()
+        request_args["integrity_assertion"] = rndstr()
+        request_args["hardware_key_tag"] = rndstr()
 
         req_info = _service.get_request_parameters(
             request_args,
@@ -341,35 +345,36 @@ class TestWIA():
         assert set(req_info.keys()) == {'method', 'body', 'headers', 'request', 'url'}
         _assertion = factory(req_info["request"]["assertion"])
         _payload = _assertion.jwt.payload()
-        assert set(_payload.keys()) == {"nonce", "aud", "cnf", "iss", "iat", "jti"}
+        assert set(_payload.keys()) == {"challenge", "aud", "cnf", "iss", 'hardware_key_tag',
+                                        'hardware_signature', 'iat', 'integrity_assertion', "jti", "exp"}
 
-    def test_wallet_instance_attestation_response(self):
-        _server = self.wallet_provider["wallet_provider"]
-        _endpoint = _server.get_endpoint("app_attestation")
-        _aa_response = _endpoint.process_request({"client_id": "urn:foo:bar", "iccid": "01234567890"})
-        _resp = json.loads(_aa_response["response_msg"])
-        req_info = self._wallet_instance_attestation_request(_resp["nonce"])
+        def test_wallet_instance_attestation_response(self):
+            _server = self.wallet_provider["wallet_provider"]
+            _endpoint = _server.get_endpoint("nonce")
+            _aa_response = _endpoint.process_request({"client_id": "urn:foo:bar"})
+            _resp = json.loads(_aa_response["response_msg"])
+            req_info = self._wallet_instance_attestation_request(_resp["nonce"])
 
-        _endpoint = _server.get_endpoint("wallet_provider_token")
-        _wia_request = _endpoint.parse_request(req_info["request"])
-        assert set(_wia_request.keys()) == {'grant_type', '__iccid', '__verified_assertion', 'assertion'}
-        # __verified_assertion is the unpacked assertion after the signature has been verified
-        # __client_id is carried in the nonce
-        _msgs = create_trust_chain_messages(self.wallet_provider, self.ta)
+            _endpoint = _server.get_endpoint("wallet_provider_token")
+            _wia_request = _endpoint.parse_request(req_info["request"])
+            assert set(_wia_request.keys()) == {'grant_type', '__verified_assertion', 'assertion'}
+            # __verified_assertion is the unpacked assertion after the signature has been verified
+            # __client_id is carried in the nonce
+            _msgs = create_trust_chain_messages(self.wallet_provider, self.ta)
 
-        with responses.RequestsMock() as rsps:
-            for _url, _jwks in _msgs.items():
-                rsps.add("GET", _url, body=_jwks,
-                         adding_headers={"Content-Type": "application/json"}, status=200)
+            with responses.RequestsMock() as rsps:
+                for _url, _jwks in _msgs.items():
+                    rsps.add("GET", _url, body=_jwks,
+                             adding_headers={"Content-Type": "application/json"}, status=200)
 
-            _response = _endpoint.process_request(_wia_request)
+                _response = _endpoint.process_request(_wia_request)
 
-        assert _response
-        assert _response["response_args"]["grant_type"] == 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer'
-        _jws = factory(_response["response_args"]["assertion"])
-        assert _jws.jwt.headers["typ"] == "wallet-attestation+jwt"
-        _payload = _jws.jwt.payload()
-        assert _payload
-        assert _wia_request["__verified_assertion"]["cnf"] == _payload["cnf"]
-        assert _payload["type"] == "WalletInstanceAttestation"
-        assert "trust_chain" in _jws.jwt.headers
+            assert _response
+            assert _response["response_args"]["grant_type"] == 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer'
+            _jws = factory(_response["response_args"]["assertion"])
+            assert _jws.jwt.headers["typ"] == "wallet-attestation+jwt"
+            _payload = _jws.jwt.payload()
+            assert _payload
+            assert _wia_request["__verified_assertion"]["cnf"] == _payload["cnf"]
+            assert _payload["type"] == "WalletInstanceAttestation"
+            assert "trust_chain" in _jws.jwt.headers

@@ -166,7 +166,7 @@ class Credential(Endpoint):
     endpoint_type = "oauth2"
 
     _supports = {
-        "credentials_supported": None,
+        "credential_configurations_supported": None,
         "attribute_disclosure": None,
         "array_disclosure": None
     }

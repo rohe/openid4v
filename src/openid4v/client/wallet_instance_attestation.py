@@ -20,6 +20,8 @@ from idpyoidc.util import rndstr
 from openid4v.message import WalletInstanceAttestationResponse
 from openid4v.message import WalletInstanceRequest
 
+WalletInstanceAttestationLifetime = 2592000  # 30 days
+
 
 class WalletInstanceAttestation(FederationService):
     """The service that talks to the Wallet provider."""
@@ -39,6 +41,9 @@ class WalletInstanceAttestation(FederationService):
         FederationService.__init__(self, upstream_get, conf=conf)
         self.wallet_provider_id = conf.get("wallet_provider_id", "")
         self.wallet_instance_attestation = {}
+        _lifetime = conf.get('lifetime', 0)
+        self.lifetime = _lifetime or WalletInstanceAttestationLifetime
+
 
     def get_trust_chains(self):
         chains, leaf_ec = collect_trust_chains(self, self.wallet_provider_id)
@@ -87,6 +92,7 @@ class WalletInstanceAttestation(FederationService):
 
         _jwt = JWT(key_jar=keyjar, sign_alg='ES256', iss=ec_key.kid)
         _jwt.with_jti = True
+        _jwt.lifetime = kwargs.get("lifetime", self.lifetime)
 
         if request_args:
             payload = request_args.copy()

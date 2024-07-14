@@ -1,5 +1,6 @@
 from typing import Optional
 
+from idpyoidc.message import Message
 from idpyoidc.metadata import get_encryption_algs
 from idpyoidc.metadata import get_encryption_encs
 from idpyoidc.server import Endpoint
@@ -25,9 +26,11 @@ class OpenidCredentialIssuerClaims(Claims):
         "jwks": None
     }
 
-    def provider_info(self, supports):
+    def provider_info(self, supports, schema: Optional[Message] = None):
         _info = {}
-        for key in message.CredentialIssuerMetadata.c_param.keys():
+        if schema is None:
+            schema = message.CredentialIssuerMetadata
+        for key in schema.c_param.keys():
             _val = self.get_preference(key, supports.get(key, None))
             if _val not in [None, []]:
                 _info[key] = _val
@@ -42,7 +45,9 @@ class OpenidCredentialIssuer(ServerEntity):
 
     def get_metadata(self, *args):
         # static ! Should this be done dynamically ?
-        return {self.name: self.context.provider_info}
+        _metadata = self.context.get_provider_info(schema=message.OpenidCredentialIssuer)
+        _metadata["credential_issuer"] = self.config.get("issuer")
+        return {self.name: _metadata}
 
 
 class AutomaticRegistration(object):

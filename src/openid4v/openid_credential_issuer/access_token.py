@@ -4,6 +4,7 @@ from typing import Optional
 from typing import Union
 
 from cryptojwt.jwt import utc_time_sans_frac
+from idpyoidc import metadata
 from idpyoidc.message import Message
 from idpyoidc.message.oauth2 import ResponseMessage
 from idpyoidc.message.oauth2 import TokenErrorResponse
@@ -35,6 +36,11 @@ class Token(Endpoint):
     default_capabilities = {"token_endpoint_auth_signing_alg_values_supported": None}
     endpoint_type = "oauth2"
     default_authn_method = "private_key_jwt"
+
+    _supports = {
+        "token_endpoint_auth_methods_supported": [],
+        "token_endpoint_auth_signing_alg_values_supported": metadata.get_signing_algs()
+    }
 
     def __init__(self, upstream_get, conf=None, **kwargs):
         Endpoint.__init__(self, upstream_get, conf=conf, **kwargs)

@@ -277,7 +277,7 @@ def test_issuer_metadata():
     _file_name = "issuer_metadata.json"
     args = json.loads(open(os.path.join(_dirname, "example", _file_name)).read())
     metadata = CredentialIssuerMetadata(**args)
-    assert set(metadata.keys()) == {'credentials_supported', 'credential_issuer',
+    assert set(metadata.keys()) == {'credential_configurations_supported', 'credential_issuer',
                                     'credential_endpoint'}
     assert len(metadata["credentials_supported"]) == 3
     # One I can deal with
@@ -292,7 +292,7 @@ def test_credential_issuer_metadata():
     assert set(metadata.keys()) == {'authorization_server',
                                     'credential_endpoint',
                                     'credential_issuer',
-                                    'credentials_supported',
+                                    'credential_configurations_supported',
                                     'deferred_credential_endpoint'}
     assert len(metadata["credentials_supported"]) == 2
     # One I can deal with
