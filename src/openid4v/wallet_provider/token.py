@@ -116,8 +116,14 @@ class Token(Endpoint):
         payload = {
             "sub": req_args['iss'],
             "cnf": req_args["cnf"],
+            "vp_formats_supported": req_args["vp_formats_supported"],
             # "aal": "https://wallet-provider.example.org/LoA/basic",
             # "type": "WalletInstanceAttestation",
+            "authorization_endpoint": "eudiw:",
+            "response_types_supported": ["vp_token"],
+            "response_modes_supported": ["form_post.jwt"],
+            "request_object_signing_alg_values_supported": ["ES256"],
+            "presentation_definition_uri_supported": False
         }
         payload.update(self.upstream_get("unit").wallet_instance_discovery(req_args['iss']))
 

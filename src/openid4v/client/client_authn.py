@@ -18,7 +18,7 @@ class ClientAssertion(ClientAuthnMethod):
 
     def construct(self, request, service=None, http_args=None, **kwargs) -> dict:
         if "client_assertion" not in request:
-            request["client_assertion"] = kwargs["client_attestation"]
+            request["client_assertion"] = kwargs["client_assertion"]
 
         request["client_assertion_type"] = ASSERTION_TYPE
         return {}
