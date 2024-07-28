@@ -3,6 +3,7 @@ from typing import Callable
 from typing import Optional
 from typing import Union
 
+from cryptojwt import as_unicode
 from cryptojwt import JWT
 from cryptojwt.utils import as_bytes
 from idpyoidc.message import Message
@@ -46,4 +47,4 @@ class KeyAttestation(Endpoint):
 
         _val = _jws.pack(payload=request)
 
-        return {"key_attestation": base64.b64encode(as_bytes(_val))}
+        return {"response_args": {"key_attestation": as_unicode(base64.b64encode(as_bytes(_val)))}}

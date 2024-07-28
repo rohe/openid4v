@@ -53,7 +53,7 @@ class CredentialConstructor(object):
         return _discl
 
     def matching_credentials_supported(self, request):
-        _supported = self.upstream_get('context').claims.get_preference("credentials_supported")
+        _supported = self.upstream_get('context').claims.get_preference("credential_configurations_supported")
         matching = []
         if _supported:
             for cs in _supported:
@@ -238,21 +238,33 @@ class Credential(Endpoint):
 
     def process_request(self, request=None, **kwargs):
         logger.debug(f"process_request: {request}")
+        _msg = {}
+        client_id = ""
 
         _context = self.upstream_get("context")
-        oas = self.part_of_combo()
-        if oas:
-            try:
-                _session_info = self._get_session_info(oas.context, request["access_token"])
-            except (KeyError, ValueError):
-                return self.error_cls(error="invalid_token", error_description="Invalid Token")
-
-            client_id = _session_info["client_id"]
-            _msg = self.credential_constructor(user_id=_session_info["user_id"], request=request,
-                                               auth_info=_session_info["grant"].authentication_event,
-                                               client_id=client_id)
+        if _context.session_manager.db.keys():
+            pass
         else:
-            _msg = {}
+            oas = self.part_of_combo()
+            if oas:
+                _context = oas.context
+
+        try:
+            # logger.debug(f"Session manager keys: {list(_context.session_manager.db.keys())}")
+            _session_info = self._get_session_info(_context, request["access_token"])
+        except (KeyError, ValueError):
+            logger.exception("Invalid access token")
+            return self.error_cls(error="invalid_token", error_description="Invalid Token")
+
+        if _session_info:
+            client_id = _session_info["client_id"]
+            try:
+                _msg = self.credential_constructor(user_id=_session_info["user_id"], request=request,
+                                                   auth_info=_session_info["grant"].authentication_event,
+                                                   client_id=client_id)
+            except Exception:
+                logger.exception("Credential constructor")
+                return self.error_cls(error="invalid_token", error_description="Missing session")
 
         _resp = {
             "format": "vc+sd-jwt",

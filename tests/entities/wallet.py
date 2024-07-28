@@ -3,10 +3,6 @@ from typing import Optional
 
 from fedservice.utils import make_federation_combo
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
-from openid4v.client.client_authn import ClientAuthenticationAttestation
-
-from openid4v.client.client_authn import ClientAssertion
-from openid4v.client.client_authn import DPoPHeader
 
 
 def main(entity_id: str,
@@ -83,14 +79,19 @@ def main(entity_id: str,
                             "pid_eaa_authorization": {
                                 "class": "openid4v.client.pid_eaa.Authorization",
                                 "kwargs": {
-                                    "client_authn_methods": {"client_attestation": ClientAuthenticationAttestation},
+                                    "client_authn_methods": {
+                                        "client_attestation":
+                                            "openid4v.client.client_authn.ClientAuthenticationAttestation"
+                                    },
                                     "default_authn_method": "client_attestation"
                                 },
                             },
                             "pid_eaa_token": {
                                 "class": "openid4v.client.pid_eaa.AccessToken",
                                 "kwargs": {
-                                    "client_authn_methods": {"client_attestation": ClientAuthenticationAttestation},
+                                    "client_authn_methods": {
+                                        "client_attestation":
+                                            "openid4v.client.client_authn.ClientAuthenticationAttestation"},
                                     "default_authn_method": "client_attestation"
                                 }
                             },
@@ -98,7 +99,7 @@ def main(entity_id: str,
                                 "path": "credential",
                                 "class": 'openid4v.client.pid_eaa.Credential',
                                 "kwargs": {
-                                    "client_authn_methods": {"dpop_header": DPoPHeader},
+                                    "client_authn_methods": {"dpop_header": "openid4v.client.client_authn.DPoPHeader"},
                                     "default_authn_method": "dpop_header"
                                 }
                             }

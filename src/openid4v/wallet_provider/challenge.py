@@ -94,4 +94,4 @@ class Challenge(Endpoint):
     def process_request(self, request=None, **kwargs):
         _context = self.upstream_get("context")
         _msg = {"nonce": self.challenge_service()}
-        return {"response_msg": json.dumps(_msg)}
+        return {"response_args": _msg}

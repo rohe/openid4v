@@ -17,6 +17,7 @@ class RegistrationService(FederationService):
     synchronous = True
     service_name = "registration"
     http_method = "POST"
+    response_body_type = "html"
 
     def __init__(self,
                  upstream_get: Callable,

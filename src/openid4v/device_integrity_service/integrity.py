@@ -3,6 +3,7 @@ from typing import Callable
 from typing import Optional
 from typing import Union
 
+from cryptojwt import as_unicode
 from cryptojwt import JWT
 from cryptojwt.utils import as_bytes
 from idpyoidc.message import Message
@@ -42,4 +43,4 @@ class IntegrityAssertion(Endpoint):
             request = {"dummy_integrity_assertion": "qwerty"}
 
         _val = _jws.pack(payload=request)
-        return {"integrity_assertion": base64.b64encode(as_bytes(_val))}
+        return {"response_args": {"integrity_assertion": as_unicode(base64.b64encode(as_bytes(_val)))}}

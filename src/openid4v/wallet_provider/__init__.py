@@ -33,7 +33,7 @@ class WalletProviderClaims(Claims):
         "presentation_definition_uri_supported": False
     }
 
-    def provider_info(self, supports, schema: Optional[Message] = None):
+    def provider_info(self, supports: dict, schema: Optional[Message] = None):
         _info = {}
         if schema is None:
             schema = message.WalletProvider

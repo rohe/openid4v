@@ -3,6 +3,7 @@ import logging
 from typing import Optional
 from typing import Union
 
+from cryptojwt import as_unicode
 from cryptojwt import JWT
 from cryptojwt.utils import as_bytes
 from idpyoidc.message import Message
@@ -26,7 +27,7 @@ class Validation(object):
         dsi = topmost_unit(self)["device_integrity_service"]
         _jwt = JWT(dsi.oem_keyjar)
         try:
-            _val = _jwt.unpack(base64.b64decode(as_bytes(args[0])))
+            _val = _jwt.unpack(as_unicode(base64.b64decode(as_bytes(args[0]))))
             return True
         except Exception as err:
             return False
@@ -94,6 +95,7 @@ class Registration(Endpoint):
     name = "registration"
     endpoint_type = "oauth2"
     endpoint_name = "registration_endpoint"
+    response_format = None
 
     def __init__(self, upstream_get, conf=None, **kwargs):
         Endpoint.__init__(self, upstream_get, conf=conf, **kwargs)

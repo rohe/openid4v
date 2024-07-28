@@ -743,7 +743,8 @@ class AuthorizationServerMetadata(fed_msg.AuthorizationServerMetadata):
         "token_endpoint_auth_methods_supported": REQUIRED_LIST_OF_STRINGS,
         "token_endpoint_auth_signing_alg_values_supported": REQUIRED_LIST_OF_STRINGS,
         "request_object_signing_alg_values_supported": REQUIRED_LIST_OF_STRINGS,
-        "jwks": SINGLE_REQUIRED_DICT
+        "jwks": SINGLE_REQUIRED_DICT,
+        "jwks_uri": SINGLE_OPTIONAL_STRING
     })
 
 class OpenidCredentialIssuer(Message):
@@ -754,5 +755,6 @@ class OpenidCredentialIssuer(Message):
         "status_attestation_endpoint": SINGLE_REQUIRED_STRING,
         "display": REQUIRED_LIST_OF_DICTS,
         "credential_configurations_supported": REQUIRED_LIST_OF_DICTS,
-        "jwks": SINGLE_REQUIRED_DICT
+        "jwks": SINGLE_REQUIRED_DICT,
+        "jwks_uri": SINGLE_OPTIONAL_STRING
     }

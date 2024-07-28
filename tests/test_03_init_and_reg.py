@@ -249,10 +249,10 @@ class TestComboCollect(object):
         parsed_args = _integrity_endpoint.parse_request(req)
         response_args = _integrity_endpoint.process_request(parsed_args)
 
-        assert "integrity_assertion" in response_args
+        assert "integrity_assertion" in response_args["response_args"]
 
         _verifier = JWT(key_jar=_wallet.oem_key_jar)
-        _assertion = _verifier.unpack(base64.b64decode(response_args["integrity_assertion"]))
+        _assertion = _verifier.unpack(base64.b64decode(response_args["response_args"]["integrity_assertion"]))
 
         assert "dummy_integrity_assertion" in _assertion
 
@@ -267,7 +267,8 @@ class TestComboCollect(object):
 
         _key_attestation_endpoint = _dis.get_endpoint("key_attestation")
         parsed_args = _key_attestation_endpoint.parse_request(req)
-        response_args = _key_attestation_endpoint.process_request(parsed_args)
+        response = _key_attestation_endpoint.process_request(parsed_args)
+        response_args = response["response_args"]
 
         assert "key_attestation" in response_args
         _wallet.oem_key_jar = KeyJar()
@@ -290,7 +291,8 @@ class TestComboCollect(object):
 
         _integrity_endpoint = _dis.get_endpoint("integrity")
         parsed_args = _integrity_endpoint.parse_request(req)
-        response_args = _integrity_endpoint.process_request(parsed_args)
+        _response = _integrity_endpoint.process_request(parsed_args)
+        response_args = _response["response_args"]
 
         assert "integrity_assertion" in response_args
         _verifier = JWT(key_jar=_wallet.oem_key_jar)
@@ -305,10 +307,11 @@ class TestComboCollect(object):
 
         _challenge_endpoint = _wallet_provider.get_endpoint("challenge")
         parsed_args = _challenge_endpoint.parse_request(req)
-        response_args = _challenge_endpoint.process_request(parsed_args)
+        _response = _challenge_endpoint.process_request(parsed_args)
+        response_args = _response["response_args"]
 
-        assert "nonce" in response_args["response_msg"]
-        challenge = json.loads(response_args["response_msg"])["nonce"]
+        assert "nonce" in response_args
+        challenge = response_args["nonce"]
 
         # Step 6
 
@@ -326,7 +329,8 @@ class TestComboCollect(object):
 
         _key_attestation_endpoint = _dis.get_endpoint("key_attestation")
         parsed_args = _key_attestation_endpoint.parse_request(req)
-        response_args = _key_attestation_endpoint.process_request(parsed_args)
+        _response = _key_attestation_endpoint.process_request(parsed_args)
+        response_args = _response["response_args"]
 
         assert set(list(response_args.keys())) == {"key_attestation"}
         key_attestation = response_args["key_attestation"]
@@ -345,7 +349,7 @@ class TestComboCollect(object):
 
         _registration_endpoint = _wallet_provider.get_endpoint("registration")
         parsed_args = _registration_endpoint.parse_request(_req)
-        response_args = _registration_endpoint.process_request(parsed_args)
+        _response = _registration_endpoint.process_request(parsed_args)
 
-        assert set(response_args.keys()) == {"response_code"}
-        assert response_args["response_code"] == 204
+        assert set(_response.keys()) == {"response_code"}
+        assert _response["response_code"] == 204

@@ -11,10 +11,10 @@ from idpyoidc.server.client_authn import ClientSecretBasic
 from idpyoidc.server.client_authn import ClientSecretPost
 from idpyoidc.server.oauth2.add_on.dpop import DPoPClientAuth
 from idpyoidc.server.user_info import UserInfo
+
 from openid4v import ServerEntity
 from openid4v.openid_credential_issuer import OpenidCredentialIssuer
 from openid4v.openid_credential_issuer.client_authn import ClientAuthenticationAttestation
-
 from tests import CRYPT_CONFIG
 
 SESSION_PARAMS = {
@@ -37,7 +37,9 @@ def full_path(local_file):
     return os.path.join(BASEDIR, local_file)
 
 
-USERINFO_db = json.loads(open(full_path("users.json")).read())
+# print(">>>>" + full_path("users.json"))
+
+# USERINFO_db = json.loads(open(full_path("users.json")).read())
 
 
 def main(entity_id: str,
@@ -146,7 +148,7 @@ def main(entity_id: str,
                                 "kwargs": {"user": "diana"},
                             }
                         },
-                        "userinfo": {"class": UserInfo, "kwargs": {"db": USERINFO_db}},
+                        "userinfo": {"class": UserInfo, "kwargs": {"db_file": full_path("users.json")}},
                         "authz": {
                             "class": AuthzHandling,
                             "kwargs": {
@@ -221,7 +223,7 @@ def main(entity_id: str,
                         "userinfo": {
                             "class": "idpyoidc.server.user_info.UserInfo",
                             "kwargs": {
-                                "db_file": "users.json"
+                                "db_file": full_path("users.json")
                             }
                         },
                         'preference': {

@@ -12,6 +12,7 @@ from cryptojwt.jws.jws import factory
 from fedservice.message import ProviderConfigurationResponse
 from fedservice.server import ServerUnit
 from idpyoidc.configure import Base
+from idpyoidc.node import topmost_unit
 from idpyoidc.server import ASConfiguration
 from idpyoidc.server import authz
 from idpyoidc.server import build_endpoints
@@ -43,7 +44,7 @@ def do_endpoints(conf, upstream_get):
 
 
 class ServerEntity(ServerUnit):
-    name = 'eudi_server'
+    name = 'noname'
     parameter = {"endpoint": [Endpoint], "context": EndpointContext}
     claims_class = OAUTH2_Claims
 
@@ -67,6 +68,8 @@ class ServerEntity(ServerUnit):
                             config=config)
 
         if not isinstance(config, Base):
+            if not entity_id:
+                entity_id = config.get("entity_id", config.get("issuer"))
             config['issuer'] = entity_id
             config['base_url'] = entity_id
             config = ASConfiguration(config)
@@ -122,6 +125,15 @@ class ServerEntity(ServerUnit):
             _metadata["issuer"] = self.config.get("issuer")
 
         return {guise: _metadata}
+
+    def get_guise(self):
+        return self.name
+
+    def pick_guise(self, entity_type: Optional[str] = "", *args):
+        if not entity_type:
+            entity_type = self.name
+
+        return topmost_unit(self).get(entity_type, None)
 
     def setup_authz(self):
         authz_spec = self.config.get("authz")

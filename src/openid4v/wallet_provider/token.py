@@ -54,6 +54,7 @@ class Token(Endpoint):
 
     def __init__(self, upstream_get, **kwargs):
         Endpoint.__init__(self, upstream_get, **kwargs)
+        self.add_trust_chain = kwargs.get("add_trust_chain", False)
 
     def verify_self_signed_signature(self, self_signed_jwt):
         _jws = factory(self_signed_jwt)
@@ -138,7 +139,7 @@ class Token(Endpoint):
         _trust_chain = kwargs.get("trust_chain")
         if _trust_chain:
             _jws_header["trust_chain"] = _trust_chain
-        else:  # Collect Trust Chain
+        elif self.add_trust_chain:  # Collect Trust Chain
             _trust_chains = get_verified_trust_chains(self, entity_id=entity_id)
             if len(_trust_chains) >= 1:
                 _jws_header["trust_chain"] = _trust_chains[0].chain

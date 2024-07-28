@@ -86,9 +86,10 @@ class TestPID():
 
         _challenge_endpoint = _wallet_provider.get_endpoint("challenge")
         parsed_args = _challenge_endpoint.parse_request(req)
-        response_args = _challenge_endpoint.process_request(parsed_args)
+        _response = _challenge_endpoint.process_request(parsed_args)
+        response_args = _response["response_args"]
 
-        challenge = json.loads(response_args["response_msg"])["nonce"]
+        challenge = response_args["nonce"]
 
         # Step 6
 
@@ -101,7 +102,8 @@ class TestPID():
 
         _key_attestation_endpoint = _dis.get_endpoint("key_attestation")
         parsed_args = _key_attestation_endpoint.parse_request(req)
-        response_args = _key_attestation_endpoint.process_request(parsed_args)
+        _response = _key_attestation_endpoint.process_request(parsed_args)
+        response_args = _response["response_args"]
 
         key_attestation = response_args["key_attestation"]
 
@@ -117,7 +119,7 @@ class TestPID():
 
         _registration_endpoint = _wallet_provider.get_endpoint("registration")
         parsed_args = _registration_endpoint.parse_request(_req)
-        response_args = _registration_endpoint.process_request(parsed_args)
+        _ = _registration_endpoint.process_request(parsed_args)
 
     def wallet_attestation_issuance(self):
         self.wallet_instance_initialization_and_registration()
@@ -147,9 +149,10 @@ class TestPID():
 
         _challenge_endpoint = _wallet_provider.get_endpoint("challenge")
         parsed_args = _challenge_endpoint.parse_request(req)
-        response_args = _challenge_endpoint.process_request(parsed_args)
+        _response = _challenge_endpoint.process_request(parsed_args)
+        response_args = _response["response_args"]
 
-        challenge = json.loads(response_args["response_msg"])["nonce"]
+        challenge = response_args["nonce"]
 
         # Step 7 generate client_data_hash
 
@@ -174,9 +177,8 @@ class TestPID():
 
         _integrity_endpoint = _dis.get_endpoint("integrity")
         parsed_args = _integrity_endpoint.parse_request(req)
-        response_args = _integrity_endpoint.process_request(parsed_args)
-
-        assert response_args
+        response = _integrity_endpoint.process_request(parsed_args)
+        response_args = response["response_args"]
 
         # Step 11-12
 

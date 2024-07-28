@@ -54,7 +54,7 @@ class Token(Endpoint):
         """
         _context = self.upstream_get("context")
         _mngr = _context.session_manager
-        LOGGER.debug("Access Token")
+        LOGGER.debug(20 * "=" + "Access Token" + 20 * "=")
 
         if request["grant_type"] != "authorization_code":
             return self.error_cls(error="invalid_request", error_description="Unknown grant_type")
@@ -187,15 +187,15 @@ class Token(Endpoint):
         return _response
 
     def _mint_token(
-        self,
-        token_class: str,
-        grant: Grant,
-        session_id: str,
-        client_id: str,
-        based_on: Optional[SessionToken] = None,
-        scope: Optional[list] = None,
-        token_args: Optional[dict] = None,
-        token_type: Optional[str] = "",
+            self,
+            token_class: str,
+            grant: Grant,
+            session_id: str,
+            client_id: str,
+            based_on: Optional[SessionToken] = None,
+            scope: Optional[list] = None,
+            token_args: Optional[dict] = None,
+            token_type: Optional[str] = "",
     ) -> SessionToken:
         _context = self.upstream_get("context")
         _mngr = _context.session_manager
