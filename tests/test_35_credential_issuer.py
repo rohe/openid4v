@@ -1,8 +1,7 @@
 import json
 import os
 
-import pytest
-import responses
+from cryptojwt.jwk.ec import new_ec_key
 from fedservice.entity import get_verified_trust_chains
 from fedservice.utils import make_federation_combo
 from fedservice.utils import make_federation_entity
@@ -10,8 +9,9 @@ from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
 from idpyoidc.client.oauth2.add_on.par import push_authorization
 from idpyoidc.message.oauth2 import AuthorizationRequest
 from idpyoidc.util import rndstr
+import pytest
+import responses
 
-import openid4v.openid_credential_issuer.revocation
 from examples import create_trust_chain_messages
 from openid4v.message import AuthorizationServerMetadata
 from openid4v.message import OpenidCredentialIssuer
@@ -30,7 +30,8 @@ TRUST_ANCHORS = {
                 "kty": "RSA",
                 "use": "sig",
                 "kid": "VEhkNWFFSzVnS3B5cDlxMGR0RHhwM0EzQzF3MFUwV09xNGQwV1F4NkRaWQ",
-                "n": "ii6GjcoPMtM92VS-Ig0P7ULEDyRNIVbOJFm1CTHtfuLMFct-kMe-cMC2RVqRZZnIbixU78WV6c7tWBxjvFw4fIEecSPxrrWpDTRMeQlsIleh1dySneZhATa5E6lWXKmspfznBVmypafnaWVGH5agWcOJpAYGreHxZPvD_GnVgNoUrcB0xHJc3Rt7U4Fbe1tYvS318hbgJk5sPTo1TnjgRUTOt88gvV8o0eOg0tG2Qm71Q6p14yEi_vZPq0nwLMg5MIwxjTHyFIkhlPraKpV-mO3FriKiWOVvxNlqZkclwO62plJkhH1uowE5nVnmAYwH4uXyLNyqPh8JSLycxNvQfw",
+                "n": "ii6GjcoPMtM92VS-Ig0P7ULEDyRNIVbOJFm1CTHtfuLMFct-kMe"
+                     "-cMC2RVqRZZnIbixU78WV6c7tWBxjvFw4fIEecSPxrrWpDTRMeQlsIleh1dySneZhATa5E6lWXKmspfznBVmypafnaWVGH5agWcOJpAYGreHxZPvD_GnVgNoUrcB0xHJc3Rt7U4Fbe1tYvS318hbgJk5sPTo1TnjgRUTOt88gvV8o0eOg0tG2Qm71Q6p14yEi_vZPq0nwLMg5MIwxjTHyFIkhlPraKpV-mO3FriKiWOVvxNlqZkclwO62plJkhH1uowE5nVnmAYwH4uXyLNyqPh8JSLycxNvQfw",
                 "e": "AQAB"
             },
             {
@@ -81,7 +82,8 @@ WALLET_CONFIG = {
                 "config": {
                     "services": {
                         "wallet_instance_attestation": {
-                            "class": "openid4v.client.wallet_instance_attestation.WalletInstanceAttestation"
+                            "class":
+                                "openid4v.client.wallet_instance_attestation.WalletInstanceAttestation"
                         }
                     }
                 },
@@ -123,7 +125,8 @@ WALLET_CONFIG = {
                             "kwargs": {
                                 "authn_method": {
                                     "client_authentication_attestation": {
-                                        "class": "openid4v.client.client_authn.ClientAuthenticationAttestation"
+                                        "class":
+                                            "openid4v.client.client_authn.ClientAuthenticationAttestation"
                                     }
                                 }
                             }
@@ -145,7 +148,8 @@ WALLET_CONFIG = {
                             "class": "openid4v.client.pid_eaa.Authorization",
                             "kwargs": {
                                 "client_authn_methods": {
-                                    "client_assertion": "openid4v.client.client_authn.ClientAssertion"
+                                    "client_assertion":
+                                        "openid4v.client.client_authn.ClientAssertion"
                                 }
                             }
                         },
@@ -153,7 +157,8 @@ WALLET_CONFIG = {
                             "class": "openid4v.client.pid_eaa.AccessToken",
                             "kwargs": {
                                 "client_authn_methods": {
-                                    "client_assertion": "openid4v.client.client_authn.ClientAuthenticationAttestation"
+                                    "client_assertion":
+                                        "openid4v.client.client_authn.ClientAuthenticationAttestation"
                                 }
                             }
                         },
@@ -308,7 +313,8 @@ OAUTH_SERVER_CONF = {
         "client_secret_post": "idpyoidc.server.client_authn.ClientSecretPost",
         "client_assertion": "openid4v.openid_credential_issuer.client_authn.ClientAssertion",
         "dpop_client_auth": "idpyoidc.server.oauth2.add_on.dpop.DPoPClientAuth",
-        "attest_jwt_client_auth": "openid4v.openid_credential_issuer.client_authn.ClientAuthenticationAttestation"
+        "attest_jwt_client_auth":
+            "openid4v.openid_credential_issuer.client_authn.ClientAuthenticationAttestation"
     },
     "keys": {
         "key_defs": [
@@ -676,7 +682,8 @@ class TestCredentialIssuer():
 
     def test_metadata(self):
         metadata = self.credential_issuer.get_metadata()
-        assert set(metadata.keys()) == {'federation_entity', "oauth_authorization_server", "openid_credential_issuer"}
+        assert set(metadata.keys()) == {'federation_entity', "oauth_authorization_server",
+                                        "openid_credential_issuer"}
 
         as_metadata = AuthorizationServerMetadata(**metadata["oauth_authorization_server"])
         as_metadata.verify()
@@ -689,31 +696,56 @@ class TestCredentialIssuer():
         _server = self.wallet_provider["wallet_provider"]
         _endpoint = _server.get_endpoint("challenge")
         _aa_response = _endpoint.process_request()
-        _msg = json.loads(_aa_response["response_msg"])
+        _aa_response_args = _aa_response["response_args"]
+        _msg = _aa_response_args
         _nonce = _msg["nonce"]
 
         # Now for the Wallet Instance Attestation
         wallet_entity = self.wallet["wallet"]
         _service = wallet_entity.get_service("wallet_instance_attestation")
         _service.wallet_provider_id = WALLET_PROVIDER_ID
-        request_args = {"challenge": _nonce, "aud": WALLET_PROVIDER_ID}
+        ephemeral_key = new_ec_key(crv="P-256")
+        request_args = {
+            "aud": WALLET_PROVIDER_ID,
+            #  "challenge": SINGLE_REQUIRED_STRING,
+            "challenge": _nonce,
+            # "hardware_signature": SINGLE_REQUIRED_STRING,
+            "hardware_signature": "__hardware_signature__",
+            # "integrity_assertion": SINGLE_REQUIRED_STRING,
+            "integrity_assertion": "__integrity_assertion__",
+            # "hardware_key_tag": SINGLE_REQUIRED_STRING,
+            "hardware_key_tag": "__hardware_key_tag__",
+            # "cnf": SINGLE_REQUIRED_JSON,
+            "cnf": {"jwk": ephemeral_key.serialize()},
+            "vp_formats_supported": {
+                "jwt_vp_json": {
+                    "alg_values_supported": ["ES256"]
+                },
+                "jwt_vc_json": {
+                    "alg_values_supported": ["ES256"]
+                }
+            }
+        }
         req_info = _service.get_request_parameters(
             request_args,
-            endpoint=f"{WALLET_PROVIDER_ID}/token")
+            endpoint=f"{WALLET_PROVIDER_ID}/token",
+            ephemeral_key=ephemeral_key
+        )
 
         _endpoint = _server.get_endpoint("wallet_provider_token")
         _wia_request = _endpoint.parse_request(req_info["request"])
-        assert set(_wia_request.keys()) == {'assertion', 'grant_type', '__verified_assertion', '__iccid'}
+        assert set(_wia_request.keys()) == {'assertion', 'grant_type', '__verified_assertion'}
         # __verified_assertion is the unpacked assertion after the signature has been verified
         # __client_id is carried in the nonce
-        _msgs = create_trust_chain_messages(self.wallet_provider, self.ta)
 
-        with responses.RequestsMock() as rsps:
-            for _url, _jwks in _msgs.items():
-                rsps.add("GET", _url, body=_jwks,
-                         adding_headers={"Content-Type": "application/json"}, status=200)
+        # _msgs = create_trust_chain_messages(self.wallet_provider, self.ta)
+        #
+        # with responses.RequestsMock() as rsps:
+        #     for _url, _jwks in _msgs.items():
+        #         rsps.add("GET", _url, body=_jwks,
+        #                  adding_headers={"Content-Type": "application/json"}, status=200)
 
-            _response = _endpoint.process_request(_wia_request)
+        _response = _endpoint.process_request(_wia_request)
 
         return _response["response_args"]["assertion"], _wia_request['__verified_assertion']["iss"]
 
@@ -722,6 +754,7 @@ class TestCredentialIssuer():
         assert _wia
 
         oic = self.credential_issuer["openid_credential_issuer"]
+        oas = self.credential_issuer["oauth_authorization_server"]
 
         _handler = self.wallet["pid_eaa_consumer"]
         _actor = _handler.get_consumer(oic.context.entity_id)
@@ -834,7 +867,9 @@ class TestCredentialIssuer():
         assert cred_req_info["headers"]["Content-Type"] == "application/json"
 
         _endp = oic.get_endpoint("credential")
-        _req = _endp.parse_request(cred_req_info["request"], http_info={"headers": cred_req_info["headers"]})
+        _req = _endp.parse_request(cred_req_info["request"],
+                                   http_info={"headers": cred_req_info["headers"]})
         _resp = _endp.process_request(_req)
         assert _resp
-        assert set(_resp["response_args"].keys()) == {'c_nonce_expires_in', 'c_nonce', 'format', 'credential'}
+        assert set(_resp["response_args"].keys()) == {'c_nonce_expires_in', 'c_nonce', 'format',
+                                                      'credential'}

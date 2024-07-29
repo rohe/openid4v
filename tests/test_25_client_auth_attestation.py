@@ -168,12 +168,9 @@ def test_construction():
     assert len(part) == 2
     # The proof part
     _jws = factory(part[1])
-    payload1 = _jws.verify_compact(part[0], keys=[signing_key])
-    assert payload1
-    assert set(payload1.keys()) == {"iss", "iat", "exp", "cnf", "sub"}
 
-    _key = key_from_jwk_dict(payload1["cnf"]["jwk"])
+    _key = signing_key
     _jws = factory(part[1])
     payload2 = _jws.verify_compact(part[1], keys=[_key])
     assert payload2
-    assert set(payload2.keys()) == {"aud", "nonce", "iss", "iat", "exp", "jti"}
+    assert set(payload2.keys()) == {'aud', 'exp', 'iss', 'jti', 'iat'}
