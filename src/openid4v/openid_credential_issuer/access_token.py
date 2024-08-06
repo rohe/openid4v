@@ -4,6 +4,7 @@ from typing import Optional
 from typing import Union
 
 from cryptojwt.jwt import utc_time_sans_frac
+from idpyoidc import metadata
 from idpyoidc.message import Message
 from idpyoidc.message.oauth2 import ResponseMessage
 from idpyoidc.message.oauth2 import TokenErrorResponse
@@ -36,6 +37,11 @@ class Token(Endpoint):
     endpoint_type = "oauth2"
     default_authn_method = "private_key_jwt"
 
+    _supports = {
+        "token_endpoint_auth_methods_supported": [],
+        "token_endpoint_auth_signing_alg_values_supported": metadata.get_signing_algs()
+    }
+
     def __init__(self, upstream_get, conf=None, **kwargs):
         Endpoint.__init__(self, upstream_get, conf=conf, **kwargs)
 
@@ -48,7 +54,7 @@ class Token(Endpoint):
         """
         _context = self.upstream_get("context")
         _mngr = _context.session_manager
-        LOGGER.debug("Access Token")
+        LOGGER.debug(20 * "=" + "Access Token" + 20 * "=")
 
         if request["grant_type"] != "authorization_code":
             return self.error_cls(error="invalid_request", error_description="Unknown grant_type")
@@ -181,15 +187,15 @@ class Token(Endpoint):
         return _response
 
     def _mint_token(
-        self,
-        token_class: str,
-        grant: Grant,
-        session_id: str,
-        client_id: str,
-        based_on: Optional[SessionToken] = None,
-        scope: Optional[list] = None,
-        token_args: Optional[dict] = None,
-        token_type: Optional[str] = "",
+            self,
+            token_class: str,
+            grant: Grant,
+            session_id: str,
+            client_id: str,
+            based_on: Optional[SessionToken] = None,
+            scope: Optional[list] = None,
+            token_args: Optional[dict] = None,
+            token_type: Optional[str] = "",
     ) -> SessionToken:
         _context = self.upstream_get("context")
         _mngr = _context.session_manager

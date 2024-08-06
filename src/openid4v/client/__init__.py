@@ -32,3 +32,5 @@ class Wallet(Client):
                         jwks_uri=jwks_uri, client_type=client_type, **kwargs)
 
         self.context.wallet_instance_attestation = {}
+        self.context.wia_flow = {}
+        self.context.init_reg = {}

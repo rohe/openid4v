@@ -7,16 +7,17 @@ from idpyoidc.client.configure import Configuration
 from idpyoidc.message import Message
 from idpyoidc.message.oauth2 import ResponseMessage
 
-from openid4v.message import AppAttestationResponse
+from openid4v.message import RegistrationRequest
 
 
-class AppAttestationService(FederationService):
-    msg_type = Message
-    response_cls = AppAttestationResponse
+class RegistrationService(FederationService):
+    msg_type = RegistrationRequest
+    response_cls = Message
     error_msg = ResponseMessage
     synchronous = True
-    service_name = "app_attestation"
-    http_method = "GET"
+    service_name = "registration"
+    http_method = "POST"
+    response_body_type = "html"
 
     def __init__(self,
                  upstream_get: Callable,
@@ -24,7 +25,11 @@ class AppAttestationService(FederationService):
         if conf is None:
             conf = {}
         FederationService.__init__(self, upstream_get, conf=conf)
-        self.iccid = conf.get("iccid", "89470000000000000001")
 
     def construct(self, request_args=None, **kwargs) -> Message:
-        return Message(iccid=self.iccid)
+        if request_args is None:
+            return Message()
+        elif isinstance(request_args, dict):
+            return Message(**request_args)
+        else:
+            raise ValueError(f"Request arguments must be in the form of a dictionary not {request_args}")

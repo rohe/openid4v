@@ -18,7 +18,7 @@ class ClientAssertion(ClientAuthnMethod):
 
     def construct(self, request, service=None, http_args=None, **kwargs) -> dict:
         if "client_assertion" not in request:
-            request["client_assertion"] = kwargs["client_attestation"]
+            request["client_assertion"] = kwargs["client_assertion"]
 
         request["client_assertion_type"] = ASSERTION_TYPE
         return {}
@@ -44,26 +44,33 @@ class ClientAuthenticationAttestation(ClientAuthnMethod):
         if kwargs.get("signing_key"):
             pass
         else:
-            _wallet = topmost_unit(service)["wallet"]
+            _wallet = topmost_unit(service)
             signing_keys = _wallet.keyjar.get_signing_key(kid=entity_id)
-            kwargs["signing_key"] = signing_keys[0]
+            if signing_keys:
+                kwargs["signing_key"] = signing_keys[0]
+            else:
+                kwargs["signing_key"] = _wallet.context.wia_flow[entity_id]["ephemeral_key"]
 
-        part2 = self.construct_client_attestation_pop_jwt(entity_id, **kwargs)
+        part2 = self.construct_client_attestation_pop_jwt(entity_id=entity_id, **kwargs)
         _att = kwargs.get("attestation", kwargs.get("wallet_instance_attestation"))
         request["client_assertion"] = f"{_att}~{part2}"
         request["client_assertion_type"] = ASSERTION_TYPE
         return {}
 
     def construct_client_attestation_pop_jwt(self,
-                                             entity_id: str,
                                              audience: str,
                                              signing_key: JWK,
+                                             entity_id: Optional[str] = "",
                                              lifetime: Optional[int] = 300,
                                              nonce: Optional[str] = "",
                                              **kwargs):
 
         keyjar = KeyJar()
-        keyjar.add_keys(entity_id, keys=[signing_key])
+        if entity_id:
+            keyjar.add_keys(entity_id, keys=[signing_key])
+        else:
+            entity_id = signing_key.kid
+            keyjar.add_keys(signing_key.kid, [signing_key])
 
         if lifetime:
             _signer = JWT(key_jar=keyjar, sign_alg='ES256', iss=entity_id, lifetime=lifetime)

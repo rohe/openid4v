@@ -4,6 +4,7 @@ from typing import Union
 
 from cryptojwt import JWT
 from cryptojwt.jwk.ec import new_ec_key
+from cryptojwt.jwk.jwk import key_from_jwk_dict
 from fedservice.entity.function import apply_policies
 from fedservice.entity.function import collect_trust_chains
 from fedservice.entity.function import verify_trust_chains
@@ -15,10 +16,11 @@ from idpyoidc.defaults import JWT_BEARER
 from idpyoidc.message import Message
 from idpyoidc.message.oauth2 import ResponseMessage
 from idpyoidc.node import topmost_unit
-from idpyoidc.util import rndstr
 
 from openid4v.message import WalletInstanceAttestationResponse
 from openid4v.message import WalletInstanceRequest
+
+WalletInstanceAttestationLifetime = 2592000  # 30 days
 
 
 class WalletInstanceAttestation(FederationService):
@@ -39,6 +41,8 @@ class WalletInstanceAttestation(FederationService):
         FederationService.__init__(self, upstream_get, conf=conf)
         self.wallet_provider_id = conf.get("wallet_provider_id", "")
         self.wallet_instance_attestation = {}
+        _lifetime = conf.get('lifetime', 0)
+        self.lifetime = _lifetime or WalletInstanceAttestationLifetime
 
     def get_trust_chains(self):
         chains, leaf_ec = collect_trust_chains(self, self.wallet_provider_id)
@@ -78,15 +82,14 @@ class WalletInstanceAttestation(FederationService):
         """
         wallet_unit = self.upstream_get("unit")
         keyjar = wallet_unit.context.keyjar
-        ec_key = new_ec_key(crv="P-256", use="sig")
 
-        self.thumbprint_in_cnf_jwk = ec_key.kid
-
+        ec_key = kwargs.get("ephemeral_key")
         keyjar.add_keys(issuer_id=ec_key.kid, keys=[ec_key])
-        keyjar.add_keys(issuer_id="", keys=[ec_key])
+        # keyjar.add_keys(issuer_id="", keys=[ec_key])
 
         _jwt = JWT(key_jar=keyjar, sign_alg='ES256', iss=ec_key.kid)
         _jwt.with_jti = True
+        _jwt.lifetime = kwargs.get("lifetime", self.lifetime)
 
         if request_args:
             payload = request_args.copy()

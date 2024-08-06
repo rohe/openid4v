@@ -1,6 +1,6 @@
 {
     "credential_endpoint": "https://server.example.com/credential",
-    "credentials_supported": [
+    "credential_configurations_supported": [
         {
             "id": "UniversityDegree_LDP",
             "format": "ldp_vc",

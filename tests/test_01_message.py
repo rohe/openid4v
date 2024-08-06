@@ -277,11 +277,11 @@ def test_issuer_metadata():
     _file_name = "issuer_metadata.json"
     args = json.loads(open(os.path.join(_dirname, "example", _file_name)).read())
     metadata = CredentialIssuerMetadata(**args)
-    assert set(metadata.keys()) == {'credentials_supported', 'credential_issuer',
+    assert set(metadata.keys()) == {'credential_configurations_supported', 'credential_issuer',
                                     'credential_endpoint'}
-    assert len(metadata["credentials_supported"]) == 3
+    assert len(metadata["credential_configurations_supported"]) == 3
     # One I can deal with
-    assert len([c for c in metadata["credentials_supported"] if c["format"] == "jwt_vc_json"]) == 1
+    assert len([c for c in metadata["credential_configurations_supported"] if c["format"] == "jwt_vc_json"]) == 1
 
 
 def test_credential_issuer_metadata():
@@ -292,11 +292,11 @@ def test_credential_issuer_metadata():
     assert set(metadata.keys()) == {'authorization_server',
                                     'credential_endpoint',
                                     'credential_issuer',
-                                    'credentials_supported',
+                                    'credential_configurations_supported',
                                     'deferred_credential_endpoint'}
-    assert len(metadata["credentials_supported"]) == 2
+    assert len(metadata["credential_configurations_supported"]) == 2
     # One I can deal with
-    assert len([c for c in metadata["credentials_supported"] if c["format"] == "jwt_vc"]) == 2
+    assert len([c for c in metadata["credential_configurations_supported"] if c["format"] == "jwt_vc"]) == 2
 
 
 def test_authorization_details():

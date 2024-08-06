@@ -4,6 +4,8 @@ from urllib.parse import urlsplit
 from cryptojwt import JWT
 from cryptojwt.jwk.jwk import key_from_jwk_dict
 from cryptojwt.jws.jws import factory
+from fedservice import message as fed_msg
+from fedservice.message import SINGLE_REQUIRED_DICT
 from idpyoidc import verified_claim_name
 from idpyoidc.exception import MissingAttribute
 from idpyoidc.message import json_deserializer
@@ -16,6 +18,7 @@ from idpyoidc.message import oidc
 from idpyoidc.message import OPTIONAL_LIST_OF_MESSAGES
 from idpyoidc.message import OPTIONAL_LIST_OF_STRINGS
 from idpyoidc.message import OPTIONAL_MESSAGE
+from idpyoidc.message import REQUIRED_LIST_OF_DICTS
 from idpyoidc.message import REQUIRED_LIST_OF_STRINGS
 from idpyoidc.message import REQUIRED_MESSAGE
 from idpyoidc.message import SINGLE_OPTIONAL_INT
@@ -33,8 +36,8 @@ from idpyoidc.message.oidc import SINGLE_OPTIONAL_DICT
 from idpyoidc.message.oidc.identity_assurance import REQUIRED_VERIFIED_CLAIMS
 from idpysdjwt.holder import Holder
 
-from openid4v import extract_key_from_jws
-from openid4v import jws_issuer
+from openid4v.utils import extract_key_from_jws
+from openid4v.utils import jws_issuer
 
 
 class ProofToken(JsonWebToken):
@@ -515,7 +518,7 @@ class CredentialIssuerMetadata(Message):
         "credential_response_encryption_alg_values_supported": OPTIONAL_LIST_OF_STRINGS,
         "credential_response_encryption_enc_values_supported": OPTIONAL_LIST_OF_STRINGS,
         "require_credential_response_encryption": SINGLE_OPTIONAL_BOOLEAN,
-        "credentials_supported": REQUIRED_LIST_OF_CREDENTIAL_TYPES,
+        "credential_configurations_supported": REQUIRED_LIST_OF_CREDENTIAL_TYPES,
         "display": OPTIONAL_DISPLAY_PROPERIES,
         "jwks": SINGLE_OPTIONAL_DICT,
         "jwks_uri": SINGLE_OPTIONAL_STRING
@@ -584,12 +587,16 @@ class WalletProviderMetadata(Message):
     }
 
 
-class WalletInstanceRequestJWT(Message):
+class WalletAttestationRequestJWT(Message):
     c_param = {
         "iss": SINGLE_REQUIRED_STRING,
         "aud": SINGLE_REQUIRED_STRING,
-        "jti": SINGLE_REQUIRED_STRING,
-        "nonce": SINGLE_REQUIRED_STRING,
+        "iat": SINGLE_REQUIRED_INT,
+        "exp": SINGLE_REQUIRED_INT,
+        "challenge": SINGLE_REQUIRED_STRING,
+        "hardware_signature": SINGLE_REQUIRED_STRING,
+        "integrity_assertion": SINGLE_REQUIRED_STRING,
+        "hardware_key_tag": SINGLE_REQUIRED_STRING,
         "cnf": SINGLE_REQUIRED_JSON
     }
 
@@ -608,7 +615,7 @@ class WalletInstanceRequest(Message):
         # if the 'typ' parameter in the JWT header matches one of the keys in this dictionary then
         # the payload is mapped into the corresponding class
         _verifier.typ2msg_cls = {
-            "var+jwt": WalletInstanceRequestJWT
+            "wallet-attestation+jwt": WalletAttestationRequestJWT
         }
 
         _request = _verifier.unpack(self["assertion"])
@@ -620,18 +627,18 @@ class WalletInstanceRequest(Message):
 class WalletInstanceAttestationJWT(Message):
     c_param = {
         "iss": SINGLE_REQUIRED_STRING,
-        "sub": SINGLE_REQUIRED_STRING,
+        # "sub": SINGLE_REQUIRED_STRING,
         "iat": SINGLE_REQUIRED_INT,
         "exp": SINGLE_REQUIRED_INT,
         "aal": SINGLE_REQUIRED_STRING,
         "cnf": SINGLE_REQUIRED_JSON,
         # "attested_security_context": SINGLE_OPTIONAL_STRING,
-        # "authorization_endpoint": SINGLE_OPTIONAL_STRING,
-        # "response_types_supported": OPTIONAL_LIST_OF_STRINGS,
-        # "response_modes_supported": OPTIONAL_LIST_OF_STRINGS,
-        # "vp_formats_supported": SINGLE_REQUIRED_JSON,
-        # "request_object_signing_alg_values_supported": REQUIRED_LIST_OF_STRINGS,
-        # "presentation_definition_uri_supported": SINGLE_OPTIONAL_BOOLEAN
+        "authorization_endpoint": SINGLE_OPTIONAL_STRING,
+        "response_types_supported": OPTIONAL_LIST_OF_STRINGS,
+        "response_modes_supported": OPTIONAL_LIST_OF_STRINGS,
+        "vp_formats_supported": SINGLE_REQUIRED_JSON,
+        "request_object_signing_alg_values_supported": REQUIRED_LIST_OF_STRINGS,
+        "presentation_definition_uri_supported": SINGLE_OPTIONAL_BOOLEAN
     }
 
 
@@ -639,7 +646,7 @@ class WalletProvider(Message):
     c_param = {
         "jwks": SINGLE_REQUIRED_JSON,
         "token_endpoint": SINGLE_REQUIRED_STRING,
-        "attested_security_context_values_supported": OPTIONAL_LIST_OF_STRINGS,
+        "aal_values_supported": OPTIONAL_LIST_OF_STRINGS,
         "grant_types_supported": REQUIRED_LIST_OF_STRINGS,
         "token_endpoint_auth_methods_supported": OPTIONAL_LIST_OF_STRINGS,
         "token_endpoint_auth_signing_alg_values_supported": OPTIONAL_LIST_OF_STRINGS
@@ -710,12 +717,44 @@ class JwtKeyJOSEHeader(Message):
     }
 
 
-class AppAttestationResponse(Message):
+class ChallengeResponse(Message):
     c_param = {
         "nonce": SINGLE_REQUIRED_STRING
+    }
+
+class RegistrationRequest(Message):
+    c_param = {
+        "challenge": SINGLE_REQUIRED_STRING,
+        "key_attestation": SINGLE_REQUIRED_STRING,
+        "hardware_key_tag": SINGLE_REQUIRED_STRING
     }
 
 
 MAP_TYP_MSG = {
     "openid4vci-proof+jwt": ProofJWT
 }
+
+class AuthorizationServerMetadata(fed_msg.AuthorizationServerMetadata):
+    c_param = fed_msg.AuthorizationServerMetadata.c_param.copy()
+    c_param.update({
+        "pushed_authorization_request_endpoint": SINGLE_REQUIRED_STRING,
+        "acr_values_supported": REQUIRED_LIST_OF_STRINGS,
+        "authorization_signing_alg_values_supported": REQUIRED_LIST_OF_STRINGS,
+        "token_endpoint_auth_methods_supported": REQUIRED_LIST_OF_STRINGS,
+        "token_endpoint_auth_signing_alg_values_supported": REQUIRED_LIST_OF_STRINGS,
+        "request_object_signing_alg_values_supported": REQUIRED_LIST_OF_STRINGS,
+        "jwks": SINGLE_REQUIRED_DICT,
+        "jwks_uri": SINGLE_OPTIONAL_STRING
+    })
+
+class OpenidCredentialIssuer(Message):
+    c_param = {
+        "credential_issuer": SINGLE_REQUIRED_STRING,
+        "credential_endpoint": SINGLE_REQUIRED_STRING,
+        "revocation_endpoint": SINGLE_REQUIRED_STRING,
+        "status_attestation_endpoint": SINGLE_REQUIRED_STRING,
+        "display": REQUIRED_LIST_OF_DICTS,
+        "credential_configurations_supported": REQUIRED_LIST_OF_DICTS,
+        "jwks": SINGLE_REQUIRED_DICT,
+        "jwks_uri": SINGLE_OPTIONAL_STRING
+    }

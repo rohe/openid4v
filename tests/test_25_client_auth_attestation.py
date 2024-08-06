@@ -153,22 +153,24 @@ def test_construction():
     )
 
     signing_key = new_ec_key(crv="P-256", key_ops=["sign"])
-    attestation = ClientAuthenticationAttestation().construct(
-        request={}, service=client.get_service("authorization"),
+    request = {}
+    _ = ClientAuthenticationAttestation().construct(
+        request=request,
+        service=client.get_service("authorization"),
         audience="https://server.example.com",
-        wallet_instance_attestation="__JWS__"
+        wallet_instance_attestation="__WIA__",
+        # thumbprint=signing_key.kid,
+        signing_key=signing_key
     )
 
-    assert "~" in attestation
-    part = attestation["client_assertion"].split("~")
+    assert "~" in request["client_assertion"]
+    part = request["client_assertion"].split("~")
     assert len(part) == 2
-    _jws = factory(part[0])
-    payload1 = _jws.verify_compact(part[0], keys=[signing_key])
-    assert payload1
-    assert set(payload1.keys()) == {"iss", "iat", "exp", "cnf", "sub"}
+    # The proof part
+    _jws = factory(part[1])
 
-    _key = key_from_jwk_dict(payload1["cnf"]["jwk"])
+    _key = signing_key
     _jws = factory(part[1])
     payload2 = _jws.verify_compact(part[1], keys=[_key])
     assert payload2
-    assert set(payload2.keys()) == {"aud", "nonce", "iss", "iat", "exp", "jti"}
+    assert set(payload2.keys()) == {'aud', 'exp', 'iss', 'jti', 'iat'}

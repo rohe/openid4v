@@ -4,6 +4,7 @@ from typing import Optional
 from typing import Union
 
 from cryptojwt import KeyJar
+from idpyoidc.message import Message
 from idpyoidc.metadata import get_signing_algs
 from idpyoidc.server import ASConfiguration
 from idpyoidc.server import Endpoint
@@ -32,9 +33,12 @@ class WalletProviderClaims(Claims):
         "presentation_definition_uri_supported": False
     }
 
-    def provider_info(self, supports):
+    def provider_info(self, supports: dict, schema: Optional[Message] = None):
         _info = {}
-        for key in message.WalletProvider.c_param.keys():
+        if schema is None:
+            schema = message.WalletProvider
+
+        for key in schema.c_param.keys():
             _val = self.get_preference(key, supports.get(key, None))
             if _val not in [None, []]:
                 _info[key] = _val
@@ -87,12 +91,18 @@ class WalletProvider(ServerEntity):
         ServerEntity.__init__(self, config=config, upstream_get=upstream_get, keyjar=keyjar,
                               cwd=cwd, cookie_handler=cookie_handler, httpc=httpc,
                               httpc_params=httpc_params, entity_id=entity_id, key_conf=key_conf)
+
         self.wallet_instance_discovery = execute(
             config.get("wallet_instance_discovery",
                        {
                            "class": TestWalletInstanceDiscovery,
                            "kwargs" : {}
                        }))
+
+        if config and "wallet_db" in config:
+            self.context.wallet_db = execute(config["registration_service"])
+        else:
+            self.context.wallet_db = {}
 
     def get_metadata(self, *args):
         # static ! Should this be done dynamically ?

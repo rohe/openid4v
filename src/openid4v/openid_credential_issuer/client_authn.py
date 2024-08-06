@@ -204,6 +204,8 @@ class ClientAuthenticationAttestation(ClientAuthnMethod):
         # Should be a key in there
         _jwk = _wia["cnf"]["jwk"]
         _keyjar.import_jwks({"keys": [_jwk]}, _wia["sub"])
+        if _wia["cnf"]["jwk"]["kid"] != _wia["sub"]:
+            _keyjar.import_jwks({"keys": [_jwk]}, _wia["cnf"]["jwk"]["kid"])
 
         # have already saved the key that comes in the wia
         _verifier = JWT(_keyjar)

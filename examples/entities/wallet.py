@@ -144,7 +144,7 @@ credential_type = "PersonIdentificationData"
 for pid in res:
     oci_metadata = federation_entity.get_verified_metadata(pid)
     # logger.info(json.dumps(oci_metadata, sort_keys=True, indent=4))
-    for cs in oci_metadata['openid_credential_issuer']["credentials_supported"]:
+    for cs in oci_metadata['openid_credential_issuer']["credential_configurations_supported"]:
         if credential_type in cs["credential_definition"]["type"]:
             _oci[pid] = oci_metadata
             break

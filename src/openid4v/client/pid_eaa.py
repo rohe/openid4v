@@ -46,7 +46,7 @@ class Authorization(FederationService):
     synchronous = True
     service_name = "authorization"
     http_method = "GET"
-    # default_authn_method = "openid4v.client.client_authn.ClientAssertion"
+    # default_authn_method = "openid4v.client.client_authn.ClientAuthenticationAttestation"
 
     _supports = {
         "claims_parameter_supported": True,
