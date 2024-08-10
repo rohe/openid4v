@@ -3,10 +3,9 @@ import hashlib
 import json
 import os
 
-import pytest
-from cryptojwt import as_unicode
 from cryptojwt import JWT
 from cryptojwt import KeyJar
+from cryptojwt import as_unicode
 from cryptojwt.jwk.ec import new_ec_key
 from cryptojwt.jws.dsa import ECDSASigner
 from cryptojwt.utils import as_bytes
@@ -14,6 +13,7 @@ from fedservice.defaults import LEAF_ENDPOINTS
 from fedservice.utils import make_federation_combo
 from fedservice.utils import make_federation_entity
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
+import pytest
 
 from openid4v.device_integrity_service import DeviceIntegrityService
 from openid4v.device_integrity_service.integrity import IntegrityAssertion
@@ -31,7 +31,8 @@ TRUST_ANCHORS = {
                 "kty": "RSA",
                 "use": "sig",
                 "kid": "VEhkNWFFSzVnS3B5cDlxMGR0RHhwM0EzQzF3MFUwV09xNGQwV1F4NkRaWQ",
-                "n": "ii6GjcoPMtM92VS-Ig0P7ULEDyRNIVbOJFm1CTHtfuLMFct-kMe-cMC2RVqRZZnIbixU78WV6c7tWBxjvFw4fIEecSPxrrWpDTRMeQlsIleh1dySneZhATa5E6lWXKmspfznBVmypafnaWVGH5agWcOJpAYGreHxZPvD_GnVgNoUrcB0xHJc3Rt7U4Fbe1tYvS318hbgJk5sPTo1TnjgRUTOt88gvV8o0eOg0tG2Qm71Q6p14yEi_vZPq0nwLMg5MIwxjTHyFIkhlPraKpV-mO3FriKiWOVvxNlqZkclwO62plJkhH1uowE5nVnmAYwH4uXyLNyqPh8JSLycxNvQfw",
+                "n": "ii6GjcoPMtM92VS-Ig0P7ULEDyRNIVbOJFm1CTHtfuLMFct-kMe"
+                     "-cMC2RVqRZZnIbixU78WV6c7tWBxjvFw4fIEecSPxrrWpDTRMeQlsIleh1dySneZhATa5E6lWXKmspfznBVmypafnaWVGH5agWcOJpAYGreHxZPvD_GnVgNoUrcB0xHJc3Rt7U4Fbe1tYvS318hbgJk5sPTo1TnjgRUTOt88gvV8o0eOg0tG2Qm71Q6p14yEi_vZPq0nwLMg5MIwxjTHyFIkhlPraKpV-mO3FriKiWOVvxNlqZkclwO62plJkhH1uowE5nVnmAYwH4uXyLNyqPh8JSLycxNvQfw",
                 "e": "AQAB"
             },
             {
@@ -113,10 +114,12 @@ def wallet_conf():
                                 "class": "openid4v.client.device_integrity_service.IntegrityService"
                             },
                             "key_attestation": {
-                                "class": "openid4v.client.device_integrity_service.KeyAttestationService"
+                                "class":
+                                    "openid4v.client.device_integrity_service.KeyAttestationService"
                             },
                             "wallet_instance_attestation": {
-                                "class": "openid4v.client.wallet_instance_attestation.WalletInstanceAttestation"
+                                "class":
+                                    "openid4v.client.wallet_instance_attestation.WalletInstanceAttestation"
                             },
                             "challenge": {
                                 "class": "openid4v.client.challenge.ChallengeService"
@@ -192,7 +195,8 @@ class TestComboCollect(object):
                                     "https://wallet-provider.example.org/LoA/high"
                                 ],
                                 "grant_types_supported": [
-                                    "urn:ietf:params:oauth:client-assertion-type:jwt-client-attestation"
+                                    "urn:ietf:params:oauth:client-assertion-type:jwt-client"
+                                    "-attestation"
                                 ],
                                 "token_endpoint_auth_methods_supported": [
                                     "private_key_jwt"
@@ -232,8 +236,9 @@ class TestComboCollect(object):
         # OEM key distribution
         _wallet = self.wallet["wallet"]
         _wallet.oem_key_jar = KeyJar()
-        _wallet.oem_key_jar.import_jwks(self.wp["device_integrity_service"].oem_keyjar.export_jwks(),
-                                        WALLET_PROVIDER_ID)
+        _wallet.oem_key_jar.import_jwks(
+            self.wp["device_integrity_service"].oem_keyjar.export_jwks(),
+            WALLET_PROVIDER_ID)
 
         oem_kj = self.wp["device_integrity_service"].oem_keyjar
         oem_kj.import_jwks(oem_kj.export_jwks(private=True), WALLET_PROVIDER_ID)
@@ -289,7 +294,7 @@ class TestComboCollect(object):
         _req = _registration_service.construct({
             "challenge": challenge,
             "key_attestation": as_unicode(key_attestation),
-            "hardware_key_tag": as_unicode(_wallet.context.crypto_hardware_key.thumbprint("SHA-256"))
+            "hardware_key_tag": _wallet.context.crypto_hardware_key.kid
         })
 
         _registration_endpoint = _wallet_provider.get_endpoint("registration")
@@ -306,6 +311,8 @@ class TestComboCollect(object):
         # Step 2 Check for cryptographic hardware key
 
         assert _wallet.context.crypto_hardware_key
+        _wallet_provider.context.crypto_hardware_key[
+            _wallet.context.crypto_hardware_key.kid] = _wallet.context.crypto_hardware_key
 
         # Step 3 generate an ephemeral key pair
 
@@ -340,9 +347,11 @@ class TestComboCollect(object):
         # Step 8-10
         # signing the client_data_hash with the Wallet Hardware's private key
         _signer = ECDSASigner()
-        hardware_signature = _signer.sign(msg=client_data_hash, key=_wallet.context.crypto_hardware_key.private_key())
+        hardware_signature = _signer.sign(msg=client_data_hash,
+                                          key=_wallet.context.crypto_hardware_key.private_key())
 
-        # It requests the Device Integrity Service to create an integrity_assertion linked to the client_data_hash.
+        # It requests the Device Integrity Service to create an integrity_assertion linked to the
+        # client_data_hash.
 
         _dis_service = self.wallet["wallet"].get_service('integrity')
         req = _dis_service.construct(request_args={
@@ -360,7 +369,7 @@ class TestComboCollect(object):
             "challenge": challenge,
             "hardware_signature": as_unicode(base64.b64encode(hardware_signature)),
             "integrity_assertion": as_unicode(response_args["integrity_assertion"]),
-            "hardware_key_tag": as_unicode(_wallet.context.crypto_hardware_key.thumbprint("SHA-256")),
+            "hardware_key_tag": _wallet.context.crypto_hardware_key.kid,
             "cnf": {
                 "jwk": _ephemeral_key.serialize()
             },

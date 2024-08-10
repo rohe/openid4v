@@ -49,25 +49,25 @@ class WalletProviderClaims(Claims):
 class TestWalletInstanceDiscovery(object):
     def __call__(self, *args, **kwargs) -> dict:
         return {
-        #     "authorization_endpoint": "eudiw:",
-        #     "response_types_supported": [
-        #         "vp_token"
-        #     ],
-        #     "response_modes_supported": [
-        #         "form_post.jwt"
-        #     ],
-        #     "vp_formats_supported": {
-        #         "vc+sd-jwt": {
-        #             "sd-jwt_alg_values": [
-        #                 "ES256",
-        #                 "ES384"
-        #             ]
-        #         }
-        #     },
-        #     "request_object_signing_alg_values_supported": [
-        #         "ES256"
-        #     ],
-        #     "presentation_definition_uri_supported": False,
+            #     "authorization_endpoint": "eudiw:",
+            #     "response_types_supported": [
+            #         "vp_token"
+            #     ],
+            #     "response_modes_supported": [
+            #         "form_post.jwt"
+            #     ],
+            #     "vp_formats_supported": {
+            #         "vc+sd-jwt": {
+            #             "sd-jwt_alg_values": [
+            #                 "ES256",
+            #                 "ES384"
+            #             ]
+            #         }
+            #     },
+            #     "request_object_signing_alg_values_supported": [
+            #         "ES256"
+            #     ],
+            #     "presentation_definition_uri_supported": False,
             "aal": "https://trust-list.eu/aal/high"}
 
 
@@ -96,13 +96,15 @@ class WalletProvider(ServerEntity):
             config.get("wallet_instance_discovery",
                        {
                            "class": TestWalletInstanceDiscovery,
-                           "kwargs" : {}
+                           "kwargs": {}
                        }))
 
         if config and "wallet_db" in config:
             self.context.wallet_db = execute(config["registration_service"])
         else:
             self.context.wallet_db = {}
+
+        self.context.crypto_hardware_key = {}
 
     def get_metadata(self, *args):
         # static ! Should this be done dynamically ?

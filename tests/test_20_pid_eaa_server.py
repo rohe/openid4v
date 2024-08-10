@@ -3,14 +3,14 @@ import hashlib
 import json
 import os
 
-import pytest
-import responses
-from cryptojwt import as_unicode
 from cryptojwt import JWT
+from cryptojwt import as_unicode
 from cryptojwt.jwk.ec import new_ec_key
 from cryptojwt.jws.dsa import ECDSASigner
 from cryptojwt.utils import as_bytes
 from idpyoidc.util import rndstr
+import pytest
+import responses
 
 from examples.entities.flask_wallet.views import hash_func
 from tests import create_trust_chain_messages
@@ -45,7 +45,8 @@ class TestPID():
             pid_issuer_metadata = self.wallet["federation_entity"].get_verified_metadata(
                 self.entity["pid_issuer"].entity_id)
 
-        assert set(pid_issuer_metadata.keys()) == {'openid_credential_issuer', 'oauth_authorization_server',
+        assert set(pid_issuer_metadata.keys()) == {'openid_credential_issuer',
+                                                   'oauth_authorization_server',
                                                    'federation_entity'}
 
     def test_wallet_provider_metadata(self):
@@ -60,12 +61,14 @@ class TestPID():
             wallet_provider_metadata = self.wallet["federation_entity"].get_verified_metadata(
                 self.entity["wallet_provider"].entity_id)
 
-        assert set(wallet_provider_metadata.keys()) == {'federation_entity', 'device_integrity_service',
+        assert set(wallet_provider_metadata.keys()) == {'federation_entity',
+                                                        'device_integrity_service',
                                                         'wallet_provider'}
 
     def wallet_instance_initialization_and_registration(self):
         _dis = self.entity["wallet_provider"]["device_integrity_service"]
         _wallet = self.wallet["wallet"]
+        _wallet_provider = self.entity["wallet_provider"]["wallet_provider"]
 
         # Step 2 Device Integrity Check
 
@@ -76,13 +79,14 @@ class TestPID():
         parsed_args = _integrity_endpoint.parse_request(req)
         response_args = _integrity_endpoint.process_request(parsed_args)
         _wallet.context.crypto_hardware_key = new_ec_key('P-256')
+        hardware_key_tag = as_unicode(_wallet.context.crypto_hardware_key.thumbprint("SHA-256"))
+        _wallet_provider.context.crypto_hardware_key = {
+            hardware_key_tag: _wallet.context.crypto_hardware_key}
 
         # Step 3-5
 
         _get_challenge = _wallet.get_service("challenge")
         req = _get_challenge.construct()
-
-        _wallet_provider = self.entity["wallet_provider"]["wallet_provider"]
 
         _challenge_endpoint = _wallet_provider.get_endpoint("challenge")
         parsed_args = _challenge_endpoint.parse_request(req)
@@ -114,7 +118,8 @@ class TestPID():
         _req = _registration_service.construct({
             "challenge": challenge,
             "key_attestation": as_unicode(key_attestation),
-            "hardware_key_tag": as_unicode(_wallet.context.crypto_hardware_key.thumbprint("SHA-256"))
+            "hardware_key_tag": as_unicode(
+                _wallet.context.crypto_hardware_key.thumbprint("SHA-256"))
         })
 
         _registration_endpoint = _wallet_provider.get_endpoint("registration")
@@ -131,6 +136,8 @@ class TestPID():
         # Step 2 Check for cryptographic hardware key
 
         assert _wallet.context.crypto_hardware_key
+        _chk = _wallet.context.crypto_hardware_key
+        _wallet_provider.context.crypto_hardware_key[_chk.kid] = _chk
 
         # Step 3 generate an ephemeral key pair
 
@@ -166,9 +173,11 @@ class TestPID():
         # Step 8-10
         # signing the client_data_hash with the Wallet Hardware's private key
         _signer = ECDSASigner()
-        hardware_signature = _signer.sign(msg=client_data_hash, key=_wallet.context.crypto_hardware_key.private_key())
+        hardware_signature = _signer.sign(msg=client_data_hash,
+                                          key=_wallet.context.crypto_hardware_key.private_key())
 
-        # It requests the Device Integrity Service to create an integrity_assertion linked to the client_data_hash.
+        # It requests the Device Integrity Service to create an integrity_assertion linked to the
+        # client_data_hash.
 
         _dis_service = self.wallet["wallet"].get_service('integrity')
         req = _dis_service.construct(request_args={
@@ -186,7 +195,7 @@ class TestPID():
             "challenge": challenge,
             "hardware_signature": as_unicode(base64.b64encode(hardware_signature)),
             "integrity_assertion": as_unicode(response_args["integrity_assertion"]),
-            "hardware_key_tag": as_unicode(_wallet.context.crypto_hardware_key.thumbprint("SHA-256")),
+            "hardware_key_tag": _wallet.context.crypto_hardware_key.kid,
             "cnf": {
                 "jwk": _ephemeral_key.serialize()
             },
@@ -230,7 +239,8 @@ class TestPID():
 
         wallet_instance_attestation, _ephemeral_key_tag = self.wallet_attestation_issuance()
 
-        # authorization_endpoint = pid_issuer_metadata["oauth_authorization_server"]["authorization_endpoint"]
+        # authorization_endpoint = pid_issuer_metadata["oauth_authorization_server"][
+        # "authorization_endpoint"]
 
         handler = self.wallet["pid_eaa_consumer"]
         actor = handler.new_consumer(self.entity["pid_issuer"].entity_id)
@@ -255,18 +265,21 @@ class TestPID():
             "redirect_uri": _redirect_uri,
         }
 
-        _metadata = self.wallet["federation_entity"].get_verified_metadata(self.entity["pid_issuer"].entity_id)
+        _metadata = self.wallet["federation_entity"].get_verified_metadata(
+            self.entity["pid_issuer"].entity_id)
         kwargs = {
             "state": rndstr(24),
             "wallet_instance_attestation": wallet_instance_attestation,
             "signing_key": self.wallet["wallet"].context.ephemeral_key[_ephemeral_key_tag]
         }
-        authz_req = authorization_service.get_request_parameters(request_args=request_args, **kwargs)
+        authz_req = authorization_service.get_request_parameters(request_args=request_args,
+                                                                 **kwargs)
         assert authz_req
 
         # The PID Issuer parses the authz request
 
-        _authorization_endpoint = self.entity["pid_issuer"]["oauth_authorization_server"].get_endpoint('authorization')
+        _authorization_endpoint = self.entity["pid_issuer"][
+            "oauth_authorization_server"].get_endpoint('authorization')
         _authorization_endpoint.request_format = "url"
 
         where_and_what = create_trust_chain_messages(self.entity["wallet_provider"],
@@ -303,7 +316,8 @@ class TestPID():
         }
 
         _token_service = actor.get_service("accesstoken")
-        _metadata = self.wallet["federation_entity"].get_verified_metadata(self.entity["pid_issuer"].entity_id)
+        _metadata = self.wallet["federation_entity"].get_verified_metadata(
+            self.entity["pid_issuer"].entity_id)
         _args["endpoint"] = _metadata['oauth_authorization_server']['token_endpoint']
         token_req_info = _token_service.get_request_parameters(_request_args, **_args)
         assert token_req_info
@@ -312,7 +326,8 @@ class TestPID():
 
         # Token endpoint
 
-        _token_endpoint = self.entity["pid_issuer"]["oauth_authorization_server"].get_endpoint("token")
+        _token_endpoint = self.entity["pid_issuer"]["oauth_authorization_server"].get_endpoint(
+            "token")
         _http_info = {
             "headers": token_req_info["headers"],
             "url": token_req_info["url"],
@@ -325,7 +340,8 @@ class TestPID():
         assert token_response
 
         _context = _token_service.upstream_get("context")
-        _context.cstate.update(authz_response['response_args']["state"], token_response["response_args"])
+        _context.cstate.update(authz_response['response_args']["state"],
+                               token_response["response_args"])
 
         # credential issuer service
 
@@ -349,7 +365,8 @@ class TestPID():
 
         assert req_info["headers"]["Authorization"].startswith("DPoP")
 
-        _credential_endpoint = self.entity["pid_issuer"]["openid_credential_issuer"].get_endpoint("credential")
+        _credential_endpoint = self.entity["pid_issuer"]["openid_credential_issuer"].get_endpoint(
+            "credential")
 
         _http_info = {
             "headers": req_info["headers"],

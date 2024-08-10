@@ -62,9 +62,9 @@ class CredentialConstructor(object):
                 _cred_def_sup = cs["credential_definition"]
                 _req_cred_def = request["credential_definition"]
                 # The set of type values must match
-                if set(_cred_def_sup["type"]) != set(_req_cred_def["type"]):
-                    continue
-                matching.append(_cred_def_sup.get("credentialSubject", {}))
+                # The requested set must be a subset of the supported
+                if set(_req_cred_def["type"]).issubset(set(_cred_def_sup["type"])):
+                    matching.append(_cred_def_sup.get("credentialSubject", {}))
         return matching
 
     def _must_display(self, disclose, must_display):
@@ -262,9 +262,9 @@ class Credential(Endpoint):
                 _msg = self.credential_constructor(user_id=_session_info["user_id"], request=request,
                                                    auth_info=_session_info["grant"].authentication_event,
                                                    client_id=client_id)
-            except Exception:
+            except Exception as err:
                 logger.exception("Credential constructor")
-                return self.error_cls(error="invalid_token", error_description="Missing session")
+                return self.error_cls(error="invalid_token", error_description=f"{err}")
 
         _resp = {
             "format": "vc+sd-jwt",

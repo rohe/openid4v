@@ -3,6 +3,7 @@ from typing import Optional
 from typing import Union
 
 from cryptojwt import KeyJar
+from cryptojwt.jwk.ec import new_ec_key
 from idpyoidc.client.oauth2 import Client
 from idpyoidc.configure import Configuration
 from idpyoidc.context import OidcContext
@@ -34,3 +35,12 @@ class Wallet(Client):
         self.context.wallet_instance_attestation = {}
         self.context.wia_flow = {}
         self.context.init_reg = {}
+
+    def mint_ephemeral_key(self):
+        _ephemeral_key = new_ec_key('P-256')
+        _ephemeral_key.use = "sig"
+        _jwks = {"keys": [_ephemeral_key.serialize(private=True)]}
+        _ephemeral_key_tag = _ephemeral_key.kid
+        self.context.keyjar.import_jwks(_jwks, self.entity_id)
+        self.context.ephemeral_key = {_ephemeral_key_tag: _ephemeral_key}
+        return _ephemeral_key_tag

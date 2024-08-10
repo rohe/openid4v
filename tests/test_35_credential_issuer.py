@@ -313,7 +313,7 @@ OAUTH_SERVER_CONF = {
         "client_secret_post": "idpyoidc.server.client_authn.ClientSecretPost",
         "client_assertion": "openid4v.openid_credential_issuer.client_authn.ClientAssertion",
         "dpop_client_auth": "idpyoidc.server.oauth2.add_on.dpop.DPoPClientAuth",
-        "attest_jwt_client_auth":
+        "client_authentication_attestation":
             "openid4v.openid_credential_issuer.client_authn.ClientAuthenticationAttestation"
     },
     "keys": {
@@ -462,7 +462,7 @@ OAUTH_SERVER_CONF = {
             "https://www.spid.gov.it/SpidL2",
             "https://www.spid.gov.it/SpidL3"
         ],
-        "token_endpoint_auth_methods_supported": ['attest_jwt_client_auth'],
+        "token_endpoint_auth_methods_supported": ['client_authentication_attestation'],
     },
     "metadata_schema": 'openid4v.message.AuthorizationServerMetadata'
 }
@@ -704,17 +704,20 @@ class TestCredentialIssuer():
         wallet_entity = self.wallet["wallet"]
         _service = wallet_entity.get_service("wallet_instance_attestation")
         _service.wallet_provider_id = WALLET_PROVIDER_ID
-        ephemeral_key = new_ec_key(crv="P-256")
+
+        ephemeral_key_tag = wallet_entity.mint_ephemeral_key()
+        ephemeral_key = wallet_entity.context.ephemeral_key[ephemeral_key_tag]
+
         request_args = {
             "aud": WALLET_PROVIDER_ID,
             #  "challenge": SINGLE_REQUIRED_STRING,
             "challenge": _nonce,
             # "hardware_signature": SINGLE_REQUIRED_STRING,
-            "hardware_signature": "__hardware_signature__",
+            "hardware_signature": "__not__applicable__",
             # "integrity_assertion": SINGLE_REQUIRED_STRING,
-            "integrity_assertion": "__integrity_assertion__",
+            "integrity_assertion": "__not__applicable__",
             # "hardware_key_tag": SINGLE_REQUIRED_STRING,
-            "hardware_key_tag": "__hardware_key_tag__",
+            "hardware_key_tag": "__not__applicable__",
             # "cnf": SINGLE_REQUIRED_JSON,
             "cnf": {"jwk": ephemeral_key.serialize()},
             "vp_formats_supported": {
@@ -747,10 +750,12 @@ class TestCredentialIssuer():
 
         _response = _endpoint.process_request(_wia_request)
 
-        return _response["response_args"]["assertion"], _wia_request['__verified_assertion']["iss"]
+        return (_response["response_args"]["assertion"],
+                _wia_request['__verified_assertion']["iss"],
+                ephemeral_key_tag)
 
     def test_qeaa_flow(self):
-        _wia, _thumbprint = self._create_wia()
+        _wia, _thumbprint, ephemeral_key_tag = self._create_wia()
         assert _wia
 
         oic = self.credential_issuer["openid_credential_issuer"]
@@ -770,7 +775,7 @@ class TestCredentialIssuer():
                 _trust_chains = get_verified_trust_chains(_actor, oic.context.entity_id)
             _metadata = _trust_chains[0].metadata
             _context = _actor.get_service_context()
-            _context.provider_info = _metadata["openid_credential_issuer"]
+            _context.provider_info = _metadata["oauth_authorization_server"]
 
         assert _actor
         _service = _actor.get_service("authorization")
@@ -798,12 +803,12 @@ class TestCredentialIssuer():
             "redirect_uri": "eudiw://wallet.example.org",
         }
 
-        _par_endpoint = oic.get_endpoint("pushed_authorization")
+        _par_endpoint = oas.get_endpoint("pushed_authorization")
         _request_uri = "urn:uuid:bwc4JK-ESC0w8acc191e-Y1LTC2"
         # The response from the PAR endpoint
         _resp = {"request_uri": _request_uri, "expires_in": 3600}
         # the authorization stored on the server
-        oic.context.par_db[_request_uri] = req_args
+        oas.context.par_db[_request_uri] = req_args
 
         with responses.RequestsMock() as rsps:
             rsps.add("POST", _par_endpoint.full_path, body=json.dumps(_resp),
@@ -812,9 +817,10 @@ class TestCredentialIssuer():
             # PAR request
             _req = push_authorization(request_args=AuthorizationRequest(**req_args),
                                       service=_service,
-                                      wallet_instance_attestation=_wia)
+                                      wallet_instance_attestation=_wia,
+                                      ephemeral_key_tag=ephemeral_key_tag)
 
-        _authz_endpoint = oic.get_endpoint("authorization")
+        _authz_endpoint = oas.get_endpoint("authorization")
         _p_req = _authz_endpoint.parse_request(_req)
         _resp = _authz_endpoint.process_request(_p_req)
         assert "code" in _resp["response_args"]
@@ -831,11 +837,19 @@ class TestCredentialIssuer():
                 "grant_type": "authorization_code",
                 "state": req_args["state"]
             },
-            attestation=_wia
+            attestation=_wia,
+            ephemeral_key_tag=ephemeral_key_tag
         )
 
-        _endp = oic.get_endpoint("token")
-        _req = _endp.parse_request(token_req_info["request"])
+        _endp = oas.get_endpoint("token")
+        _msgs = create_trust_chain_messages(self.wallet_provider, self.ta)
+
+        with responses.RequestsMock() as rsps:
+            for _url, _jwks in _msgs.items():
+                rsps.add("GET", _url, body=_jwks,
+                         adding_headers={"Content-Type": "application/json"}, status=200)
+            _req = _endp.parse_request(token_req_info["request"])
+
         _token_resp = _endp.process_request(_req)
         assert _token_resp
         assert set(_token_resp["response_args"].keys()) == {'access_token',
@@ -858,7 +872,8 @@ class TestCredentialIssuer():
                 "access_token": _token_resp["response_args"]["access_token"]
             },
             state=req_args["state"],
-            endpoint=_metadata['openid_credential_issuer']['credential_endpoint']
+            endpoint=_metadata['openid_credential_issuer']['credential_endpoint'],
+            ephemeral_key_tag=ephemeral_key_tag
         )
 
         assert cred_req_info["method"] == "POST"
