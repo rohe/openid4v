@@ -60,7 +60,8 @@
       "entity_configuration",
       "entity_statement",
       "list",
-      "trust_mark_status"
+      "trust_mark_status",
+      "resolve"
     ],
     "entity_type": {
       "wallet": {
@@ -72,7 +73,7 @@
                 "class": "openid4v.client.wallet_instance_attestation.WalletInstanceAttestation"
               },
               "nonce": {
-                "class": "openid4v.client.challenge_service.ChallengeService"
+                "class": "openid4v.client.challenge.ChallengeService"
               }
             }
           },
@@ -112,9 +113,6 @@
               "pushed_authorization": {
                 "function": "idpyoidc.client.oauth2.add_on.par.add_support",
                 "kwargs": {
-                  "body_format": "urlencoded",
-                  "signing_algorithm": "RS256",
-                  "merge_rule": "lax",
                   "authn_method": {
                     "client_assertion": {
                       "class": "openid4v.client.client_authn.ClientAssertion"

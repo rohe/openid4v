@@ -86,10 +86,12 @@ class PidEaaHandler(Unit):
             entity_id=self.entity_id
         )
         _consumer.context.issuer = issuer_id
+        _consumer.context.issuer_metadata = {}
         _consumer.context.claims.prefer["client_id"] = _consumer.entity_id
         _federation_entity = self.upstream_get("unit")["federation_entity"]
         _entity_metadata = _federation_entity.get_verified_metadata(issuer_id)
         if _entity_metadata:
+            _consumer.context.issuer_metadata = _entity_metadata
             _consumer.context.provider_info = _entity_metadata["openid_credential_issuer"]
         # Not doing any registration anyway
         _consumer.context.map_preferred_to_registered()

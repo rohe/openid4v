@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Picking PID Issuer</title>
+</head>
+<body>
+<h1>Finding PID Issuer</h1>
+Here the wallet could either traverse the federation looking for PID issuers
+to use or it could use the query service (we eventually will provide) to
+find an appropriate PID issuer.
+<br>
+If it can do neither it can just use information provided by SUNET :-)
+<h3>Chosen PID Isssuer</h3>
+{{ pid_issuer_to_use }}
+<hr>
+<input type="button" onclick="location.href='authz'"
+       value="Authorization Request"/>
+
+</body>
+</html>

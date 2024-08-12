@@ -58,7 +58,7 @@ class WalletInstanceAttestation(FederationService):
         _fe.trust_chain[self.wallet_provider_id] = trust_chains
         _wallet_unit = _fe.upstream_get("unit")["wallet"]
         _wallet_unit.context.keyjar.import_jwks(
-            trust_chains[0]["metadata"]["wallet_provider"]["jwks"], self.wallet_provider_id)
+            trust_chains[0].metadata["wallet_provider"]["jwks"], self.wallet_provider_id)
         return trust_chains
 
     def get_endpoint(self):

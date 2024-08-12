@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Resolvers view of Wallet Provider</title>
+</head>
+<body>
+<h2>Resolvers view of the Wallet Provider</h2>
+<dl>
+    {% for key, value in response.items() %}
+    <dt>{{ key }}</dt>
+    <dd>{{ value }}</dd>
+    {% endfor %}
+</dl>
+<hr>
+The next endpoint to use is the wallet provider token endpoint
+<br>
+Which can be found at metadata/wallet_provider/token_endpoint.
+<br>
+Namely this: {{token_endpoint}}
+<br>
+Next step is constructing the Wallet Instance request
+<input type="button" onclick="location.href='a3_wallet_instance_request'"
+       value="Wallet Instance Request"/>
+</body>
+</html>

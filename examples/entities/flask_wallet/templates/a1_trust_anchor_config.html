@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Trust Anchor Entity Configuration</title>
+</head>
+<body>
+<h3>Entity Configuration</h3>
+<dl>
+    {% for key, value in ec.items() %}
+    <dt>{{ key }}</dt>
+    <dd>{{ value }}</dd>
+    {% endfor %}
+</dl>
+<hr>
+From the entity configuration the resolve endpoint is retrieved<br>
+<dl>
+    <dt>Resolver Endpoint</dt><dd>{{resolver_endpoint}}</dd>
+</dl>
+<hr>
+<form action="a2_wp_resolved" method="get">
+    <h3>Please enter the Entity identifier of the Wallet Provider:</h3>
+    <input type="text" id="entity_id" name="entity_id" class="form-control"
+           placeholder="EID"
+           autofocus>
+    <button type="submit">Start</button>
+</form>
+</body>
+</html>

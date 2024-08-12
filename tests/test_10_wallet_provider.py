@@ -248,8 +248,6 @@ class TestComboCollect(object):
         # Step 2 Check for cryptographic hardware key
 
         assert _wallet.context.crypto_hardware_key
-        hardware_key_tag = as_unicode(_wallet.context.crypto_hardware_key.thumbprint("SHA-256"))
-        _wallet_provider.context.crypto_hardware_key = {hardware_key_tag: _wallet.context.crypto_hardware_key}
 
         # Step 3 generate an ephemeral key pair
 

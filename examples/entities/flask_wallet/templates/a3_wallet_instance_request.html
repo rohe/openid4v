@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Wallet Instance Request</title>
+</head>
+<body>
+<h3>Wallet Instance Request</h3>
+<dl>
+    {% for key, value in request_args.items() %}
+    <dt>{{ key }}</dt>
+    <dd>{{ value }}</dd>
+    {% endfor %}
+</dl>
+<hr>
+Now send this to the Wallet Provider
+<input type="button" onclick="location.href='a4_wallet_instance_attestation'"
+       value="Wallet Instance Attestation response"/>
+
+</body>
+</html>
