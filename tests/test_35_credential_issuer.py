@@ -704,7 +704,8 @@ class TestCredentialIssuer():
         wallet_entity = self.wallet["wallet"]
         _service = wallet_entity.get_service("wallet_instance_attestation")
         _service.wallet_provider_id = WALLET_PROVIDER_ID
-        ephemeral_key = new_ec_key(crv="P-256")
+        ephemeral_key = wallet_entity.mint_new_key()
+
         request_args = {
             "aud": WALLET_PROVIDER_ID,
             #  "challenge": SINGLE_REQUIRED_STRING,
@@ -757,9 +758,9 @@ class TestCredentialIssuer():
         oas = self.credential_issuer["oauth_authorization_server"]
 
         _handler = self.wallet["pid_eaa_consumer"]
-        _actor = _handler.get_consumer(oic.context.entity_id)
+        _actor = _handler.get_consumer(oas.context.entity_id)
         if _actor is None:
-            _actor = _handler.new_consumer(oic.context.entity_id)
+            _actor = _handler.new_consumer(oas.context.entity_id)
             _msgs = create_trust_chain_messages(self.credential_issuer, self.ta)
 
             with responses.RequestsMock() as rsps:
@@ -767,7 +768,7 @@ class TestCredentialIssuer():
                     rsps.add("GET", _url, body=_jwks,
                              adding_headers={"Content-Type": "application/json"}, status=200)
 
-                _trust_chains = get_verified_trust_chains(_actor, oic.context.entity_id)
+                _trust_chains = get_verified_trust_chains(_actor, oas.context.entity_id)
             _metadata = _trust_chains[0].metadata
             _context = _actor.get_service_context()
             _context.provider_info = _metadata["openid_credential_issuer"]
@@ -798,12 +799,12 @@ class TestCredentialIssuer():
             "redirect_uri": "eudiw://wallet.example.org",
         }
 
-        _par_endpoint = oic.get_endpoint("pushed_authorization")
+        _par_endpoint = oas.get_endpoint("pushed_authorization")
         _request_uri = "urn:uuid:bwc4JK-ESC0w8acc191e-Y1LTC2"
         # The response from the PAR endpoint
         _resp = {"request_uri": _request_uri, "expires_in": 3600}
         # the authorization stored on the server
-        oic.context.par_db[_request_uri] = req_args
+        oas.context.par_db[_request_uri] = req_args
 
         with responses.RequestsMock() as rsps:
             rsps.add("POST", _par_endpoint.full_path, body=json.dumps(_resp),
@@ -814,7 +815,7 @@ class TestCredentialIssuer():
                                       service=_service,
                                       wallet_instance_attestation=_wia)
 
-        _authz_endpoint = oic.get_endpoint("authorization")
+        _authz_endpoint = oas.get_endpoint("authorization")
         _p_req = _authz_endpoint.parse_request(_req)
         _resp = _authz_endpoint.process_request(_p_req)
         assert "code" in _resp["response_args"]
@@ -834,7 +835,7 @@ class TestCredentialIssuer():
             attestation=_wia
         )
 
-        _endp = oic.get_endpoint("token")
+        _endp = oas.get_endpoint("token")
         _req = _endp.parse_request(token_req_info["request"])
         _token_resp = _endp.process_request(_req)
         assert _token_resp
