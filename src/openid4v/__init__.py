@@ -7,8 +7,6 @@ from typing import Optional
 from typing import Union
 
 from cryptojwt import KeyJar
-from cryptojwt.jwk.jwk import key_from_jwk_dict
-from cryptojwt.jws.jws import factory
 from fedservice.message import ProviderConfigurationResponse
 from fedservice.server import ServerUnit
 from idpyoidc.configure import Base
