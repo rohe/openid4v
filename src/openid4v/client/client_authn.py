@@ -5,6 +5,7 @@ from typing import Union
 from cryptojwt import JWK
 from cryptojwt import JWT
 from cryptojwt import KeyJar
+from fedservice.combo import FederationCombo
 from idpyoidc.client.client_auth import ClientAuthnMethod
 from idpyoidc.client.client_auth import find_token_info
 from idpyoidc.message import Message
@@ -45,6 +46,9 @@ class ClientAuthenticationAttestation(ClientAuthnMethod):
             pass
         else:
             _wallet = topmost_unit(service)
+            if isinstance(_wallet, FederationCombo):
+                _wallet = _wallet["wallet"]
+
             signing_keys = _wallet.keyjar.get_signing_key(kid=entity_id)
             if signing_keys:
                 kwargs["signing_key"] = signing_keys[0]
