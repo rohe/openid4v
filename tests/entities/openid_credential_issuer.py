@@ -308,8 +308,8 @@ def main(entity_id: str,
                                      "place_of_birth",
                                      "unique_id",
                                      "tax_id_code"]
-                            },
-                        },
+                            }
+                        }
                     }
                 }
             }

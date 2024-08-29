@@ -86,11 +86,14 @@ class WalletProvider(ServerEntity):
             httpc: Optional[Any] = None,
             httpc_params: Optional[dict] = None,
             entity_id: Optional[str] = "",
-            key_conf: Optional[dict] = None
+            key_conf: Optional[dict] = None,
+            entity_type: Optional[str] = "wallet_provider"
     ):
         ServerEntity.__init__(self, config=config, upstream_get=upstream_get, keyjar=keyjar,
                               cwd=cwd, cookie_handler=cookie_handler, httpc=httpc,
                               httpc_params=httpc_params, entity_id=entity_id, key_conf=key_conf)
+
+        self.entity_type = entity_type
 
         self.wallet_instance_discovery = execute(
             config.get("wallet_instance_discovery",

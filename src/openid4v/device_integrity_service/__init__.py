@@ -1,4 +1,3 @@
-from cryptojwt.jwk.ec import new_ec_key
 from cryptojwt.key_jar import init_key_jar
 from idpyoidc.server import Endpoint
 from idpyoidc.server import EndpointContext

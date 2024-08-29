@@ -1,5 +1,5 @@
 __author__ = "Roland Hedberg"
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 from typing import Any
 from typing import Callable
@@ -58,7 +58,8 @@ class ServerEntity(ServerUnit):
             httpc: Optional[Any] = None,
             httpc_params: Optional[dict] = None,
             entity_id: Optional[str] = "",
-            key_conf: Optional[dict] = None
+            key_conf: Optional[dict] = None,
+            entity_type: Optional[str] = ""
     ):
         if config is None:
             config = {}
@@ -78,6 +79,7 @@ class ServerEntity(ServerUnit):
 
         self.endpoint = do_endpoints(config, self.unit_get)
         server_type = config.get("server_type", config["conf"].get("server_type", ""))
+        self.entity_type = entity_type
 
         self.context = EndpointContext(
             conf=config,
