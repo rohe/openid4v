@@ -112,10 +112,7 @@ class ServerEntity(ServerUnit):
 
     def get_metadata(self, *args):
         # static ! Should this be done dynamically ?
-        if args:
-            guise = args[0]
-        else:
-            guise = 'openid_provider'
+        guise = self.entity_type
 
         schema = GUISE_MAP[guise]
         _metadata = self.context.get_provider_info(schema=schema)

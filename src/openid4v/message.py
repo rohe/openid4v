@@ -737,7 +737,7 @@ MAP_TYP_MSG = {
 class AuthorizationServerMetadata(fed_msg.AuthorizationServerMetadata):
     c_param = fed_msg.AuthorizationServerMetadata.c_param.copy()
     c_param.update({
-        "pushed_authorization_request_endpoint": SINGLE_REQUIRED_STRING,
+        "pushed_authorization_request_endpoint": SINGLE_OPTIONAL_STRING,
         "acr_values_supported": REQUIRED_LIST_OF_STRINGS,
         "authorization_signing_alg_values_supported": REQUIRED_LIST_OF_STRINGS,
         "token_endpoint_auth_methods_supported": REQUIRED_LIST_OF_STRINGS,
