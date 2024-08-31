@@ -67,7 +67,8 @@ class CredentialConstructor(object):
                 matching.append(_cred_def_sup.get("credentialSubject", {}))
         return matching
 
-    def _must_display(self, disclose, must_display):
+    @staticmethod
+    def _must_display(disclose, must_display):
         for part, spec in disclose.items():
             if part == "":
                 for key, val in spec.items():
@@ -93,7 +94,7 @@ class CredentialConstructor(object):
                  user_id: str,
                  client_id: str,
                  request: Union[dict, Message],
-                 auth_info: Optional[dict] = None,
+                 grant: Optional[dict] = None,
                  id_token: Optional[str] = None
                  ) -> str:
         logger.debug(":" * 20 + f"Credential constructor" + ":" * 20)
@@ -260,7 +261,7 @@ class Credential(Endpoint):
             client_id = _session_info["client_id"]
             try:
                 _msg = self.credential_constructor(user_id=_session_info["user_id"], request=request,
-                                                   auth_info=_session_info["grant"].authentication_event,
+                                                   grant=_session_info["grant"],
                                                    client_id=client_id)
             except Exception:
                 logger.exception("Credential constructor")
