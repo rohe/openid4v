@@ -15,6 +15,7 @@ from idpyoidc.message import msg_list_ser
 from idpyoidc.message import msg_ser
 from idpyoidc.message import oauth2
 from idpyoidc.message import oidc
+from idpyoidc.message import OPTIONAL_LIST_OF_DICTS
 from idpyoidc.message import OPTIONAL_LIST_OF_MESSAGES
 from idpyoidc.message import OPTIONAL_LIST_OF_STRINGS
 from idpyoidc.message import OPTIONAL_MESSAGE
@@ -578,14 +579,30 @@ class CredentialResponse(ResponseMessage):
 
 class WalletProviderMetadata(Message):
     c_param = {
+        "policy_uri": SINGLE_OPTIONAL_STRING,
+        "tos_uri": SINGLE_OPTIONAL_STRING,
+        "logo_uri": SINGLE_OPTIONAL_STRING,
         "jwks": SINGLE_REQUIRED_JSON,
         "token_endpoint": SINGLE_REQUIRED_STRING,
+        "wallet_provider_challenge_endpoint": SINGLE_REQUIRED_STRING,
+        "wallet_provider_registration_endpoint": SINGLE_OPTIONAL_STRING,
         "attested_security_context_values_supported": OPTIONAL_LIST_OF_STRINGS,
         "grant_types_supported": OPTIONAL_LIST_OF_STRINGS,
         "token_endpoint_auth_methods_supported": OPTIONAL_LIST_OF_STRINGS,
         "token_endpoint_auth_signing_alg_values_supported": OPTIONAL_LIST_OF_STRINGS
     }
 
+
+class DeviceIntegrityServiceMetadata(Message):
+    c_param = {
+        "device_integrity_endpoint": SINGLE_REQUIRED_STRING,
+        "device_key_attestation_endpoint": SINGLE_REQUIRED_STRING
+    }
+
+class VerifierServiceMetadata(Message):
+    c_param = {
+        "resource_verifier_endpoint": SINGLE_REQUIRED_STRING
+    }
 
 class WalletAttestationRequestJWT(Message):
     c_param = {
@@ -722,6 +739,7 @@ class ChallengeResponse(Message):
         "nonce": SINGLE_REQUIRED_STRING
     }
 
+
 class RegistrationRequest(Message):
     c_param = {
         "challenge": SINGLE_REQUIRED_STRING,
@@ -733,6 +751,7 @@ class RegistrationRequest(Message):
 MAP_TYP_MSG = {
     "openid4vci-proof+jwt": ProofJWT
 }
+
 
 class AuthorizationServerMetadata(fed_msg.AuthorizationServerMetadata):
     c_param = fed_msg.AuthorizationServerMetadata.c_param.copy()
@@ -747,13 +766,14 @@ class AuthorizationServerMetadata(fed_msg.AuthorizationServerMetadata):
         "jwks_uri": SINGLE_OPTIONAL_STRING
     })
 
+
 class OpenidCredentialIssuer(Message):
     c_param = {
         "credential_issuer": SINGLE_REQUIRED_STRING,
         "credential_endpoint": SINGLE_REQUIRED_STRING,
         "revocation_endpoint": SINGLE_REQUIRED_STRING,
         "status_attestation_endpoint": SINGLE_REQUIRED_STRING,
-        "display": REQUIRED_LIST_OF_DICTS,
+        "display": OPTIONAL_LIST_OF_DICTS,
         "credential_configurations_supported": REQUIRED_LIST_OF_DICTS,
         "jwks": SINGLE_REQUIRED_DICT,
         "jwks_uri": SINGLE_OPTIONAL_STRING

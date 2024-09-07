@@ -1,7 +1,7 @@
 """The service that answers at the OAuth2 Authorization endpoint."""
 import logging
 
-from idpyoidc import metadata
+from idpyoidc import alg_info
 from idpyoidc.message import oauth2
 from idpyoidc.server.oauth2 import authorization
 from idpyoidc.server.util import execute
@@ -25,8 +25,10 @@ class Authorization(authorization.Authorization):
         "response_modes_supported": ["query", "fragment"],
         "acr_values_supported": [],
         "scopes_supported": [],
-        "authorization_signing_alg_values_supported": metadata.get_signing_algs(),
-        "request_object_signing_alg_values_supported": metadata.get_signing_algs()
+        "token_endpoint_auth_methods_supported": [],
+        "authorization_signing_alg_values_supported": alg_info.get_signing_algs(),
+        "request_object_signing_alg_values_supported": alg_info.get_signing_algs(),
+        "token_endpoint_auth_signing_alg_values_supported": alg_info.get_signing_algs()
     }
 
     _callback_path = {

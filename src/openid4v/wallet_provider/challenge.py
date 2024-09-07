@@ -81,7 +81,7 @@ class Challenge(Endpoint):
     response_format = "json"
     name = "challenge"
     endpoint_type = "oauth2"
-    endpoint_name = "challenge_endpoint"
+    endpoint_name = "wallet_provider_challenge_endpoint"
     response_content_type = "application/json"
 
     def __init__(self, upstream_get, conf=None, **kwargs):

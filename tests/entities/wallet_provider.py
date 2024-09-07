@@ -7,7 +7,8 @@ from fedservice.utils import make_federation_combo
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
 
 WALLET_PROVIDER_CONF = {
-    "keys": {"key_defs": DEFAULT_KEY_DEFS, "uri_path": "jwks.json"},
+    "keys": {"key_defs": DEFAULT_KEY_DEFS},
+    "metadata_schema": "openid4v.message.WalletProviderMetadata",
     "endpoint": {
         "token": {
             "path": "token",
@@ -91,8 +92,8 @@ DEVICE_INTEGRITY_SERVICE_CONF = {
 
 
 def main(entity_id: str,
-         authority_hints: Optional[List[str]],
-         trust_anchors: Optional[dict],
+         authority_hints: Optional[List[str]] = None,
+         trust_anchors: Optional[dict] = None,
          preference: Optional[dict] = None,
          entity_type_config: Optional[dict] = None,
          endpoints: Optional[list] = None,

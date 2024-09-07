@@ -7,9 +7,11 @@ from typing import Optional
 from typing import Union
 
 from cryptojwt import KeyJar
+from cryptojwt.utils import importer
 from fedservice.message import ProviderConfigurationResponse
 from fedservice.server import ServerUnit
 from idpyoidc.configure import Base
+from idpyoidc.message import Message
 from idpyoidc.node import topmost_unit
 from idpyoidc.server import ASConfiguration
 from idpyoidc.server import authz
@@ -57,10 +59,20 @@ class ServerEntity(ServerUnit):
             httpc_params: Optional[dict] = None,
             entity_id: Optional[str] = "",
             key_conf: Optional[dict] = None,
-            entity_type: Optional[str] = ""
+            entity_type: Optional[str] = "",
+            metadata_schema: Optional[Union[str, Message]] = None
     ):
         if config is None:
             config = {}
+
+        self.metadata_schema = ""
+        if not metadata_schema:
+            metadata_schema = config.get("metadata_schema", "")
+            if metadata_schema:
+                if isinstance(metadata_schema, str):
+                    self.metadata_schema = importer(metadata_schema)
+                else:
+                    self.metadata_schema = metadata_schema
 
         ServerUnit.__init__(self, upstream_get=upstream_get, keyjar=keyjar, httpc=httpc,
                             httpc_params=httpc_params, entity_id=entity_id, key_conf=key_conf,
@@ -95,6 +107,19 @@ class ServerEntity(ServerUnit):
 
         self.context.do_add_on(endpoints=self.endpoint)
 
+        if self.metadata_schema:
+            _required = self.metadata_schema().required_parameters()
+            for parameter in ['issuer', "credential_issuer"]:
+                if parameter in _required:
+                    self.context.set_preference(parameter, self.context.entity_id)
+
+        self.context.provider_info = self.context.claims.get_server_metadata(
+            endpoints=self.endpoint.values(),
+            metadata_schema=self.metadata_schema,
+        )
+        self.context.metadata = self.context.provider_info
+
+
     def get_endpoints(self, *arg):
         return self.endpoint
 
@@ -110,19 +135,20 @@ class ServerEntity(ServerUnit):
     def get_server(self, *args):
         return self
 
-    def get_metadata(self, *args):
-        # static ! Should this be done dynamically ?
-        guise = self.entity_type
-
-        schema = GUISE_MAP[guise]
-        _metadata = self.context.get_provider_info(schema=schema)
-
-        # guise specific metadata claims
-        if guise == 'oauth_authorization_server':
-            _metadata["issuer"] = self.config.get("issuer")
-
-        return {guise: _metadata}
-
+    def get_metadata(self, entity_type="", *args):
+        if not entity_type:
+            entity_type = self.name
+        _claims = self.get_context().claims
+        metadata = _claims.get_server_metadata(endpoints=self.endpoint.values(),
+                                               metadata_schema=self.metadata_schema)
+        # remove these from the metadata
+        # for item in ["jwks", "jwks_uri", "signed_jwks_uri"]:
+        #     try:
+        #         del metadata[item]
+        #     except KeyError:
+        #         pass
+        # collect endpoints
+        return {entity_type: metadata}
     def get_guise(self):
         return self.name
 
