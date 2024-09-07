@@ -36,16 +36,6 @@ PID_EEA_CONSUMER_CONFIG = {
             "kwargs": {
                 'dpop_signing_alg_values_supported': ["ES256"]
             }
-        },
-        "par": {
-            "function": "idpyoidc.client.oauth2.add_on.par.add_support",
-            "kwargs": {
-                "authn_method": {
-                    "client_assertion": {
-                        "class": "openid4v.client.client_authn.ClientAssertion"
-                    }
-                }
-            }
         }
         # "par": {
         #     "function": "idpyoidc.client.oauth2.add_on.par.add_support",

@@ -93,7 +93,7 @@ OAUTH_AUTHORIZATION_SERVER_CONFIG = {
                 "response_modes_supported": ["query", "form_post"],
                 "request_parameter_supported": True,
                 "request_uri_parameter_supported": True,
-                "client_authn_method": ["none"]
+                "client_authn_method": ["client_attestation"]
             },
         },
         "pushed_authorization": {
