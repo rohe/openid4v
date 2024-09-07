@@ -94,7 +94,7 @@ class Registration(Endpoint):
     request_format = "json"
     name = "registration"
     endpoint_type = "oauth2"
-    endpoint_name = "registration_endpoint"
+    endpoint_name = "wallet_provider_registration_endpoint"
     response_format = None
 
     def __init__(self, upstream_get, conf=None, **kwargs):

@@ -10,7 +10,7 @@ class Resource(Authorization):
     request_cls = Message
     response_cls = AuthorizationRequest
     error_msg = ResponseMessage
-    endpoint_name = "resource_endpoint"  # Used when handling metadata
+    endpoint_name = "resource_verifier_endpoint"  # Used when handling metadata
     synchronous = True
     service_name = "resource"
     default_authn_method = ""

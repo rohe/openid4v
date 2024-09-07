@@ -65,6 +65,12 @@ class PidEaaHandler(Unit):
         self.httpc_params = httpc_params or config.get("httpc_params", {})
         self.kwargs = kwargs
 
+        if "entity_type" in kwargs:
+            self.entity_type = kwargs["entity_type"]
+            del kwargs["entity_type"]
+        else:
+            self.entity_type = ""
+
         Unit.__init__(self,
                       httpc=self.httpc,
                       httpc_params=self.httpc_params,
