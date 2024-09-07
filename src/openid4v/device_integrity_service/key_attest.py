@@ -19,7 +19,7 @@ class KeyAttestation(Endpoint):
     request_placement = "body"
     response_format = "json"
     response_placement = "body"
-    endpoint_name = "key_attestation_endpoint"
+    endpoint_name = "device_key_attestation_endpoint"
     name = "key_attestation"
     endpoint_type = "oauth2"
 

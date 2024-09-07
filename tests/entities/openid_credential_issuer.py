@@ -37,8 +37,11 @@ OAUTH_AUTHORIZATION_SERVER_CONFIG = {
             "urn:ietf:params:oauth:grant-type:jwt-bearer",
             "refresh_token",
         ],
+        "acr_values_supported": ["foo", "bar"],
+        "token_endpoint_auth_methods_supported": ["client_attestation"]
     },
     "server_type": "oauth2",
+    "metadata_schema": "openid4v.message.AuthorizationServerMetadata",
     "token_handler_args": {
         "jwks_def": {
             "private_path": "private/token_jwks.json",
@@ -71,7 +74,7 @@ OAUTH_AUTHORIZATION_SERVER_CONFIG = {
             },
         },
     },
-    "keys": {"key_defs": DEFAULT_KEY_DEFS, "uri_path": "static/oa_jwks.json"},
+    "keys": {"key_defs": DEFAULT_KEY_DEFS},
     "endpoint": {
         "token": {
             "path": "token",
@@ -89,9 +92,20 @@ OAUTH_AUTHORIZATION_SERVER_CONFIG = {
                 "response_modes_supported": ["query", "form_post"],
                 "request_parameter_supported": True,
                 "request_uri_parameter_supported": True,
-                "client_authn_method": ["client_attestation"]
+                "client_authn_method": ["none"]
             },
         },
+        "pushed_authorization": {
+            "path": "pushed_authorization",
+            "class": "idpyoidc.server.oauth2.pushed_authorization.PushedAuthorization",
+            "kwargs": {
+                "client_authn_method": {
+                    "client_assertion": {
+                        "class": "openid4v.openid_credential_issuer.client_authn.ClientAssertion"
+                    }
+                }
+            }
+        }
     },
     "add_ons": {
         "pkce": {
@@ -153,6 +167,7 @@ OPENID_CREDENTIAL_ISSUER_CONFIG = {
         "dpop_client_auth": DPoPClientAuth
     },
     "keys": {"key_defs": DEFAULT_KEY_DEFS},
+    "metadata_schema": "openid4v.message.OpenidCredentialIssuer",
     "endpoint": {
         "credential": {
             "path": "credential",
@@ -173,6 +188,14 @@ OPENID_CREDENTIAL_ISSUER_CONFIG = {
                 ]
             },
         },
+        "revocation": {
+            "path": "revocation",
+            "class": "openid4v.openid_credential_issuer.revocation.Revocation"
+        },
+        "status_attestation": {
+            "path": "revocation",
+            "class": "openid4v.openid_credential_issuer.status_attestation.StatusAttestation"
+        }
     },
     "add_ons": {
         "dpop": {
@@ -195,80 +218,77 @@ OPENID_CREDENTIAL_ISSUER_CONFIG = {
             "https://www.spid.gov.it/SpidL2",
             "https://www.spid.gov.it/SpidL3"
         ],
-        "credentials_supported": [
-            {
+        "display": {},
+        "credential_configurations_supported": {
+            "SD_JWT_VC_example_in_OpenID4VCI": {
                 "format": "vc+sd-jwt",
-                "id": "eudiw.pid.se",
-                "cryptographic_binding_methods_supported": ["jwk"],
-                "cryptographic_suites_supported": ["RS256", "RS512", "ES256",
-                                                   "ES512"],
+                "scope": "SD_JWT_VC_example_in_OpenID4VCI",
+                "cryptographic_binding_methods_supported": [
+                    "jwk"
+                ],
+                "credential_signing_alg_values_supported": [
+                    "ES256"
+                ],
                 "display": [
                     {
-                        "name": "Example Swedish PID Provider",
+                        "name": "IdentityCredential",
+                        "logo": {
+                            "uri": "https://university.example.edu/public/logo.png",
+                            "alt_text": "a square logo of a university"
+                        },
                         "locale": "en-US",
+                        "background_color": "#12107c",
+                        "text_color": "#FFFFFF"
                     }
                 ],
-                "credential_definition": {
-                    "type": ["PersonIdentificationData"],
-                    "credentialSubject": {
-                        "given_name": {
-                            "mandatory": True,
-                            "display": [
-                                {
-                                    "name": "Current First Name",
-                                    "locale": "en-US"
-                                }
-                            ]
-                        },
-                        "family_name": {
-                            "mandatory": True,
-                            "display": [
-                                {
-                                    "name": "Current Family Name",
-                                    "locale": "en-US"
-                                },
-                            ]
-                        },
-                        "birthdate": {
-                            "mandatory": True,
-                            "display": [
-                                {
-                                    "name": "Date of Birth",
-                                    "locale": "en-US"
-                                },
-                            ]
-                        },
-                        "place_of_birth": {
-                            "mandatory": True,
-                            "display": [
-                                {
-                                    "name": "Place of Birth",
-                                    "locale": "en-US"
-                                },
-                            ]
-                        },
-                        "unique_id": {
-                            "mandatory": True,
-                            "display": [
-                                {
-                                    "name": "Unique Identifier",
-                                    "locale": "en-US"
-                                },
-                            ]
-                        },
-                        "tax_id_code": {
-                            "mandatory": True,
-                            "display": [
-                                {
-                                    "name": "Tax Id Number",
-                                    "locale": "en-US"
-                                },
-                            ]
-                        }
+                "proof_types_supported": {
+                    "jwt": {
+                        "proof_signing_alg_values_supported": [
+                            "ES256"
+                        ]
                     }
+                },
+                "vct": "SD_JWT_VC_example_in_OpenID4VCI",
+                "claims": {
+                    "given_name": {
+                        "display": [
+                            {
+                                "name": "Given Name",
+                                "locale": "en-US"
+                            },
+                            {
+                                "name": "Vorname",
+                                "locale": "de-DE"
+                            }
+                        ]
+                    },
+                    "family_name": {
+                        "display": [
+                            {
+                                "name": "Surname",
+                                "locale": "en-US"
+                            },
+                            {
+                                "name": "Nachname",
+                                "locale": "de-DE"
+                            }
+                        ]
+                    },
+                    "email": {},
+                    "phone_number": {},
+                    "address": {
+                        "street_address": {},
+                        "locality": {},
+                        "region": {},
+                        "country": {}
+                    },
+                    "birthdate": {},
+                    "is_over_18": {},
+                    "is_over_21": {},
+                    "is_over_65": {}
                 }
             }
-        ],
+        },
         "attribute_disclosure": {
             "": ["given_name",
                  "family_name",
@@ -304,6 +324,10 @@ def main(entity_id: str,
             "authorization": {"class": "idpyoidc.client.oauth2.authorization.Authorization"},
             "access_token": {"class": "idpyoidc.client.oauth2.access_token.AccessToken"},
             "credential": {"class": "openid4v.client.pid_eaa.Credential"},
+            "entity_configuration": {
+                "class": 'fedservice.entity.client.entity_configuration.EntityConfiguration'
+            },
+            "entity_statement": {"class": 'fedservice.entity.client.entity_statement.EntityStatement'}
         }
 
     if not entity_type_config:

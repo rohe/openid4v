@@ -19,7 +19,7 @@ class IntegrityAssertion(Endpoint):
     request_placement = "body"
     response_format = "json"
     response_placement = "body"
-    endpoint_name = "integrity_endpoint"
+    endpoint_name = "device_integrity_endpoint"
     name = "integrity"
     endpoint_type = "oauth2"
 

@@ -11,6 +11,7 @@ from idpyoidc.server import Endpoint
 from idpyoidc.server import EndpointContext
 from idpyoidc.server.claims import Claims
 from idpyoidc.server.util import execute
+from openid4v.message import WalletProviderMetadata
 
 from openid4v import ServerEntity
 from openid4v import message
@@ -49,25 +50,25 @@ class WalletProviderClaims(Claims):
 class TestWalletInstanceDiscovery(object):
     def __call__(self, *args, **kwargs) -> dict:
         return {
-            #     "authorization_endpoint": "eudiw:",
-            #     "response_types_supported": [
-            #         "vp_token"
-            #     ],
-            #     "response_modes_supported": [
-            #         "form_post.jwt"
-            #     ],
-            #     "vp_formats_supported": {
-            #         "vc+sd-jwt": {
-            #             "sd-jwt_alg_values": [
-            #                 "ES256",
-            #                 "ES384"
-            #             ]
-            #         }
-            #     },
-            #     "request_object_signing_alg_values_supported": [
-            #         "ES256"
-            #     ],
-            #     "presentation_definition_uri_supported": False,
+        #     "authorization_endpoint": "eudiw:",
+        #     "response_types_supported": [
+        #         "vp_token"
+        #     ],
+        #     "response_modes_supported": [
+        #         "form_post.jwt"
+        #     ],
+        #     "vp_formats_supported": {
+        #         "vc+sd-jwt": {
+        #             "sd-jwt_alg_values": [
+        #                 "ES256",
+        #                 "ES384"
+        #             ]
+        #         }
+        #     },
+        #     "request_object_signing_alg_values_supported": [
+        #         "ES256"
+        #     ],
+        #     "presentation_definition_uri_supported": False,
             "aal": "https://trust-list.eu/aal/high"}
 
 
@@ -89,30 +90,23 @@ class WalletProvider(ServerEntity):
             key_conf: Optional[dict] = None,
             entity_type: Optional[str] = "wallet_provider"
     ):
+        self.entity_type = entity_type
+
         ServerEntity.__init__(self, config=config, upstream_get=upstream_get, keyjar=keyjar,
                               cwd=cwd, cookie_handler=cookie_handler, httpc=httpc,
-                              httpc_params=httpc_params, entity_id=entity_id, key_conf=key_conf)
+                              httpc_params=httpc_params, entity_id=entity_id, key_conf=key_conf,
+                              metadata_schema=WalletProviderMetadata)
 
-        self.entity_type = entity_type
+        #self.metadata_schema = WalletProviderMetadata
 
         self.wallet_instance_discovery = execute(
             config.get("wallet_instance_discovery",
                        {
                            "class": TestWalletInstanceDiscovery,
-                           "kwargs": {}
+                           "kwargs" : {}
                        }))
 
         if config and "wallet_db" in config:
             self.context.wallet_db = execute(config["registration_service"])
         else:
             self.context.wallet_db = {}
-
-        self.context.crypto_hardware_key = {}
-
-    def get_metadata(self, *args):
-        # static ! Should this be done dynamically ?
-        _metadata = self.context.provider_info
-        if "jwks" not in _metadata:
-            _metadata["jwks"] = self.context.keyjar.export_jwks()
-
-        return {self.name: _metadata}

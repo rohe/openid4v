@@ -4,7 +4,6 @@ import os
 import pytest
 import responses
 from fedservice.entity import get_verified_trust_chains
-from fedservice.utils import make_federation_combo
 from idpyoidc.client.oauth2.add_on.par import push_authorization
 from idpyoidc.message.oauth2 import AuthorizationRequest
 from idpyoidc.util import rndstr
@@ -24,8 +23,7 @@ def full_path(local_file):
 TA_ID = "https://ta.example.org"
 WALLET_PROVIDER_ID = "https://wp.example.org"
 CREDENTIAL_ISSUER_ID = "https://ci.example.org"
-WALLET_ID = "https://wp.example.org"
-
+WALLET_ID = "https://wallet.example.org"
 
 FEDERATION_CONFIG = {
     TA_ID: {
@@ -205,7 +203,7 @@ class TestCredentialIssuer():
             # PAR request
             _req = push_authorization(request_args=AuthorizationRequest(**req_args),
                                       service=_service,
-                                      wallet_instance_attestation=_wia)
+                                      client_assertion=_wia)
 
         _authz_endpoint = oas.get_endpoint("authorization")
         _p_req = _authz_endpoint.parse_request(_req)

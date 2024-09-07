@@ -5,20 +5,22 @@ from fedservice.utils import make_federation_combo
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
 
 WALLET_CONFIG = {
-    "integrity": {
-        "class": "openid4v.client.device_integrity_service.IntegrityService"
-    },
-    "key_attestation": {
-        "class": "openid4v.client.device_integrity_service.KeyAttestationService"
-    },
-    "wallet_instance_attestation": {
-        "class": "openid4v.client.wallet_instance_attestation.WalletInstanceAttestation"
-    },
-    "challenge": {
-        "class": "openid4v.client.challenge.ChallengeService"
-    },
-    "registration": {
-        "class": "openid4v.client.registration.RegistrationService"
+    "services": {
+        "integrity": {
+            "class": "openid4v.client.device_integrity_service.IntegrityService"
+        },
+        "key_attestation": {
+            "class": "openid4v.client.device_integrity_service.KeyAttestationService"
+        },
+        "wallet_instance_attestation": {
+            "class": "openid4v.client.wallet_instance_attestation.WalletInstanceAttestation"
+        },
+        "challenge": {
+            "class": "openid4v.client.challenge.ChallengeService"
+        },
+        "registration": {
+            "class": "openid4v.client.registration.RegistrationService"
+        }
     }
 }
 
@@ -33,6 +35,16 @@ PID_EEA_CONSUMER_CONFIG = {
             "function": "idpyoidc.client.oauth2.add_on.dpop.add_support",
             "kwargs": {
                 'dpop_signing_alg_values_supported': ["ES256"]
+            }
+        },
+        "par": {
+            "function": "idpyoidc.client.oauth2.add_on.par.add_support",
+            "kwargs": {
+                "authn_method": {
+                    "client_assertion": {
+                        "class": "openid4v.client.client_authn.ClientAssertion"
+                    }
+                }
             }
         }
     },

@@ -43,12 +43,6 @@ class OpenidCredentialIssuer(ServerEntity):
     parameter = {"endpoint": [Endpoint], "context": EndpointContext}
     claims_class = OpenidCredentialIssuerClaims
 
-    def get_metadata(self, *args):
-        # static ! Should this be done dynamically ?
-        _metadata = self.context.get_provider_info(schema=message.OpenidCredentialIssuer)
-        _metadata["credential_issuer"] = self.config.get("issuer")
-        return {self.name: _metadata}
-
 
 class AutomaticRegistration(object):
 

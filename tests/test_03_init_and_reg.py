@@ -183,7 +183,7 @@ class TestComboCollect(object):
                                 "policy_uri": "https://wallet-provider.example.org/privacy_policy",
                                 "tos_uri": "https://wallet-provider.example.org/info_policy",
                                 "logo_uri": "https://wallet-provider.example.org/logo.svg",
-                                "aal_values_supported": [
+                                "attested_security_context_values_supported": [
                                     "https://wallet-provider.example.org/LoA/basic",
                                     "https://wallet-provider.example.org/LoA/medium",
                                     "https://wallet-provider.example.org/LoA/high"
