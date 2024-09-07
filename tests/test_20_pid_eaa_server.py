@@ -150,7 +150,7 @@ class TestPID():
 
         # Step 6
 
-        _wallet.context.crypto_hardware_key = new_ec_key('P-256')
+        # _wallet.context.crypto_hardware_key = new_ec_key('P-256')
 
         # Step 7-8
 
@@ -171,13 +171,15 @@ class TestPID():
         _req = _registration_service.construct({
             "challenge": challenge,
             "key_attestation": as_unicode(key_attestation),
-            "hardware_key_tag": as_unicode(
-                _wallet.context.crypto_hardware_key.thumbprint("SHA-256"))
+            "hardware_key_tag": as_unicode(_wallet.context.crypto_hardware_key.kid)
         })
 
         _registration_endpoint = _wallet_provider.get_endpoint("registration")
         parsed_args = _registration_endpoint.parse_request(_req)
         _ = _registration_endpoint.process_request(parsed_args)
+
+        _kid = _wallet.context.crypto_hardware_key.kid
+        _wallet_provider.context.crypto_hardware_key[_kid] = _wallet.context.crypto_hardware_key
 
     def wallet_attestation_issuance(self):
         self.wallet_instance_initialization_and_registration()
@@ -246,8 +248,7 @@ class TestPID():
             "challenge": challenge,
             "hardware_signature": as_unicode(base64.b64encode(hardware_signature)),
             "integrity_assertion": as_unicode(response_args["integrity_assertion"]),
-            "hardware_key_tag": as_unicode(
-                _wallet.context.crypto_hardware_key.thumbprint("SHA-256")),
+            "hardware_key_tag": as_unicode(_wallet.context.crypto_hardware_key.kid),
             "cnf": {
                 "jwk": _ephemeral_key.serialize()
             },

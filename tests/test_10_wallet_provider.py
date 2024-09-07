@@ -9,21 +9,53 @@ from cryptojwt.jws.dsa import ECDSASigner
 from cryptojwt.utils import as_bytes
 import pytest
 
-from tests import federation_setup
-from tests import wallet_setup
+from tests.build_federation import build_federation
 
-WALLET_PROVIDER_ID = "https://127.0.0.1:4000"
 TA_ID = "https://ta.example.org"
+WP_ID = "https://wp.example.org"
+WALLET_ID = "I_am_the_wallet"
+
+FEDERATION_CONFIG = {
+    TA_ID: {
+        "entity_type": "trust_anchor",
+        "subordinates": [WP_ID],
+        "kwargs": {
+            "preference": {
+                "organization_name": "The example federation operator",
+                "homepage_uri": "https://ta.example.org",
+                "contacts": "operations@ta.example.org"
+            },
+            "endpoints": ['entity_configuration', 'list', 'fetch', 'resolve'],
+        }
+    },
+    WP_ID: {
+        "entity_type": "wallet_provider",
+        "trust_anchors": [TA_ID],
+        "kwargs": {
+            "authority_hints": [TA_ID],
+            "preference": {
+                "organization_name": "The Wallet Provider",
+                "homepage_uri": "https://wp.example.com",
+                "contacts": "operations@wp.example.com"
+            }
+        }
+    },
+    WALLET_ID: {
+        "entity_type": "wallet",
+        "trust_anchors": [TA_ID],
+        "kwargs": {}
+    }
+}
 
 
 class TestComboCollect(object):
 
     @pytest.fixture(autouse=True)
     def federation_setup(self):
-        # Dictionary with all the federation members
-        self.entity = federation_setup()
-        # The wallet instance
-        self.wallet = wallet_setup(self.entity)
+        self.federation = build_federation(FEDERATION_CONFIG)
+        self.ta = self.federation[TA_ID]
+        self.wp = self.federation[WP_ID]
+        self.wallet = self.federation[WALLET_ID]
 
     # @pytest.fixture(autouse=True)
     # def setup(self):
@@ -125,18 +157,18 @@ class TestComboCollect(object):
     #     self.wallet = wallet_setup(self.entity)
 
     def test_metadata(self):
-        _metadata = self.entity["wallet_provider"].get_metadata()
+        _metadata = self.wp.get_metadata()
         assert set(_metadata.keys()) == {'device_integrity_service', 'wallet_provider',
                                          'federation_entity'}
 
     def test_sparse_wia(self):
         # Construct the wallet instance request
         _wallet = self.wallet["wallet"]
-        _wallet_provider = self.entity["wallet_provider"]["wallet_provider"]
+        _wallet_provider = self.wp["wallet_provider"]
 
         # Step 3 generate an ephemeral key pair
 
-        _ephemeral_key_tag = _wallet.mint_ephemeral_key()
+        _ephemeral_key = _wallet.mint_ephemeral_key()
 
         #
         _wia_service = _wallet.get_service('wallet_instance_attestation')
@@ -166,11 +198,11 @@ class TestComboCollect(object):
                     ]
                 }
             },
-            "cnf" : _wallet.context.ephemeral_key[_ephemeral_key_tag].serialize(private=False)
+            "cnf": _wallet.context.ephemeral_key[_ephemeral_key.kid].serialize(private=False)
         })
         req = _wia_service.construct(
             request_args=request_args,
-            ephemeral_key=_wallet.context.ephemeral_key[_ephemeral_key_tag])
+            ephemeral_key=_wallet.context.ephemeral_key[_ephemeral_key.kid])
 
         assert req
 
@@ -181,7 +213,7 @@ class TestComboCollect(object):
         assert _response
 
     def wallet_instance_initialization_and_registration(self):
-        _dis = self.entity["wallet_provider"]["device_integrity_service"]
+        _dis = self.wp["device_integrity_service"]
         _wallet = self.wallet["wallet"]
 
         # Step 2 Device Integrity Check
@@ -191,7 +223,7 @@ class TestComboCollect(object):
 
         _integrity_endpoint = _dis.get_endpoint("integrity")
         parsed_args = _integrity_endpoint.parse_request(req)
-        response_args = _integrity_endpoint.process_request(parsed_args)
+        _ = _integrity_endpoint.process_request(parsed_args)
         _wallet.context.crypto_hardware_key = new_ec_key('P-256')
 
         # Step 3-5
@@ -199,7 +231,7 @@ class TestComboCollect(object):
         _get_challenge = _wallet.get_service("challenge")
         req = _get_challenge.construct()
 
-        _wallet_provider = self.entity["wallet_provider"]["wallet_provider"]
+        _wallet_provider = self.wp["wallet_provider"]
 
         _challenge_endpoint = _wallet_provider.get_endpoint("challenge")
         parsed_args = _challenge_endpoint.parse_request(req)
@@ -231,18 +263,21 @@ class TestComboCollect(object):
         _req = _registration_service.construct({
             "challenge": challenge,
             "key_attestation": as_unicode(key_attestation),
-            "hardware_key_tag": as_unicode(_wallet.context.crypto_hardware_key.thumbprint("SHA-256"))
+            "hardware_key_tag": as_unicode(
+                _wallet.context.crypto_hardware_key.thumbprint("SHA-256"))
         })
 
         _registration_endpoint = _wallet_provider.get_endpoint("registration")
         parsed_args = _registration_endpoint.parse_request(_req)
         _ = _registration_endpoint.process_request(parsed_args)
 
+        _wallet_provider.context.crypto_hardware_key[_req["hardware_key_tag"]] = _wallet.context.crypto_hardware_key
+
     def test_wallet_attestation_issuance(self):
         self.wallet_instance_initialization_and_registration()
 
-        _dis = self.entity["wallet_provider"]["device_integrity_service"]
-        _wallet_provider = self.entity["wallet_provider"]["wallet_provider"]
+        _dis = self.wp["device_integrity_service"]
+        _wallet_provider = self.wp["wallet_provider"]
         _wallet = self.wallet["wallet"]
 
         # Step 2 Check for cryptographic hardware key
@@ -283,9 +318,11 @@ class TestComboCollect(object):
         # Step 8-10
         # signing the client_data_hash with the Wallet Hardware's private key
         _signer = ECDSASigner()
-        hardware_signature = _signer.sign(msg=client_data_hash, key=_wallet.context.crypto_hardware_key.private_key())
+        hardware_signature = _signer.sign(msg=client_data_hash,
+                                          key=_wallet.context.crypto_hardware_key.private_key())
 
-        # It requests the Device Integrity Service to create an integrity_assertion linked to the client_data_hash.
+        # It requests the Device Integrity Service to create an integrity_assertion linked to the
+        # client_data_hash.
 
         _dis_service = self.wallet["wallet"].get_service('integrity')
         req = _dis_service.construct(request_args={
@@ -298,6 +335,8 @@ class TestComboCollect(object):
         response_args = response["response_args"]
 
         # Step 11-12
+
+        hardware_key_tag= as_unicode(_wallet.context.crypto_hardware_key.thumbprint("SHA-256"))
 
         war_payload = {
             "challenge": challenge,

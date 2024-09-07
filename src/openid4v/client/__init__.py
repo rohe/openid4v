@@ -43,6 +43,7 @@ class Wallet(Client):
         self.context.wallet_instance_attestation = {}
         self.context.wia_flow = {}
         self.context.init_reg = {}
+        self.context.crypto_hardware_key = new_ec_key('P-256')
 
     def get_trust_chains(self, wallet_provider_id: str) -> Optional[list]:
         federation_entity = get_federation_entity(self)
@@ -59,6 +60,9 @@ class Wallet(Client):
         self.context.keyjar.import_jwks(_jwks, "")
 
         return ephemeral_key
+
+    def mint_ephemeral_key(self):
+        return self.mint_new_key()
 
     def create_client_data_hash(self, challenge: str, ephemeral_key_tag: str):
         client_data = {
@@ -103,7 +107,6 @@ class Wallet(Client):
 
     def request_key_attestation(self, wallet_provider_id: str, challenge: str) -> dict:
         # New hardware key. This must eventually change !!!!
-        self.context.crypto_hardware_key = new_ec_key('P-256')
         crypto_hardware_key_tag = as_unicode(self.context.crypto_hardware_key.thumbprint("SHA-256"))
 
         trust_chains = self.get_trust_chains(wallet_provider_id)

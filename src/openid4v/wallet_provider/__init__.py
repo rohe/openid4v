@@ -110,3 +110,5 @@ class WalletProvider(ServerEntity):
             self.context.wallet_db = execute(config["registration_service"])
         else:
             self.context.wallet_db = {}
+
+        self.context.crypto_hardware_key = {}
