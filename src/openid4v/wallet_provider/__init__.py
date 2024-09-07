@@ -99,6 +99,8 @@ class WalletProvider(ServerEntity):
 
         #self.metadata_schema = WalletProviderMetadata
 
+        self.entity_type = entity_type
+
         self.wallet_instance_discovery = execute(
             config.get("wallet_instance_discovery",
                        {
