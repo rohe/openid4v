@@ -19,7 +19,7 @@ from idpyoidc.client.client_auth import get_client_authn_methods
 from idpyoidc.defaults import JWT_BEARER
 from idpyoidc.message import Message
 from idpyoidc.message.oauth2 import ResponseMessage
-from idpyoidc.metadata import get_signing_algs
+from idpyoidc.alg_info import get_signing_algs
 from idpyoidc.server import Endpoint
 from idpyoidc.server.util import execute
 

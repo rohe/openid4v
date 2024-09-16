@@ -5,7 +5,7 @@ from typing import Union
 
 from cryptojwt import KeyJar
 from idpyoidc.message import Message
-from idpyoidc.metadata import get_signing_algs
+from idpyoidc.alg_info import get_signing_algs
 from idpyoidc.server import ASConfiguration
 from idpyoidc.server import Endpoint
 from idpyoidc.server import EndpointContext

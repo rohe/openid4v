@@ -1,8 +1,8 @@
 from typing import Optional
 
 from idpyoidc.message import Message
-from idpyoidc.metadata import get_encryption_algs
-from idpyoidc.metadata import get_encryption_encs
+from idpyoidc.alg_info import get_encryption_algs
+from idpyoidc.alg_info import get_encryption_encs
 from idpyoidc.server import Endpoint
 from idpyoidc.server import EndpointContext
 from idpyoidc.server.claims import Claims

@@ -57,105 +57,6 @@ class TestComboCollect(object):
         self.wp = self.federation[WP_ID]
         self.wallet = self.federation[WALLET_ID]
 
-    # @pytest.fixture(autouse=True)
-    # def setup(self):
-    #     self.ta = make_federation_entity(
-    #         TA_ID,
-    #         preference={
-    #             "organization_name": "The example federation operator",
-    #             "homepage_uri": "https://ta.example.com",
-    #             "contacts": "operations@ta.example.com"
-    #         },
-    #         key_config={"key_defs": DEFAULT_KEY_DEFS}
-    #     )
-    #
-    #     TRUST_ANCHORS = {TA_ID: self.ta.keyjar.export_jwks()}
-    #
-    #     self.wp = make_federation_combo(
-    #         WALLET_PROVIDER_ID,
-    #         preference= {
-    #             "policy_uri": "https://wallet-provider.example.org/privacy_policy",
-    #             "tos_uri": "https://wallet-provider.example.org/info_policy",
-    #             "logo_uri": "https://wallet-provider.example.org/logo.svg",
-    #             "attested_security_context": "https://wallet-provider.example.org/LoA/basic",
-    #             "type": "WalletInstanceAttestation",
-    #             "authorization_endpoint": "eudiw:",
-    #             "response_types_supported": [
-    #                 "vp_token"
-    #             ],
-    #             "vp_formats_supported": {
-    #                 "jwt_vp_json": {
-    #                     "alg_values_supported": [
-    #                         "ES256"
-    #                     ]
-    #                 },
-    #                 "jwt_vc_json": {
-    #                     "alg_values_supported": [
-    #                         "ES256"
-    #                     ]
-    #                 }
-    #             },
-    #             "request_object_signing_alg_values_supported": [
-    #                 "ES256"
-    #             ],
-    #             "presentation_definition_uri_supported": False
-    #         },
-    #         authority_hints=["https://auth.example.com"],
-    #         key_config={"key_defs": DEFAULT_KEY_DEFS},
-    #         endpoints=LEAF_ENDPOINTS,
-    #         trust_anchors=TRUST_ANCHORS,
-    #         entity_type={
-    #             "wallet_provider": {
-    #                 'class': 'openid4v.wallet_provider.WalletProvider',
-    #                 'kwargs': {
-    #                     'config': {
-    #                         "keys": {"key_defs": DEFAULT_KEY_DEFS},
-    #                         "endpoint": {
-    #                             "token": {
-    #                                 "path": "token",
-    #                                 "class": "openid4v.wallet_provider.token.Token",
-    #                                 "kwargs": {
-    #                                     "client_authn_method": [
-    #                                         "client_secret_post",
-    #                                         "client_secret_basic",
-    #                                         "client_secret_jwt",
-    #                                         "private_key_jwt",
-    #                                     ],
-    #                                 },
-    #                             }
-    #                         },
-    #                         'preference': {
-    #                             "policy_uri":
-    #                             "https://wallet-provider.example.org/privacy_policy",
-    #                             "tos_uri": "https://wallet-provider.example.org/info_policy",
-    #                             "logo_uri": "https://wallet-provider.example.org/logo.svg",
-    #                             "attested_security_context":
-    #                                 "https://wallet-provider.example.org/LoA/basic",
-    #                             "type": "WalletInstanceAttestation",
-    #                             "authorization_endpoint": "eudiw:",
-    #                             "response_types_supported": [
-    #                                 "vp_token"
-    #                             ],
-    #                             "vp_formats_supported": {
-    #                                 "jwt_vp_json": {
-    #                                     "alg_values_supported": ["ES256"]
-    #                                 },
-    #                                 "jwt_vc_json": {
-    #                                     "alg_values_supported": ["ES256"]
-    #                                 }
-    #                             },
-    #                             "request_object_signing_alg_values_supported": [
-    #                                 "ES256"
-    #                             ],
-    #                             "presentation_definition_uri_supported": False,
-    #                         }
-    #                     }
-    #                 }
-    #             }
-    #         }
-    #     )
-    #     self.wallet = wallet_setup(self.entity)
-
     def test_metadata(self):
         _metadata = self.wp.get_metadata()
         assert set(_metadata.keys()) == {'device_integrity_service', 'wallet_provider',
@@ -271,7 +172,8 @@ class TestComboCollect(object):
         parsed_args = _registration_endpoint.parse_request(_req)
         _ = _registration_endpoint.process_request(parsed_args)
 
-        _wallet_provider.context.crypto_hardware_key[_req["hardware_key_tag"]] = _wallet.context.crypto_hardware_key
+        _wallet_provider.context.crypto_hardware_key[
+            _req["hardware_key_tag"]] = _wallet.context.crypto_hardware_key
 
     def test_wallet_attestation_issuance(self):
         self.wallet_instance_initialization_and_registration()
@@ -336,7 +238,7 @@ class TestComboCollect(object):
 
         # Step 11-12
 
-        hardware_key_tag= as_unicode(_wallet.context.crypto_hardware_key.thumbprint("SHA-256"))
+        hardware_key_tag = as_unicode(_wallet.context.crypto_hardware_key.thumbprint("SHA-256"))
 
         war_payload = {
             "challenge": challenge,

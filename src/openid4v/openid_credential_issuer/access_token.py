@@ -4,7 +4,7 @@ from typing import Optional
 from typing import Union
 
 from cryptojwt.jwt import utc_time_sans_frac
-from idpyoidc import metadata
+from idpyoidc import alg_info
 from idpyoidc.message import Message
 from idpyoidc.message.oauth2 import ResponseMessage
 from idpyoidc.message.oauth2 import TokenErrorResponse
@@ -39,7 +39,7 @@ class Token(Endpoint):
 
     _supports = {
         "token_endpoint_auth_methods_supported": [],
-        "token_endpoint_auth_signing_alg_values_supported": metadata.get_signing_algs()
+        "token_endpoint_auth_signing_alg_values_supported": alg_info.get_signing_algs()
     }
 
     def __init__(self, upstream_get, conf=None, **kwargs):

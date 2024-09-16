@@ -29,7 +29,7 @@ from idpyoidc.message import Message
 from idpyoidc.message import oauth2
 from idpyoidc.message.oauth2 import AuthorizationResponse
 from idpyoidc.message.oauth2 import ResponseMessage
-from idpyoidc.metadata import get_signing_algs
+from idpyoidc.alg_info import get_signing_algs
 from idpyoidc.server.oauth2 import pushed_authorization
 
 from openid4v.message import AuthorizationRequest
@@ -191,7 +191,7 @@ class PushedAuthorization(pushed_authorization.PushedAuthorization):
         pushed_authorization.PushedAuthorization.__init__(self, upstream_get, **kwargs)
 
 
-class Credential(Service):
+class Credential(FederationService):
     msg_type = CredentialsSupported
     # msg_type = Message
     response_cls = CredentialResponse
@@ -206,7 +206,7 @@ class Credential(Service):
     default_authn_method = "bearer_header"
 
     def __init__(self, upstream_get, conf=None):
-        Service.__init__(self, upstream_get, conf=conf)
+        FederationService.__init__(self, upstream_get, conf=conf)
         self.pre_construct.append(self.create_proof)
         if conf:
             self.certificate_issuer_id = conf.get("certificate_issuer_id")
