@@ -56,14 +56,14 @@ class CredentialConstructor(object):
         _supported = self.upstream_get('context').claims.get_preference("credential_configurations_supported")
         matching = []
         if _supported:
-            for cs in _supported:
+            for name, cs in _supported.items():
                 if cs["format"] != request["format"]:
                     continue
                 _cred_def_sup = cs["credential_definition"]
                 _req_cred_def = request["credential_definition"]
                 # The set of type values must match
                 # The requested set must be a subset of the supported
-                if set(_req_cred_def["type"]).issubset(set(_cred_def_sup["type"])):
+                if set(_req_cred_def["vct"]).issubset(set(_cred_def_sup["vct"])):
                     matching.append(_cred_def_sup.get("credentialSubject", {}))
         return matching
 

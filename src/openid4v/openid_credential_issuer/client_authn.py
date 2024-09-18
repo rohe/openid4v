@@ -77,6 +77,7 @@ class ClientAssertion(ClientAuthnMethod):
             request: Optional[Union[dict, Message]] = None,
             authorization_token: Optional[str] = None,
             endpoint=None,  # Optional[Endpoint]
+            http_info: Optional[dict] = None,
             **kwargs,
     ):
         oas = topmost_unit(self)["oauth_authorization_server"]
@@ -114,6 +115,7 @@ class ClientAssertion(ClientAuthnMethod):
             self,
             request: Optional[Union[dict, Message]] = None,
             authorization_token: Optional[str] = None,
+            http_info: Optional[dict] = None
     ):
         ca_type = request.get("client_assertion_type")
         if ca_type == ASSERTION_TYPE:
@@ -122,68 +124,23 @@ class ClientAssertion(ClientAuthnMethod):
 
         return False
 
-
-# class WalletInstanceAttestation(ClientAssertion):
-#     tag = "wallet_instance_attestation"
-#
-#     attestation_class = {"wallet-attestation+jwt": WalletInstanceAttestationJWT}
-#
-#     def _verify(
-#             self,
-#             request: Optional[Union[dict, Message]] = None,
-#             authorization_token: Optional[str] = None,
-#             endpoint=None,  # Optional[Endpoint]
-#             **kwargs,
-#     ):
-#         wia, pop = request["client_assertion"].split("~")
-#         oci = topmost_unit(self)["openid_credential_issuer"]
-#         _keyjar = oci.context.keyjar
-#         _wia = verify_wallet_instance_attestation(wia,
-#                                                   _keyjar,
-#                                                   self,
-#                                                   self.attestation_class)
-#
-#         # Should be a key in there
-#         _jwk = _wia["cnf"]["jwk"]
-#         _keyjar.import_jwks({"keys": [_jwk]}, _wia["sub"])
-#
-#         # have already saved the key that comes in the wia
-#         _verifier = JWT(_keyjar)
-#
-#         try:
-#             _pop = _verifier.unpack(pop)
-#         except (Invalid, MissingKey, BadSignature, IssuerNotFound) as err:
-#             # logger.info("%s" % sanitize(err))
-#             raise ClientAuthenticationError(f"{err.__class__.__name__} {err}")
-#         except Exception as err:
-#             raise err
-#
-#         if isinstance(_pop, Message):
-#             _pop.verify()
-#
-#         # Dynamically add/register client
-#         oci.context.cdb[_wia["sub"]] = {"client_id": _wia["sub"]}
-#
-#         return {"client_id": _wia["sub"], "jwt": _wia}
-
-
+# AttestationJWTClientAuthentication
 class ClientAuthenticationAttestation(ClientAuthnMethod):
     # based on https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-01.html
-    tag = "client_authentication_attestation"
+    tag = "attest_jwt_client_auth"
     assertion_type = "urn:ietf:params:oauth:client-assertion-type:jwt-client-attestation"
     attestation_class = {"wallet-attestation+jwt": WalletInstanceAttestationJWT}
     metadata = {}
 
-    def is_usable(self, request=None, authorization_token=None):
+    def is_usable(self, request=None, authorization_token=None, http_info: Optional[dict] = 0):
         if request is None:
             return False
 
-        ca_type = request.get("client_assertion_type", None)
-        if ca_type == self.assertion_type:
-            _assertion = request.get("client_assertion", None)
-            if _assertion:
-                if "~" in _assertion:
-                    return True
+        _headers = http_info.get("headers", None)
+        if _headers:
+            if "OAuth-Client-Attestation-PoP" in _headers and "OAuth-Client-Attestation" in _headers:
+                return True
+
         return False
 
     def _verify(
@@ -191,9 +148,12 @@ class ClientAuthenticationAttestation(ClientAuthnMethod):
             request: Optional[Union[dict, Message]] = None,
             authorization_token: Optional[str] = None,
             endpoint=None,  # Optional[Endpoint]
+            http_info: Optional[dict] = None,
             **kwargs,
     ):
-        wia, pop = request["client_assertion"].split("~")
+        wia = http_info["headers"]["OAuth-Client-Attestation"]
+        pop = http_info["headers"]["OAuth-Client-Attestation-PoP"]
+
         oas = topmost_unit(self)['oauth_authorization_server']
         _keyjar = oas.context.keyjar
         _wia = verify_wallet_instance_attestation(wia,

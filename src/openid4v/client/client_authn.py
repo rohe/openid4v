@@ -24,7 +24,6 @@ class ClientAssertion(ClientAuthnMethod):
         request["client_assertion_type"] = ASSERTION_TYPE
         return {}
 
-
 class ClientAuthenticationAttestation(ClientAuthnMethod):
 
     def construct(self,
@@ -55,11 +54,20 @@ class ClientAuthenticationAttestation(ClientAuthnMethod):
             else:
                 kwargs["signing_key"] = _wallet.context.wia_flow[entity_id]["ephemeral_key"]
 
-        part2 = self.construct_client_attestation_pop_jwt(entity_id=entity_id, **kwargs)
+        pop = self.construct_client_attestation_pop_jwt(entity_id=entity_id, **kwargs)
         _att = kwargs.get("attestation", kwargs.get("wallet_instance_attestation"))
-        request["client_assertion"] = f"{_att}~{part2}"
-        request["client_assertion_type"] = ASSERTION_TYPE
-        return {}
+
+        if http_args is None:
+            http_args = {"headers": {}}
+
+        if "headers" not in http_args:
+            http_args["headers"] = {}
+
+        http_args["headers"]["OAuth-Client-Attestation"] = _att
+        http_args["headers"]["OAuth-Client-Attestation-PoP"] = pop
+        # request["client_assertion"] = f"{_att}~{part2}"
+        # request["client_assertion_type"] = ASSERTION_TYPE
+        return http_args
 
     def construct_client_attestation_pop_jwt(self,
                                              audience: str,

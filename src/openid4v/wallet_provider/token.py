@@ -138,7 +138,7 @@ class Token(Endpoint):
         for item in ["challenge", "integrity_assertion", "hardware_signature"]:
             _val = _ver_request.get(item, None)
             if _val != '__not__applicable__':
-                _app = getattr(self, f"{item}_validator")
+                _app = getattr(self, f"{item}_validator", None)
                 if not _app(**_ver_request):
                     logger.error(f"Validation of {item} failed")
 

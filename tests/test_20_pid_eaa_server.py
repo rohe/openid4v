@@ -353,7 +353,8 @@ class TestPID():
                 rsps.add("GET", _url, body=_jwks,
                          adding_headers={"Content-Type": "application/json"}, status=200)
 
-            parsed_args = _authorization_endpoint.parse_request(authz_req["url"])
+            parsed_args = _authorization_endpoint.parse_request(authz_req["url"],
+                                                                http_info={"headers": authz_req["headers"]})
 
         authz_response = _authorization_endpoint.process_request(parsed_args)
 

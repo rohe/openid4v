@@ -1,5 +1,5 @@
-import os
 import json
+import os
 from typing import List
 from typing import Optional
 
@@ -221,74 +221,6 @@ OPENID_CREDENTIAL_ISSUER_CONFIG = {
         ],
         "display": {},
         "credential_configurations_supported": {
-            "SD_JWT_VC_example_in_OpenID4VCI": {
-                "format": "vc+sd-jwt",
-                "scope": "SD_JWT_VC_example_in_OpenID4VCI",
-                "cryptographic_binding_methods_supported": [
-                    "jwk"
-                ],
-                "credential_signing_alg_values_supported": [
-                    "ES256"
-                ],
-                "display": [
-                    {
-                        "name": "IdentityCredential",
-                        "logo": {
-                            "uri": "https://university.example.edu/public/logo.png",
-                            "alt_text": "a square logo of a university"
-                        },
-                        "locale": "en-US",
-                        "background_color": "#12107c",
-                        "text_color": "#FFFFFF"
-                    }
-                ],
-                "proof_types_supported": {
-                    "jwt": {
-                        "proof_signing_alg_values_supported": [
-                            "ES256"
-                        ]
-                    }
-                },
-                "vct": "SD_JWT_VC_example_in_OpenID4VCI",
-                "claims": {
-                    "given_name": {
-                        "display": [
-                            {
-                                "name": "Given Name",
-                                "locale": "en-US"
-                            },
-                            {
-                                "name": "Vorname",
-                                "locale": "de-DE"
-                            }
-                        ]
-                    },
-                    "family_name": {
-                        "display": [
-                            {
-                                "name": "Surname",
-                                "locale": "en-US"
-                            },
-                            {
-                                "name": "Nachname",
-                                "locale": "de-DE"
-                            }
-                        ]
-                    },
-                    "email": {},
-                    "phone_number": {},
-                    "address": {
-                        "street_address": {},
-                        "locality": {},
-                        "region": {},
-                        "country": {}
-                    },
-                    "birthdate": {},
-                    "is_over_18": {},
-                    "is_over_21": {},
-                    "is_over_65": {}
-                }
-            }
         },
         "attribute_disclosure": {
             "": ["given_name",
@@ -300,6 +232,19 @@ OPENID_CREDENTIAL_ISSUER_CONFIG = {
         }
     }
 }
+
+
+def load_credential_configurations_supported(config):
+    _fdir = full_path("credential_configurations_supported")
+    for f in os.listdir(_fdir):
+        fname = os.path.join(_fdir, f)
+        if os.path.isfile(fname):
+            info = open(fname, "r").read().strip()
+            item = json.loads(info)
+            f = f.split(".")[0]
+            config["preference"]["credential_configurations_supported"][f] = item
+
+    return config
 
 
 def main(entity_id: str,
@@ -342,6 +287,9 @@ def main(entity_id: str,
         if "openid_credential_issuer" not in entity_type_config:
             entity_type_config["openid_credential_issuer"] = OPENID_CREDENTIAL_ISSUER_CONFIG
 
+    openid_credential_issuer_config = load_credential_configurations_supported(entity_type_config[
+                                                                              "openid_credential_issuer"])
+
     entity = make_federation_combo(
         entity_id,
         trust_anchors=trust_anchors,
@@ -360,7 +308,7 @@ def main(entity_id: str,
             "openid_credential_issuer": {
                 'class': OpenidCredentialIssuer,
                 'kwargs': {
-                    'config': entity_type_config["openid_credential_issuer"]
+                    'config': openid_credential_issuer_config
                 }
             }
         }

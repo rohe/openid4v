@@ -7,6 +7,7 @@ from cryptojwt.jws.jws import factory
 from fedservice import message as fed_msg
 from fedservice.message import SINGLE_REQUIRED_DICT
 from idpyoidc import verified_claim_name
+from idpyoidc.exception import MessageException
 from idpyoidc.exception import MissingAttribute
 from idpyoidc.message import json_deserializer
 from idpyoidc.message import json_serializer
@@ -16,7 +17,6 @@ from idpyoidc.message import msg_ser
 from idpyoidc.message import oauth2
 from idpyoidc.message import oidc
 from idpyoidc.message import OPTIONAL_LIST_OF_DICTS
-from idpyoidc.message import OPTIONAL_LIST_OF_MESSAGES
 from idpyoidc.message import OPTIONAL_LIST_OF_STRINGS
 from idpyoidc.message import OPTIONAL_MESSAGE
 from idpyoidc.message import REQUIRED_LIST_OF_DICTS
@@ -342,25 +342,30 @@ class AuthorizationDetail(Message):
         if "doctype" not in self:
             raise MissingAttribute("Expected 'doctype' in authorization_detail")
 
+    def _verify_openid_credential(self, **kwargs):
+        if "format" in self:
+            if "credential_configuration_id":
+                raise MessageException(f"credential_configuration_id and format can not appear together")
+        elif "credential_configuration_id" in self:
+            pass
+        else:  # None present
+            raise MessageException("Need one of credential_configuration_id or format")
+
     def verify(self, **kwargs):
         super(AuthorizationDetail, self).verify(**kwargs)
 
         _detail_type = {
             "jwt_vc_json": self._verify_jwt_vc_json,
             "ldp_vc": self._verify_ldp_vc,
-            "mso_mdoc": self._verify_mso_mdoc
+            "mso_mdoc": self._verify_mso_mdoc,
+            "openid_credential": self._verify_openid_credential
         }
 
-        if self["type"] == "openid_credential":
-            # Expect format
-            if "format" not in self:
-                raise MissingAttribute("Expected 'format' in authorization_detail")
-
-            _verifier = _detail_type.get(self["format"])
-            if _verifier:
-                _verifier(**kwargs)
-            else:
-                raise SystemError(f"Unsupported format {self['format']}")
+        _verifier = _detail_type.get(self["format"])
+        if _verifier:
+            _verifier(**kwargs)
+        else:
+            raise SystemError(f"Unsupported format {self['format']}")
 
 
 def auth_detail_deser(val, sformat="dict"):
@@ -411,17 +416,33 @@ class CredentialMetadata(Message):
                 disp.verify()
 
 
+class TransactionCode(Message):
+    c_param = {
+        "input_mode": SINGLE_OPTIONAL_STRING,
+        "length": SINGLE_OPTIONAL_INT,
+        "description": SINGLE_OPTIONAL_STRING
+    }
+
+
+def tx_code_deser(val, sformat=dict):
+    return deserialize_from_one_of(val, TransactionCode, sformat)
+
+
+OPTIONAL_TRANSACTION_CODE = (TransactionCode, False, msg_list_ser, tx_code_deser, False)
+
+
 class AuthorizationGrantType(Message):
     c_param = {
-        "issuer_state": SINGLE_OPTIONAL_STRING
+        "issuer_state": SINGLE_OPTIONAL_STRING,
+        "authorization_server": SINGLE_OPTIONAL_STRING
     }
 
 
 class PreAuthorizedGrantType(Message):
     c_param = {
         "pre-authorized_code": SINGLE_REQUIRED_STRING,
-        "user_pin_required": SINGLE_OPTIONAL_BOOLEAN,
-        "interval": SINGLE_OPTIONAL_INT
+        "tx_code": OPTIONAL_TRANSACTION_CODE,
+        "authorization_server": SINGLE_OPTIONAL_STRING
     }
 
 
@@ -471,7 +492,7 @@ REQUIRED_LIST_OF_CREDENTIAL_TYPES = (
 class CredentialOffer(Message):
     c_param = {
         "credential_issuer": SINGLE_REQUIRED_STRING,
-        "credentials": OPTIONAL_LIST_OF_MESSAGES,
+        "credential_configuration_ids": REQUIRED_LIST_OF_STRINGS,
         "grants": SINGLE_OPTIONAL_JSON
     }
 
@@ -599,10 +620,12 @@ class DeviceIntegrityServiceMetadata(Message):
         "device_key_attestation_endpoint": SINGLE_REQUIRED_STRING
     }
 
+
 class VerifierServiceMetadata(Message):
     c_param = {
         "resource_verifier_endpoint": SINGLE_REQUIRED_STRING
     }
+
 
 class WalletAttestationRequestJWT(Message):
     c_param = {
@@ -778,3 +801,5 @@ class OpenidCredentialIssuer(Message):
         "jwks": SINGLE_REQUIRED_DICT,
         "jwks_uri": SINGLE_OPTIONAL_STRING
     }
+
+

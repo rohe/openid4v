@@ -154,23 +154,22 @@ def test_construction():
 
     signing_key = new_ec_key(crv="P-256", key_ops=["sign"])
     request = {}
-    _ = ClientAuthenticationAttestation().construct(
+    http_info = ClientAuthenticationAttestation().construct(
         request=request,
         service=client.get_service("authorization"),
         audience="https://server.example.com",
         wallet_instance_attestation="__WIA__",
         # thumbprint=signing_key.kid,
-        signing_key=signing_key
+        signing_key=signing_key,
+        http_args={}
     )
 
-    assert "~" in request["client_assertion"]
-    part = request["client_assertion"].split("~")
-    assert len(part) == 2
-    # The proof part
-    _jws = factory(part[1])
+    assert set(http_info["headers"].keys()) == {"OAuth-Client-Attestation", "OAuth-Client-Attestation-PoP"}
+    assert http_info["headers"]["OAuth-Client-Attestation"] == "__WIA__"
 
-    _key = signing_key
-    _jws = factory(part[1])
-    payload2 = _jws.verify_compact(part[1], keys=[_key])
+    # The proof part
+    _jws = factory(http_info["headers"]["OAuth-Client-Attestation-PoP"])
+
+    payload2 = _jws.verify_compact(http_info["headers"]["OAuth-Client-Attestation-PoP"], keys=[signing_key])
     assert payload2
     assert set(payload2.keys()) == {'aud', 'exp', 'iss', 'jti', 'iat'}

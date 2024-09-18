@@ -16,7 +16,7 @@ from fedservice.entity.function import collect_trust_chains
 from fedservice.entity.function import verify_trust_chains
 from fedservice.entity.service import FederationService
 from fedservice.entity.utils import get_federation_entity
-from idpyoidc import metadata
+from idpyoidc import alg_info
 from idpyoidc.client.client_auth import get_client_authn_methods
 from idpyoidc.client.configure import Configuration
 from idpyoidc.client.oauth2 import access_token
@@ -54,9 +54,9 @@ class Authorization(FederationService):
         "request_uri_parameter_supported": True,
         "response_types_supported": ["code"],
         "response_modes_supported": ["query"],
-        "request_object_signing_alg_values_supported": metadata.get_signing_algs,
-        "request_object_encryption_alg_values_supported": metadata.get_encryption_algs,
-        "request_object_encryption_enc_values_supported": metadata.get_encryption_encs,
+        "request_object_signing_alg_values_supported": alg_info.get_signing_algs,
+        "request_object_encryption_alg_values_supported": alg_info.get_encryption_algs,
+        "request_object_encryption_enc_values_supported": alg_info.get_encryption_encs,
         # "grant_types_supported": ["authorization_code", "implicit"],
         "code_challenge_methods_supported": ["S256"],
         "scopes_supported": [],
