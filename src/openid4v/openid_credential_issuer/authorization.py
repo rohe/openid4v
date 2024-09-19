@@ -3,6 +3,8 @@ import logging
 
 from idpyoidc import alg_info
 from idpyoidc.message import oauth2
+from idpyoidc.node import topmost_unit
+from idpyoidc.server.exception import ServiceError
 from idpyoidc.server.oauth2 import authorization
 from idpyoidc.server.util import execute
 
@@ -48,5 +50,36 @@ class Authorization(authorization.Authorization):
         else:
             self.automatic_registration = None
 
+        self.post_parse_request.append(self.verify_authorization_details)
+
     def get_assertion_issuer_info(self, iss):
         pass
+
+    def match_authz_details(self, authz_det, cred_conf_supp):
+        supports = []
+        for _ad in authz_det:
+            if _ad["type"] == "openid_credential":
+                if _ad.get("credential_configuration_id", None) not in cred_conf_supp:
+                    continue
+                else:
+                    supports.append(_ad)
+        return supports
+
+    def verify_authorization_details(self, request, client_id, context, **kwargs):
+        # verify that the authorization_details actually describes something I can deal with
+        _authz_details = request.get("authorization_details", None)
+        if _authz_details:
+            root = topmost_unit(self)
+            # make sense only if there is a credential issuer part of this server
+            cred_iss = root.get("openid_credential_issuer", None)
+            if cred_iss:
+                cred_conf_supp = cred_iss.context.claims.get_preference('credential_configurations_supported')
+                supported = self.match_authz_details(_authz_details, cred_conf_supp)
+                if supported == []:
+                    raise ServiceError("I don't support what is asked for")
+
+                request["authorization_details"] = supported
+            else:  # might as well remove it or ?
+                pass
+
+        return request

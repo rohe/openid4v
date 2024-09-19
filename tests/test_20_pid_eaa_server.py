@@ -321,10 +321,7 @@ class TestPID():
             "authorization_details": [
                 {
                     "type": "openid_credential",
-                    "format": "vc+sd-jwt",
-                    "credential_definition": {
-                        "type": "PersonIdentificationData"
-                    }
+                    "credential_configuration_id": "PersonIdentificationData"
                 }
             ],
             "response_type": "code",
@@ -412,13 +409,10 @@ class TestPID():
 
         _request_args = {
             "format": "vc+sd-jwt",
-            "credential_definition": {
-                "type": ["PersonIdentificationData"]
-            }
+            "vct": "PersonIdentificationData"
         }
 
         _args = {
-            "access_token": token_response["response_args"]["access_token"],
             "state": authz_response['response_args']["state"]
         }
 

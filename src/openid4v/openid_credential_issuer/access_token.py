@@ -135,6 +135,9 @@ class Token(Endpoint):
             "scope": scope,
         }
 
+        if 'authorization_details' in _authn_req:
+            _response['authorization_details'] = [ad.to_dict() for ad in _authn_req['authorization_details']]
+
         if "access_token" in _supports_minting:
 
             resources = request.get("resource", None)

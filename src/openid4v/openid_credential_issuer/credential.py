@@ -179,10 +179,13 @@ class Credential(Endpoint):
         Endpoint.__init__(self, upstream_get, conf=conf, **kwargs)
         # dpop support
         self.post_parse_request.append(self.add_access_token_to_request)
+
+        self.credential_constructor = {}
         if conf and "credential_constructor" in conf:
-            self.credential_constructor = execute(conf["credential_constructor"])
+            for typ, spec in conf["credential_constructor"].items():
+                self.credential_constructor[typ] = execute(conf["credential_constructor"])
         else:
-            self.credential_constructor = CredentialConstructor(upstream_get=upstream_get)
+            self.credential_constructor["PersonIdentificationData"] = CredentialConstructor(upstream_get=upstream_get)
 
     def _get_session_info(self, endpoint_context, token):
         _jws = factory(token)
@@ -237,6 +240,19 @@ class Credential(Endpoint):
         request["access_token"] = kwargs["auth_info"]["token"]
         return request
 
+    def _pick_constructor(self, request, authz_details):
+        cd = request.get("credential_definition", "")
+        if cd:
+            cd_type = cd.get("type", [])
+            for typ in cd_type:
+                if typ in self.credential_constructor:
+                    return self.credential_constructor[typ]
+        else:
+            vct = request.get("vct", "")
+            if vct in self.credential_constructor:
+                return self.credential_constructor[vct]
+        return None
+
     def process_request(self, request=None, **kwargs):
         logger.debug(f"process_request: {request}")
         _msg = {}
@@ -259,10 +275,15 @@ class Credential(Endpoint):
 
         if _session_info:
             client_id = _session_info["client_id"]
+            authz_details = _session_info["grant"].authorization_request.get("authorization_details", [])
+            _credential_constructor = self._pick_constructor(request, authz_details)
+            if _credential_constructor is None:
+                raise AttributeError("Asked for credential type I can't produce")
+
             try:
-                _msg = self.credential_constructor(user_id=_session_info["user_id"], request=request,
-                                                   grant=_session_info["grant"],
-                                                   client_id=client_id)
+                _msg = _credential_constructor(user_id=_session_info["user_id"], request=request,
+                                               grant=_session_info["grant"],
+                                               client_id=client_id)
             except Exception as err:
                 logger.exception("Credential constructor")
                 return self.error_cls(error="invalid_token", error_description=f"{err}")

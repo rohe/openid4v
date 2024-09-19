@@ -257,7 +257,7 @@ SINGLE_REQUIRED_CREDENTIAL_DEFINITION = (
     CredentialDefinition, True, msg_ser, cred_def_deser, False
 )
 SINGLE_OPTIONAL_CREDENTIAL_DEFINITION = (
-    CredentialDefinition, True, msg_ser, cred_def_deser, False
+    CredentialDefinition, False, msg_ser, cred_def_deser, False
 )
 
 
@@ -321,35 +321,27 @@ class CredentialRequestJwtVcJson(CredentialRequest):
 class AuthorizationDetail(Message):
     c_param = {
         "type": SINGLE_REQUIRED_STRING,
-        "format": SINGLE_REQUIRED_STRING,
+        "format": SINGLE_OPTIONAL_STRING,
+        "credential_configuration_id": SINGLE_OPTIONAL_STRING,
         "locations": OPTIONAL_LIST_OF_STRINGS,
         "credential_definition": SINGLE_OPTIONAL_CREDENTIAL_DEFINITION,
         "doctype": SINGLE_OPTIONAL_STRING,
         "claims": OPTIONAL_MESSAGE
     }
 
-    def _verify_jwt_vc_json(self, **kwargs):
+    def _verify_jwt_vc_json(self):
         if "credential_definition" not in self:
             raise MissingAttribute("Expected 'credential_definition' in authorization_detail")
         self["credential_definition"] = CredentialDefinition(**self["credential_definition"])
 
-    def _verify_ldp_vc(self, **kwargs):
+    def _verify_ldp_vc(self):
         if "credential_definition" not in self:
             raise MissingAttribute("Expected 'credential_definition' in authorization_detail")
         self["credential_definition"] = CredentialDefinition(**self["credential_definition"])
 
-    def _verify_mso_mdoc(self, **kwargs):
+    def _verify_mso_mdoc(self):
         if "doctype" not in self:
             raise MissingAttribute("Expected 'doctype' in authorization_detail")
-
-    def _verify_openid_credential(self, **kwargs):
-        if "format" in self:
-            if "credential_configuration_id":
-                raise MessageException(f"credential_configuration_id and format can not appear together")
-        elif "credential_configuration_id" in self:
-            pass
-        else:  # None present
-            raise MessageException("Need one of credential_configuration_id or format")
 
     def verify(self, **kwargs):
         super(AuthorizationDetail, self).verify(**kwargs)
@@ -358,14 +350,19 @@ class AuthorizationDetail(Message):
             "jwt_vc_json": self._verify_jwt_vc_json,
             "ldp_vc": self._verify_ldp_vc,
             "mso_mdoc": self._verify_mso_mdoc,
-            "openid_credential": self._verify_openid_credential
         }
 
-        _verifier = _detail_type.get(self["format"])
-        if _verifier:
-            _verifier(**kwargs)
-        else:
-            raise SystemError(f"Unsupported format {self['format']}")
+        if 'format' in self:
+            if "credential_configuration_id" in self:
+                raise MessageException(f"credential_configuration_id and format can not appear together")
+
+            _verifier = _detail_type.get(self["format"])
+            if _verifier:
+                _verifier()
+            else:
+                raise SystemError(f"Unsupported format {self['format']}")
+        elif "credential_configuration_id" not in self:
+            raise MissingAttribute("Need one of credential_configuration_id or format")
 
 
 def auth_detail_deser(val, sformat="dict"):
@@ -465,7 +462,8 @@ class CredentialsSupported(Message):
         "cryptographic_suites_supported": OPTIONAL_LIST_OF_STRINGS,
         "proof_types_supported": OPTIONAL_LIST_OF_STRINGS,
         "display": OPTIONAL_DISPLAY_PROPERIES,
-        "credential_definition": SINGLE_OPTIONAL_CREDENTIAL_DEFINITION
+        "credential_definition": SINGLE_OPTIONAL_CREDENTIAL_DEFINITION,
+        "order": OPTIONAL_LIST_OF_STRINGS
     }
 
     def verify(self, **kwargs):
@@ -559,7 +557,7 @@ class AccessTokenRequest(oauth2.AccessTokenRequest):
     c_param = oidc.AccessTokenRequest.c_param.copy()
     c_param.update({
         "pre-authorized_code": SINGLE_OPTIONAL_STRING,
-        "user_pin": SINGLE_OPTIONAL_STRING,
+        "tx_code": SINGLE_OPTIONAL_STRING,
     })
 
 
@@ -801,5 +799,3 @@ class OpenidCredentialIssuer(Message):
         "jwks": SINGLE_REQUIRED_DICT,
         "jwks_uri": SINGLE_OPTIONAL_STRING
     }
-
-
