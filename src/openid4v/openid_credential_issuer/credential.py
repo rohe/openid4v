@@ -281,7 +281,7 @@ class Credential(Endpoint):
                 raise AttributeError("Asked for credential type I can't produce")
 
             try:
-                _msg = _credential_constructor(user_id=_session_info["user_id"], request=request,
+                    _msg = _credential_constructor(user_id=_session_info["user_id"], request=request,
                                                grant=_session_info["grant"],
                                                client_id=client_id)
             except Exception as err:

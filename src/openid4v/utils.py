@@ -1,5 +1,9 @@
+import hashlib
+import json
+
 from cryptojwt.jwk.jwk import key_from_jwk_dict
 from cryptojwt.jws.jws import factory
+from cryptojwt.utils import as_bytes
 
 
 def extract_key_from_jws(token):
@@ -18,3 +22,12 @@ def extract_key_from_jws(token):
 def jws_issuer(token):
     _jws = factory(token)
     return _jws.jwt.payload()["iss"]
+
+
+def create_client_data_hash(challenge: str, ephemeral_key_tag: str):
+    client_data = {
+        "challenge": challenge,
+        "jwk_thumbprint": ephemeral_key_tag
+    }
+
+    return hashlib.sha256(as_bytes(json.dumps(client_data))).digest()

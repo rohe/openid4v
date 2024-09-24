@@ -16,6 +16,8 @@ from idpyoidc.client.oauth2 import Client
 from idpyoidc.configure import Configuration
 from idpyoidc.context import OidcContext
 
+from openid4v.utils import create_client_data_hash
+
 
 class Wallet(Client):
 
@@ -64,14 +66,6 @@ class Wallet(Client):
     def mint_ephemeral_key(self):
         return self.mint_new_key()
 
-    def create_client_data_hash(self, challenge: str, ephemeral_key_tag: str):
-        client_data = {
-            "challenge": challenge,
-            "jwk_thumbprint": ephemeral_key_tag
-        }
-
-        return hashlib.sha256(as_bytes(json.dumps(client_data))).digest()
-
     def create_hardware_signature(self, challenge: str, ephemeral_key_tag: str) -> str:
         """
 
@@ -79,7 +73,7 @@ class Wallet(Client):
         :param ephemeral_key_tag:
         :return:
         """
-        client_data_hash = self.create_client_data_hash(challenge, ephemeral_key_tag)
+        client_data_hash = create_client_data_hash(challenge, ephemeral_key_tag)
         # Step 8-10
         # signing the client_data_hash with the Wallet Hardware's private key
         _signer = ECDSASigner()
@@ -100,14 +94,14 @@ class Wallet(Client):
         resp = self.do_request(
             "challenge",
             request_args=request_args,
-            endpoint=trust_chains[0].metadata['wallet_provider']['challenge_endpoint'])
+            endpoint=trust_chains[0].metadata['wallet_provider']['wallet_provider_challenge_endpoint'])
 
         self.context.init_reg[resp["nonce"]] = {}
         return resp["nonce"]
 
     def request_key_attestation(self, wallet_provider_id: str, challenge: str) -> dict:
         # New hardware key. This must eventually change !!!!
-        crypto_hardware_key_tag = as_unicode(self.context.crypto_hardware_key.thumbprint("SHA-256"))
+        crypto_hardware_key_tag = as_unicode(self.context.crypto_hardware_key.kid)
 
         trust_chains = self.get_trust_chains(wallet_provider_id)
 
@@ -117,12 +111,13 @@ class Wallet(Client):
 
         request_args = {
             "challenge": challenge,
-            "crypto_hardware_key_tag": crypto_hardware_key_tag
+            #"crypto_hardware_key_tag": crypto_hardware_key_tag
+            "crypto_hardware_key": json.dumps(self.context.crypto_hardware_key.serialize())
         }
         resp = self.do_request(
             "key_attestation",
             request_args=request_args,
-            endpoint=trust_chains[0].metadata['device_integrity_service']['key_attestation_endpoint'])
+            endpoint=trust_chains[0].metadata['device_integrity_service']['device_key_attestation_endpoint'])
 
         # Store result
         self.context.init_reg[challenge] = {
@@ -154,7 +149,7 @@ class Wallet(Client):
         return self.do_request(
             "registration",
             request_args=request_args,
-            endpoint=trust_chains[0].metadata['wallet_provider']['registration_endpoint'])
+            endpoint=trust_chains[0].metadata['wallet_provider']['wallet_provider_registration_endpoint'])
 
     def request_integrity_assertion(self, wallet_provider_id, challenge):
         """
@@ -176,13 +171,15 @@ class Wallet(Client):
         resp = self.do_request(
             "integrity",
             request_args=request_args,
-            endpoint=trust_chains[0].metadata['device_integrity_service']['integrity_endpoint'])
+            endpoint=trust_chains[0].metadata['device_integrity_service']['device_integrity_endpoint'])
 
         self.context.wia_flow[ephemeral_key.kid]["integrity_assertion"] = resp["integrity_assertion"]
 
-        return resp, ephemeral_key
+        return resp, ephemeral_key, hardware_signature
 
-    def request_wallet_instance_attestation(self, wallet_provider_id, challenge, ephemeral_key_tag):
+    def request_wallet_instance_attestation(self, wallet_provider_id, challenge, ephemeral_key_tag,
+                                            integrity_assertion, hardware_signature,
+                                            crypto_hardware_key_tag):
         trust_chains = self.get_trust_chains(wallet_provider_id)
 
         _service = self.get_service("wallet_instance_attestation")
@@ -193,3 +190,30 @@ class Wallet(Client):
         _init_reg_info = self.context.init_reg[challenge]
 
         _ephemeral_key = self.context.ephemeral_key[ephemeral_key_tag]
+
+        war_payload = {
+            "challenge": challenge,
+            "hardware_signature": hardware_signature,
+            "integrity_assertion": integrity_assertion,
+            "hardware_key_tag": crypto_hardware_key_tag,
+            "cnf": {
+                "jwk": _ephemeral_key.serialize()
+            },
+            "vp_formats_supported": {
+                "jwt_vc_json": {
+                    "alg_values_supported": ["ES256K", "ES384"],
+                },
+                "jwt_vp_json": {
+                    "alg_values_supported": ["ES256K", "EdDSA"],
+                },
+            }
+        }
+
+        resp = self.do_request(
+            'wallet_instance_attestation',
+            request_args=war_payload,
+            endpoint = trust_chains[0].metadata['wallet_provider']["token_endpoint"],
+            ephemeral_key=_ephemeral_key
+        )
+
+        return resp, war_payload

@@ -10,6 +10,7 @@ from fedservice.entity.function import collect_trust_chains
 from fedservice.entity.function import verify_trust_chains
 from fedservice.entity.service import FederationService
 from fedservice.entity.utils import get_federation_entity
+from fedservice.utils import get_jwks
 from idpyoidc import verified_claim_name
 from idpyoidc.client.configure import Configuration
 from idpyoidc.defaults import JWT_BEARER
@@ -133,7 +134,7 @@ class WalletInstanceAttestation(FederationService):
         _keyjar = wallet_unit.context.keyjar
         if issuer not in _keyjar:
             for _chain in _fe.trust_chain[issuer]:
-                _keyjar.import_jwks(_chain.metadata["wallet_provider"]["jwks"], issuer)
+                get_jwks(self, _keyjar, _chain.metadata["wallet_provider"], issuer)
 
         kwargs = {
             "iss": issuer,

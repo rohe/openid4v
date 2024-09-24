@@ -1,7 +1,5 @@
 """Implements the service that talks to the Access Token endpoint."""
 import base64
-import hashlib
-import json
 import logging
 from typing import Optional
 from typing import Union
@@ -12,20 +10,21 @@ from cryptojwt.jwk.ec import ECKey
 from cryptojwt.jwk.jwk import key_from_jwk_dict
 from cryptojwt.jws.dsa import ECDSASigner
 from cryptojwt.jws.jws import factory
-from cryptojwt.utils import as_bytes
 from fedservice.entity import get_verified_trust_chains
 from idpyoidc import verified_claim_name
+from idpyoidc.alg_info import get_signing_algs
 from idpyoidc.client.client_auth import get_client_authn_methods
 from idpyoidc.defaults import JWT_BEARER
 from idpyoidc.message import Message
 from idpyoidc.message.oauth2 import ResponseMessage
-from idpyoidc.alg_info import get_signing_algs
+from idpyoidc.node import topmost_unit
 from idpyoidc.server import Endpoint
 from idpyoidc.server.util import execute
 
 from openid4v.message import WalletAttestationRequestJWT
 from openid4v.message import WalletInstanceAttestationResponse
 from openid4v.message import WalletInstanceRequest
+from openid4v.utils import create_client_data_hash
 
 logger = logging.getLogger(__name__)
 
@@ -106,20 +105,16 @@ class Token(Endpoint):
     def validate_hardware_signature(self, **kwargs):
         key = ECKey(**kwargs["cnf"]["jwk"])
         key.deserialize()
-        client_data = {
-            "challenge": kwargs["challenge"],
-            "jwk_thumbprint": key.kid
-        }
-
-        client_data_hash = hashlib.sha256(as_bytes(json.dumps(client_data))).digest()
+        client_data_hash = create_client_data_hash(kwargs["challenge"], key.kid)
 
         # value is a base64 encoded
-        _sig = base64.b64decode(kwargs["hardware_signature"])
+        _hardware_signature = base64.b64decode(kwargs["hardware_signature"])
         _signer = ECDSASigner()
         # _wallet_provider.context.crypto_hardware_key = {hardware_key_tag: _wallet.context.crypto_hardware_key}
-        _context = self.upstream_get("context")
+        _combo = topmost_unit(self)
+        _context = _combo["device_integrity_service"].context
         _sign_key = _context.crypto_hardware_key[kwargs["hardware_key_tag"]]
-        return _signer.verify(client_data_hash, _sig, _sign_key.public_key())
+        return _signer.verify(client_data_hash, _hardware_signature, _sign_key.public_key())
 
     def parse_request(
             self,
