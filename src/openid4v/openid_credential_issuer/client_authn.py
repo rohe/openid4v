@@ -137,9 +137,6 @@ class ClientAuthenticationAttestation(ClientAuthnMethod):
             return False
 
         _headers = http_info.get("headers", None)
-        if _headers:
-            if "OAuth-Client-Attestation-PoP" in _headers and "OAuth-Client-Attestation" in _headers:
-                return True
 
         return False
 
@@ -173,7 +170,7 @@ class ClientAuthenticationAttestation(ClientAuthnMethod):
         try:
             _pop = _verifier.unpack(pop)
         except (Invalid, MissingKey, BadSignature, IssuerNotFound) as err:
-            # logger.info("%s" % sanitize(err))
+            logger.exception("unpacking")
             raise ClientAuthenticationError(f"{err.__class__.__name__} {err}")
         except Exception as err:
             raise err

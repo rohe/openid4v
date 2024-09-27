@@ -551,6 +551,11 @@ class AuthorizationRequest(oauth2.AuthorizationRequest):
 
     def verify(self, **kwargs):
         super(AuthorizationRequest, self).verify(**kwargs)
+        if "authorization_details" in self:
+            _lst = []
+            for item in self["authorization_details"]:
+                _lst.append(AuthorizationDetail(**item))
+            self["authorization_details"] = _lst
 
 
 class AccessTokenRequest(oauth2.AccessTokenRequest):

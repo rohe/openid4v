@@ -14,7 +14,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class Authorization(authorization.Authorization):
-    """The service that talks to the credential issuers Authorization endpoint."""
+    """The credential issuers Authorization endpoint."""
 
     request_cls = AuthorizationRequest
     response_cls = oauth2.AuthorizationResponse
