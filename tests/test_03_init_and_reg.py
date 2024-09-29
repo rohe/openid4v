@@ -228,10 +228,10 @@ class TestComboCollect(object):
         _wallet = self.wallet["wallet"]
         _wallet.oem_key_jar = KeyJar()
         _wallet.oem_key_jar.import_jwks(self.wp["device_integrity_service"].oem_keyjar.export_jwks(),
-                                            WALLET_PROVIDER_ID)
+                                        WALLET_PROVIDER_ID)
 
         oem_kj = self.wp["device_integrity_service"].oem_keyjar
-        oem_kj.import_jwks(oem_kj.export_jwks(private=True),WALLET_PROVIDER_ID)
+        oem_kj.import_jwks(oem_kj.export_jwks(private=True), WALLET_PROVIDER_ID)
 
     def test_metadata(self):
         _metadata = self.wp.get_metadata()
@@ -263,7 +263,12 @@ class TestComboCollect(object):
 
         _wallet.context.crypto_hardware_key = new_ec_key('P-256')
 
-        req = _wallet_service.construct()
+        request_args = {
+            "challenge": "challenge",
+            "crypto_hardware_key": json.dumps(_wallet.context.crypto_hardware_key.serialize())
+        }
+
+        req = _wallet_service.construct(request_args)
 
         _key_attestation_endpoint = _dis.get_endpoint("key_attestation")
         parsed_args = _key_attestation_endpoint.parse_request(req)
@@ -278,7 +283,7 @@ class TestComboCollect(object):
         _verifier = JWT(key_jar=_wallet.oem_key_jar)
         _assertion = _verifier.unpack(_keyatt)
 
-        assert "dummy_key_attestation" in _assertion
+        assert set(_assertion.keys()) == {'challenge', 'crypto_hardware_key', "exp", "iat", "iss", "jti"}
 
     def test_initialization_and_registration(self):
         _dis = self.wp["device_integrity_service"]
@@ -321,11 +326,12 @@ class TestComboCollect(object):
         # Step 7-8
 
         _key_attestation_service = _wallet.get_service("key_attestation")
-        request_attr = {
-            "challenge": challenge,
-            "crypto_hardware_key_tag": as_unicode(crypto_hardware_key_tag)
+        request_args = {
+            "challenge": "challenge",
+            "crypto_hardware_key": json.dumps(_wallet.context.crypto_hardware_key.serialize())
         }
-        req = _key_attestation_service.construct(request_args=request_attr)
+
+        req = _key_attestation_service.construct(request_args=request_args)
 
         _key_attestation_endpoint = _dis.get_endpoint("key_attestation")
         parsed_args = _key_attestation_endpoint.parse_request(req)

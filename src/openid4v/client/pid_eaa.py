@@ -191,7 +191,7 @@ class PushedAuthorization(pushed_authorization.PushedAuthorization):
         pushed_authorization.PushedAuthorization.__init__(self, upstream_get, **kwargs)
 
 
-class Credential(FederationService):
+class Credential(Service):
     msg_type = CredentialsSupported
     # msg_type = Message
     response_cls = CredentialResponse
@@ -206,7 +206,7 @@ class Credential(FederationService):
     default_authn_method = "bearer_header"
 
     def __init__(self, upstream_get, conf=None):
-        FederationService.__init__(self, upstream_get, conf=conf)
+        Service.__init__(self, upstream_get, conf=conf)
         self.pre_construct.append(self.create_proof)
         if conf:
             self.certificate_issuer_id = conf.get("certificate_issuer_id")

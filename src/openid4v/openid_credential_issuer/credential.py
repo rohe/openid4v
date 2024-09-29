@@ -29,6 +29,34 @@ def get_keyjar(unit):
         return unit.upstream_get("attribute", "keyjar")
 
 
+def match_vc_sd_jwt_format(request, supported):
+    # Assumes format is "vc+sd-jwt"
+    if request.get("vct", "") == supported.get("vct", ""):
+        return True
+    else:
+        return False
+
+
+def matching_authz_detail_against_supported(authz_detail, supported):
+    if authz_detail.get("type", "") != "openid_credential":
+        return []
+
+    matching = []
+    for _attr in ["format", "credential_configuration_id"]:
+        _item = authz_detail.get(_attr, "")
+        if _item:
+            for name, cs in supported.items():
+                if _attr == "credential_configuration_id":
+                    if name == _item:
+                        matching.append(cs)
+                elif _attr == "format":
+                    if cs.get(_attr, "") == _item:
+                        if _attr == "format" and _item == "vc+sd-jwt":
+                            if match_vc_sd_jwt_format(authz_detail, cs):
+                                matching.append(cs)
+    return matching
+
+
 class CredentialConstructor(object):
 
     def __init__(self, upstream_get, **kwargs):
@@ -52,19 +80,15 @@ class CredentialConstructor(object):
 
         return _discl
 
-    def matching_credentials_supported(self, request):
+    def matching_credentials_supported(self, authz_detail):
         _supported = self.upstream_get('context').claims.get_preference("credential_configurations_supported")
+        logger.debug(f"Credential_supported: {_supported}")
         matching = []
         if _supported:
-            for name, cs in _supported.items():
-                if cs["format"] != request["format"]:
-                    continue
-                _cred_def_sup = cs["credential_definition"]
-                _req_cred_def = request["credential_definition"]
-                # The set of type values must match
-                # The requested set must be a subset of the supported
-                if set(_req_cred_def["vct"]).issubset(set(_cred_def_sup["vct"])):
-                    matching.append(_cred_def_sup.get("credentialSubject", {}))
+            m = matching_authz_detail_against_supported(authz_detail, _supported)
+            if m:
+                matching.extend(m)
+
         return matching
 
     @staticmethod
@@ -93,7 +117,7 @@ class CredentialConstructor(object):
     def __call__(self,
                  user_id: str,
                  client_id: str,
-                 request: Union[dict, Message],
+                 authz_detail: Union[dict, Message],
                  grant: Optional[dict] = None,
                  id_token: Optional[str] = None
                  ) -> str:
@@ -102,8 +126,9 @@ class CredentialConstructor(object):
         # If an OP was used to handle the authentication then an id_token is provided
         # In the SAML case it's SATOSA internal_data.auth_info
 
+        logger.debug(f"authz_detail: {authz_detail}")
         # compare what this entity supports with what is requested
-        _matching = self.matching_credentials_supported(request)
+        _matching = self.matching_credentials_supported(authz_detail)
 
         if _matching == []:
             raise RequestError("unsupported_credential_type")
@@ -112,15 +137,21 @@ class CredentialConstructor(object):
         _mngr = _cntxt.session_manager
 
         # This is what the requester hopes to get
-        if "credential_definition" in request:
-            _req_cd = CredentialDefinition().from_dict(request["credential_definition"])
+        if "credential_definition" in authz_detail:
+            _req_cd = CredentialDefinition().from_dict(authz_detail["credential_definition"])
             csub = _req_cd.get("credentialSubject", {})
             if csub:
                 _claims_restriction = {c: None for c in csub.keys()}
             else:
                 _claims_restriction = {c: None for c in _matching[0].keys()}
         else:
-            _claims_restriction = {c: None for c in _matching[0].keys()}
+            _claims_restriction = {}
+            for m in _matching:
+                if "credential_definition" in m:
+                    _req_cd = CredentialDefinition().from_dict(m["credential_definition"])
+                    csub = _req_cd.get("credentialSubject", {})
+                    _restriction = {c: None for c in csub.keys()}
+                    _claims_restriction.update(_restriction)
 
         logger.debug(f"claims_restriction: {_claims_restriction}")
         # Collect user info
@@ -240,15 +271,15 @@ class Credential(Endpoint):
         request["access_token"] = kwargs["auth_info"]["token"]
         return request
 
-    def _pick_constructor(self, request, authz_details):
-        cd = request.get("credential_definition", "")
+    def _pick_constructor(self, authz_detail):
+        cd = authz_detail.get("credential_definition", "")
         if cd:
             cd_type = cd.get("type", [])
             for typ in cd_type:
                 if typ in self.credential_constructor:
                     return self.credential_constructor[typ]
         else:
-            vct = request.get("vct", "")
+            vct = authz_detail.get("vct", "")
             if vct in self.credential_constructor:
                 return self.credential_constructor[vct]
         return None
@@ -276,12 +307,16 @@ class Credential(Endpoint):
         if _session_info:
             client_id = _session_info["client_id"]
             authz_details = _session_info["grant"].authorization_request.get("authorization_details", [])
-            _credential_constructor = self._pick_constructor(request, authz_details)
+            # Does only one
+            authz_detail = authz_details[0]
+
+            logger.debug(f"pick_constructor: authz_details={authz_detail.to_dict()}")
+            _credential_constructor = self._pick_constructor(authz_detail)
             if _credential_constructor is None:
                 raise AttributeError("Asked for credential type I can't produce")
 
             try:
-                    _msg = _credential_constructor(user_id=_session_info["user_id"], request=request,
+                _msg = _credential_constructor(user_id=_session_info["user_id"], authz_detail=authz_detail,
                                                grant=_session_info["grant"],
                                                client_id=client_id)
             except Exception as err:

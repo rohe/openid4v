@@ -148,7 +148,12 @@ class TestComboCollect(object):
         # Step 7-8
 
         _key_attestation_service = _wallet.get_service("key_attestation")
-        req = _key_attestation_service.construct()
+        request_args = {
+            "challenge": "challenge",
+            "crypto_hardware_key": json.dumps(_wallet.context.crypto_hardware_key.serialize())
+        }
+
+        req = _key_attestation_service.construct(request_args)
 
         _key_attestation_endpoint = _dis.get_endpoint("key_attestation")
         parsed_args = _key_attestation_endpoint.parse_request(req)

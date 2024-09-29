@@ -46,6 +46,7 @@ class Wallet(Client):
         self.context.wia_flow = {}
         self.context.init_reg = {}
         self.context.crypto_hardware_key = new_ec_key('P-256')
+        self.context.ephemeral_key = {}
 
     def get_trust_chains(self, wallet_provider_id: str) -> Optional[list]:
         federation_entity = get_federation_entity(self)
@@ -55,7 +56,7 @@ class Wallet(Client):
         ephemeral_key = new_ec_key(crv="P-256")
         ephemeral_key.use = "sig"
         self.context.wia_flow[ephemeral_key.kid] = {}
-        self.context.ephemeral_key = {ephemeral_key.kid: ephemeral_key}
+        self.context.ephemeral_key[ephemeral_key.kid] = ephemeral_key
 
         _jwks = {"keys": [ephemeral_key.serialize(private=True)]}
         self.context.keyjar.import_jwks(_jwks, self.context.entity_id)
@@ -65,6 +66,9 @@ class Wallet(Client):
 
     def mint_ephemeral_key(self):
         return self.mint_new_key()
+
+    def get_ephemeral_key(self, key_tag):
+        return self.context.ephemeral_key[key_tag]
 
     def create_hardware_signature(self, challenge: str, ephemeral_key_tag: str) -> str:
         """

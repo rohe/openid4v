@@ -11,6 +11,7 @@ from cryptojwt.jws.jws import factory
 from fedservice.entity import get_verified_trust_chains
 from fedservice.entity.function import verify_trust_chains
 from fedservice.exception import NoTrustedChains
+from fedservice.utils import get_jwks
 from idpyoidc.message import Message
 from idpyoidc.message.oidc import JsonWebToken
 from idpyoidc.node import topmost_unit
@@ -31,14 +32,12 @@ def verify_wallet_instance_attestation(client_assertion, keyjar, unit, attestati
             _tc = verify_trust_chains(unit, [_jws.jwt.headers["trust_chain"]])
             if _tc:
                 _entity_conf = _tc[0].verified_chain[-1]
-                keyjar.import_jwks(_entity_conf["metadata"]["wallet_provider"]["jwks"],
-                                   _entity_conf["sub"])
+                get_jwks(unit, keyjar, _entity_conf["metadata"]["wallet_provider"], _entity_conf["sub"])
         else:
             chains = get_verified_trust_chains(unit, _payload["iss"])
             if chains:
                 _entity_conf = chains[0].verified_chain[-1]
-                keyjar.import_jwks(_entity_conf["metadata"]["wallet_provider"]["jwks"],
-                                   _entity_conf["sub"])
+                get_jwks(unit, keyjar, _entity_conf["metadata"]["wallet_provider"], _entity_conf["sub"])
             else:
                 logger.debug(f"Found no Trust Chains for {_payload['iss']}")
                 raise NoTrustedChains(_payload['iss'])
@@ -124,6 +123,7 @@ class ClientAssertion(ClientAuthnMethod):
 
         return False
 
+
 # AttestationJWTClientAuthentication
 class ClientAuthenticationAttestation(ClientAuthnMethod):
     # based on https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-01.html
@@ -137,6 +137,8 @@ class ClientAuthenticationAttestation(ClientAuthnMethod):
             return False
 
         _headers = http_info.get("headers", None)
+        if "OAuth-Client-Attestation" in _headers and "OAuth-Client-Attestation-PoP" in _headers:
+            return True
 
         return False
 
@@ -151,6 +153,9 @@ class ClientAuthenticationAttestation(ClientAuthnMethod):
         wia = http_info["headers"]["OAuth-Client-Attestation"]
         pop = http_info["headers"]["OAuth-Client-Attestation-PoP"]
 
+        logger.debug(f"OAuth-Client-Attestation: {wia}")
+        logger.debug(f"OAuth-Client-Attestation-PoP: {pop}")
+
         oas = topmost_unit(self)['oauth_authorization_server']
         _keyjar = oas.context.keyjar
         _wia = verify_wallet_instance_attestation(wia,
@@ -158,6 +163,7 @@ class ClientAuthenticationAttestation(ClientAuthnMethod):
                                                   self,
                                                   self.attestation_class)
 
+        logger.debug(f"Verified WIA")
         # Should be a key in there
         _jwk = _wia["cnf"]["jwk"]
         _keyjar.import_jwks({"keys": [_jwk]}, _wia["sub"])
@@ -167,6 +173,7 @@ class ClientAuthenticationAttestation(ClientAuthnMethod):
         # have already saved the key that comes in the wia
         _verifier = JWT(_keyjar)
 
+        logger.debug("Verifying the PoP")
         try:
             _pop = _verifier.unpack(pop)
         except (Invalid, MissingKey, BadSignature, IssuerNotFound) as err:

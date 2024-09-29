@@ -4,13 +4,13 @@ import logging
 from idpyoidc import alg_info
 from idpyoidc.message import oauth2
 from idpyoidc.node import topmost_unit
-from idpyoidc.server.exception import ServiceError
 from idpyoidc.server.oauth2 import authorization
 from idpyoidc.server.util import execute
 
 from openid4v.message import AuthorizationRequest
+from openid4v.openid_credential_issuer.credential import matching_authz_detail_against_supported
 
-LOGGER = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class Authorization(authorization.Authorization):
@@ -65,6 +65,14 @@ class Authorization(authorization.Authorization):
                     supports.append(_ad)
         return supports
 
+    def matching_credentials_supported(self, authz_detail):
+        _supported = self.upstream_get('context').claims.get_preference("credential_configurations_supported")
+        if _supported:
+            matching = matching_authz_detail_against_supported(authz_detail, _supported)
+        else:
+            matching = []
+        return matching
+
     def verify_authorization_details(self, request, client_id, context, **kwargs):
         # verify that the authorization_details actually describes something I can deal with
         _authz_details = request.get("authorization_details", None)
@@ -73,10 +81,11 @@ class Authorization(authorization.Authorization):
             # make sense only if there is a credential issuer part of this server
             cred_iss = root.get("openid_credential_issuer", None)
             if cred_iss:
-                cred_conf_supp = cred_iss.context.claims.get_preference('credential_configurations_supported')
-                supported = self.match_authz_details(_authz_details, cred_conf_supp)
-                if supported == []:
-                    raise ServiceError("I don't support what is asked for")
+                supported = []
+                for authz_detail in _authz_details:
+                    s = self.matching_credentials_supported(authz_detail)
+                    if s:
+                        supported.extend(s)
 
                 request["authorization_details"] = supported
             else:  # might as well remove it or ?
