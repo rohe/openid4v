@@ -191,7 +191,8 @@ class Wallet(Client):
         _wia_flow = self.context.wia_flow[ephemeral_key_tag]
 
         # get initialization and registration
-        _init_reg_info = self.context.init_reg[challenge]
+        # if challenge != '__not__applicable__':
+        #     _init_reg_info = self.context.init_reg[challenge]
 
         _ephemeral_key = self.context.ephemeral_key[ephemeral_key_tag]
 

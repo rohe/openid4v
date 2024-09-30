@@ -143,7 +143,7 @@ class TestComboCollect(object):
 
         # Step 6
 
-        _wallet.context.crypto_hardware_key = new_ec_key('P-256')
+        # _wallet.context.crypto_hardware_key = new_ec_key('P-256')
 
         # Step 7-8
 
@@ -243,7 +243,7 @@ class TestComboCollect(object):
 
         # Step 11-12
 
-        hardware_key_tag = as_unicode(_wallet.context.crypto_hardware_key.thumbprint("SHA-256"))
+        hardware_key_tag = as_unicode(_wallet.context.crypto_hardware_key.kid)
 
         war_payload = {
             "challenge": challenge,

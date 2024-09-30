@@ -278,10 +278,15 @@ class Credential(Endpoint):
             for typ in cd_type:
                 if typ in self.credential_constructor:
                     return self.credential_constructor[typ]
-        else:
+        elif "vct" in authz_detail:
             vct = authz_detail.get("vct", "")
             if vct in self.credential_constructor:
                 return self.credential_constructor[vct]
+        elif "credential_configuration_id" in authz_detail:
+            cc_id = authz_detail.get('credential_configuration_id')
+            if cc_id in self.credential_constructor:
+                return self.credential_constructor[cc_id]
+
         return None
 
     def process_request(self, request=None, **kwargs):
