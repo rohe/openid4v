@@ -54,7 +54,8 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Topic :: Software Development :: Libraries :: Python Modules"],
     install_requires=[
-        "idpyoidc>=4.0.0"
+        "idpyoidc>=5.0.0",
+        "fedservice"
     ],
     zip_safe=False,
 )
