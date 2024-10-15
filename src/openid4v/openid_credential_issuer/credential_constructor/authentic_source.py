@@ -3,16 +3,39 @@ import logging
 from typing import Optional
 from typing import Union
 
+from cryptojwt import KeyJar
+from idpyoidc.client.exception import OidcServiceError
 from idpyoidc.message import Message
+from openid4v.message import AuthorizationRequest
+from satosa_idpyop.utils import combine_client_subject_id
 
 logger = logging.getLogger(__name__)
 
 
 class CredentialConstructor(object):
 
-    def __init__(self, upstream_get, config: dict, **kwargs):
+    def __init__(self, upstream_get, **kwargs):
         self.upstream_get = upstream_get
-        self.config = config
+        self.url = kwargs.get("url")  # MUST have a value
+        self.jwks_url = kwargs.get("jwks_url", "")
+        self.body = kwargs.get("body")
+        if not self.body:
+            self.body = {
+                "authentic_source": "sunet2",
+                "document_type": "PDA1",
+                "document_id": "document_id_7"
+            }
+        self.keyjar = KeyJar()
+        self.keyjar.httpc_params = self.upstream_get("attribute", "httpc_params")
+        self.fetch_jwks()
+
+    def fetch_jwks(self):
+        # fetch public key
+        if self.jwks_url:
+            self.keyjar.add_url("", self.jwks_url)
+        else:
+            _jwks_url = f"{self.url}/.well-known/jwks.json"
+            self.keyjar.add_url("", _jwks_url)
 
     def get_response(
             self,
@@ -35,33 +58,57 @@ class CredentialConstructor(object):
         httpc = self.upstream_get('attribute', 'httpc')
         httpc_params = self.upstream_get("attribute", "httpc_params")
         try:
-            resp = httpc(method, url, data=body, headers=headers, **httpc_params)
+            resp = httpc(method, url, json=json.dumps(body), headers=headers, **httpc_params)
         except Exception as err:
             logger.error(f"Exception on request: {err}")
             raise
 
-        if 300 <= resp.status_code < 400:
+        if 400 <= resp.status_code:
+            logger.error("Error response ({}): {}".format(resp.status_code, resp.text))
+            raise OidcServiceError(f"HTTP ERROR: {resp.text} [{resp.status_code}] on {resp.url}")
+        elif 300 <= resp.status_code < 400:
             return {"http_response": resp}
-
-        if resp.status_code == 200:
+        else :
             return resp.text
 
     def __call__(self,
                  user_id: str,
                  client_id: str,
-                 request: Union[dict, Message],
+                 request: Optional[Union[dict, Message]] = None,
                  grant: Optional[dict] = None,
-                 id_token: Optional[str] = None
+                 id_token: Optional[str] = None,
+                 authz_detail: Optional[dict] = None
                  ) -> str:
         logger.debug(":" * 20 + f"Credential constructor[authentic_source]" + ":" * 20)
 
-        body = {
-            "authentic_source": "sunet2",
-            "document_type": "PDA1",
-            "document_id": "document_id_7"
-        }
+        # body = {
+        #     "authentic_source": "sunet2",
+        #     "document_type": "PDA1",
+        #     "document_id": "document_id_7"
+        # }
+        _body = self.body.copy()
+        logger.debug(f"Original body: {_body}")
+        # Get extra arguments from the authorization request
+        _authz_args = {k: v for k, v in grant.authorization_request.items() if k not in AuthorizationRequest.c_param}
+        _authz_args = {k: v for k, v in _authz_args.items() if k not in ["code_challenge", "code_challenge_method",
+                                                                         "authenticated"]}
+        _authz_args["collect_id"] = "22bb1167-3a43-4eaa-b70e-f1826e38bbac"
+        logger.debug(f"Authorization request claims: {_authz_args}")
+        if _authz_args:
+            _body.update(_authz_args)
 
-        msg = self.get_response(url="http://vc-interop-1.sunet.se/api/v1/credential",
-                                body=body,
-                                headers={'Content-Type': 'application/json'})
+        # and more arguments from what the authentication returned
+        _persistence = self.upstream_get("attribute", "persistence")
+        if _persistence:
+            client_subject_id = combine_client_subject_id(client_id, user_id)
+            authn_claims = _persistence.load_claims(client_subject_id)
+            logger.debug(f"Authentication claims: {authn_claims}")
+            if "sub" in authn_claims:
+                authn_claims["authentic_source_person_id"] = authn_claims["sub"]
+                del authn_claims["sub"]
+            _body.update({"identity": authn_claims})
+
+        # http://vc-interop-1.sunet.se/api/v1/credential
+        logger.debug(f"Combined body: {_body}")
+        msg = self.get_response(url=self.url, body=_body, headers={'Content-Type': 'application/json'})
         return msg

@@ -179,22 +179,12 @@ OPENID_CREDENTIAL_ISSUER_CONFIG = {
                 ]
             },
         },
-        "pushed_authorization": {
-            "path": "pushed_authorization",
-            "class":
-                "idpyoidc.server.oauth2.pushed_authorization.PushedAuthorization",
-            "kwargs": {
-                "client_authn_method": [
-                    "client_assertion",
-                ]
-            },
-        },
         "revocation": {
             "path": "revocation",
             "class": "openid4v.openid_credential_issuer.revocation.Revocation"
         },
         "status_attestation": {
-            "path": "revocation",
+            "path": "status_attestation",
             "class": "openid4v.openid_credential_issuer.status_attestation.StatusAttestation"
         }
     },
@@ -254,7 +244,8 @@ def main(entity_id: str,
          endpoints: Optional[list] = None,
          key_config: Optional[dict] = None,
          entity_type_config: Optional[dict] = None,
-         services: Optional[list] = None
+         services: Optional[list] = None,
+         httpc_params: Optional[dict] = None
          ):
     if preference is None:
         preference = {
@@ -284,8 +275,17 @@ def main(entity_id: str,
     else:
         if "oauth_authorization_server" not in entity_type_config:
             entity_type_config["oauth_authorization_server"] = OAUTH_AUTHORIZATION_SERVER_CONFIG
+        else:
+            _oauth_authorization_server = OAUTH_AUTHORIZATION_SERVER_CONFIG.copy()
+            _oauth_authorization_server.update(entity_type_config["oauth_authorization_server"])
+            entity_type_config["oauth_authorization_server"] = _oauth_authorization_server
+
         if "openid_credential_issuer" not in entity_type_config:
             entity_type_config["openid_credential_issuer"] = OPENID_CREDENTIAL_ISSUER_CONFIG
+        else:
+            _openid_credential_issuer = OPENID_CREDENTIAL_ISSUER_CONFIG.copy()
+            _openid_credential_issuer.update(entity_type_config["openid_credential_issuer"])
+            entity_type_config["openid_credential_issuer"] = _openid_credential_issuer
 
     openid_credential_issuer_config = load_credential_configurations_supported(entity_type_config[
                                                                               "openid_credential_issuer"])
@@ -311,7 +311,8 @@ def main(entity_id: str,
                     'config': openid_credential_issuer_config
                 }
             }
-        }
+        },
+        httpc_params=httpc_params
     )
 
     return entity

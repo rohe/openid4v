@@ -1,8 +1,14 @@
+import logging
 from typing import Optional
 from typing import Union
 
+from idpyoidc.exception import RequestError
 from idpyoidc.message import Message
+from idpysdjwt.issuer import Issuer
 
+from openid4v.message import CredentialDefinition
+
+logger = logging.getLogger(__name__)
 
 class CredentialConstructor(object):
 
@@ -80,7 +86,7 @@ class CredentialConstructor(object):
         # compare what this entity supports with what is requested
         _matching = self.matching_credentials_supported(request)
 
-        if _matching == []:
+        if _matching is []:
             raise RequestError("unsupported_credential_type")
 
         _cntxt = self.upstream_get("context")

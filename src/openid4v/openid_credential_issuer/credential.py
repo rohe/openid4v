@@ -207,14 +207,14 @@ class Credential(Endpoint):
     }
 
     def __init__(self, upstream_get, conf=None, **kwargs):
-        Endpoint.__init__(self, upstream_get, conf=conf, **kwargs)
+        Endpoint.__init__(self, upstream_get, **kwargs)
         # dpop support
         self.post_parse_request.append(self.add_access_token_to_request)
 
         self.credential_constructor = {}
-        if conf and "credential_constructor" in conf:
-            for typ, spec in conf["credential_constructor"].items():
-                self.credential_constructor[typ] = execute(conf["credential_constructor"])
+        if "credential_constructor" in kwargs:
+            for typ, spec in kwargs["credential_constructor"].items():
+                self.credential_constructor[typ] = execute(spec, upstream_get=upstream_get)
         else:
             self.credential_constructor["PersonIdentificationData"] = CredentialConstructor(upstream_get=upstream_get)
 
@@ -306,7 +306,7 @@ class Credential(Endpoint):
             # logger.debug(f"Session manager keys: {list(_context.session_manager.db.keys())}")
             _session_info = self._get_session_info(_context, request["access_token"])
         except (KeyError, ValueError):
-            logger.exception("Invalid access token")
+            logger.exception("Invalid request access_token")
             return self.error_cls(error="invalid_token", error_description="Invalid Token")
 
         if _session_info:
