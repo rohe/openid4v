@@ -66,7 +66,6 @@ FEDERATION_CONFIG = {
                                             "body": {
                                                 "authentic_source": "SUNET",
                                                 "document_type": "PDA1",
-                                                "document_id": "document_id_7",
                                                 "credential_type": "sdjwt"
                                             }
                                         }

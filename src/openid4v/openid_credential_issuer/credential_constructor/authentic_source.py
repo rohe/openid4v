@@ -5,6 +5,7 @@ from typing import Union
 
 from cryptojwt import KeyJar
 from idpyoidc.client.exception import OidcServiceError
+from idpyoidc.exception import RequestError
 from idpyoidc.message import Message
 from openid4v.message import AuthorizationRequest
 from satosa_idpyop.utils import combine_client_subject_id
@@ -31,6 +32,8 @@ class CredentialConstructor(object):
 
     def fetch_jwks(self):
         # fetch public key
+        # {"issuer":"https://vc-interop-1.sunet.se",
+        # "jwks":{"keys":[{"kid":"singing_","crv":"P-256","kty":"EC","x":"jBdJcpK9LCxRvd7kQnhonSsN_fQ6q8fEhclThBRYAt4","y":"8rVwmwcFy85bUZn3h00sMiAiFygnhBs0CRL5xFKsuXQ","d":"3h0daeEviT8O_VMt0jA0bF-kecfnQcaT8yM6wjWJU78"}]}
         if self.jwks_url:
             self.keyjar.add_url("", self.jwks_url)
         else:
@@ -58,10 +61,10 @@ class CredentialConstructor(object):
         httpc = self.upstream_get('attribute', 'httpc')
         httpc_params = self.upstream_get("attribute", "httpc_params")
         try:
-            resp = httpc(method, url, json=json.dumps(body), headers=headers, **httpc_params)
+            resp = httpc(method, url, data=json.dumps(body), headers=headers, **httpc_params)
         except Exception as err:
             logger.error(f"Exception on request: {err}")
-            raise
+            raise RequestError(f"HTTP request failed {err}")
 
         if 400 <= resp.status_code:
             logger.error("Error response ({}): {}".format(resp.status_code, resp.text))
@@ -107,6 +110,17 @@ class CredentialConstructor(object):
                 authn_claims["authentic_source_person_id"] = authn_claims["sub"]
                 del authn_claims["sub"]
             _body.update({"identity": authn_claims})
+        else:
+            _identity = {
+                "identity": {
+                    "authentic_source_person_id": "c117b00c-4792-4d29-896d-55e8c54f6c5c",
+                    "schema": {
+                        "name": "SE",
+                        "version": "1.0.2"
+                    }
+                }
+            }
+            _body.update(_identity)
 
         # http://vc-interop-1.sunet.se/api/v1/credential
         logger.debug(f"Combined body: {_body}")
