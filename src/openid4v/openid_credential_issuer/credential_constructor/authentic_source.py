@@ -4,6 +4,7 @@ from typing import Optional
 from typing import Union
 
 from cryptojwt import KeyJar
+from cryptojwt.jwk.jwk import key_from_jwk_dict
 from idpyoidc.client.exception import OidcServiceError
 from idpyoidc.exception import RequestError
 from idpyoidc.message import Message
@@ -26,19 +27,36 @@ class CredentialConstructor(object):
                 "document_type": "PDA1",
                 "document_id": "document_id_7"
             }
-        self.keyjar = KeyJar()
-        self.keyjar.httpc_params = self.upstream_get("attribute", "httpc_params")
+        self.key = []
         self.fetch_jwks()
 
     def fetch_jwks(self):
         # fetch public key
+        # Format
         # {"issuer":"https://vc-interop-1.sunet.se",
-        # "jwks":{"keys":[{"kid":"singing_","crv":"P-256","kty":"EC","x":"jBdJcpK9LCxRvd7kQnhonSsN_fQ6q8fEhclThBRYAt4","y":"8rVwmwcFy85bUZn3h00sMiAiFygnhBs0CRL5xFKsuXQ","d":"3h0daeEviT8O_VMt0jA0bF-kecfnQcaT8yM6wjWJU78"}]}
-        if self.jwks_url:
-            self.keyjar.add_url("", self.jwks_url)
+        # "jwks":{
+        #   "keys":[
+        #       {"kid":"singing_",
+        #        "crv":"P-256","kty":"EC","x":"jBdJcpK9LCxRvd7kQnhonSsN_fQ6q8fEhclThBRYAt4",
+        #        "y":"8rVwmwcFy85bUZn3h00sMiAiFygnhBs0CRL5xFKsuXQ",
+        #        "d":"3h0daeEviT8O_VMt0jA0bF-kecfnQcaT8yM6wjWJU78"}]}
+        _jwks_uri = self.jwks_url or f"{self.url}/.well-known/jwks.json"
+        httpc = self.upstream_get('attribute', 'httpc')
+        httpc_params = self.upstream_get("attribute", "httpc_params")
+        try:
+            resp = httpc("GET", _jwks_uri, **httpc_params)
+        except Exception as err:
+            logger.exception("fetch_jwks")
+            raise err
+
+        _info = json.loads(resp.text)
+        # Two keys
+        if "issuer" in _info and "jwks" in _info:
+            self.key = []
+            for key_spec in _info["jwks"]["keys"]:
+                self.key.append(key_from_jwk_dict(key_spec))
         else:
-            _jwks_url = f"{self.url}/.well-known/jwks.json"
-            self.keyjar.add_url("", _jwks_url)
+            raise ValueError("Missing jwks_info parameter")
 
     def get_response(
             self,

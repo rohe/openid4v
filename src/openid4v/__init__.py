@@ -141,6 +141,12 @@ class ServerEntity(ServerUnit):
         _claims = self.get_context().claims
         metadata = _claims.get_server_metadata(endpoints=self.endpoint.values(),
                                                metadata_schema=self.metadata_schema)
+        _credential_endpoint = self.get_endpoint("credential")
+        if _credential_endpoint:
+            for key, item in _credential_endpoint.credential_constructor.items():
+                _keys = getattr(item,"key", None)
+                if _keys:
+                    metadata["jwks"]["keys"].extend([k.serialize() for k in _keys])
         # remove these from the metadata
         # for item in ["jwks", "jwks_uri", "signed_jwks_uri"]:
         #     try:

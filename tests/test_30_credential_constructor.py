@@ -62,7 +62,7 @@ FEDERATION_CONFIG = {
                                             "openid4v.openid_credential_issuer.credential_constructor.authentic_source.CredentialConstructor",
                                         "kwargs": {
                                             "url": "http://vc-interop-1.sunet.se/api/v1/credential",
-                                            "jwks_url": "http://vc-interop-1.sunet.se/api/v1/credential/publickeys",
+                                            "jwks_url": "http://vc-interop-1.sunet.se/api/v1/credential/.well-known/jwks",
                                             "body": {
                                                 "authentic_source": "SUNET",
                                                 "document_type": "PDA1",
