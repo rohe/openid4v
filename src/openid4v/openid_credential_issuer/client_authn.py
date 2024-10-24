@@ -136,7 +136,7 @@ class ClientAuthenticationAttestation(ClientAuthnMethod):
         if request is None:
             return False
 
-        _headers = http_info.get("headers", None)
+        _headers = http_info.get("headers", {})
         if "OAuth-Client-Attestation" in _headers and "OAuth-Client-Attestation-PoP" in _headers:
             return True
 
