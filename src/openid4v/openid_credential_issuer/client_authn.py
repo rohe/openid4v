@@ -195,4 +195,9 @@ class ClientAuthenticationAttestation(ClientAuthnMethod):
 
         oas.context.cdb[_wia["sub"]] = _c_info
 
+        # Synchronize with other guise
+        oci = topmost_unit(self)['openid_credential_issuer']
+        oci.context.keyjar = oas.context.keyjar
+        oci.context.cdb = oas.context.cdb
+
         return {"client_id": _wia["sub"], "jwt": _wia}

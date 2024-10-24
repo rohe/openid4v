@@ -290,7 +290,7 @@ class Credential(Endpoint):
         return None
 
     def process_request(self, request=None, **kwargs):
-        logger.debug(f"process_request: {request}")
+        logger.debug(f"Credential.process_request: {request}")
         _msg = {}
         client_id = ""
 
@@ -298,6 +298,7 @@ class Credential(Endpoint):
         if _context.session_manager.db.keys():
             pass
         else:
+            # session information at oauth_server
             oas = self.part_of_combo()
             if oas:
                 _context = oas.context
@@ -315,7 +316,11 @@ class Credential(Endpoint):
             # Does only one
             authz_detail = authz_details[0]
 
-            logger.debug(f"pick_constructor: authz_details={authz_detail.to_dict()}")
+            if isinstance(authz_detail, Message):
+                logger.debug(f"pick_constructor: authz_details={authz_detail.to_dict()}")
+            else:
+                logger.debug(f"pick_constructor: authz_details={authz_detail}")
+
             _credential_constructor = self._pick_constructor(authz_detail)
             if _credential_constructor is None:
                 raise AttributeError("Asked for credential type I can't produce")

@@ -136,7 +136,13 @@ class Token(Endpoint):
         }
 
         if 'authorization_details' in _authn_req:
-            _response['authorization_details'] = [ad.to_dict() for ad in _authn_req['authorization_details']]
+            _res = []
+            for ad in _authn_req['authorization_details']:
+                if isinstance(ad, Message):
+                    _res.append(ad.to_dict())
+                else:
+                    _res.append(ad)
+            _response['authorization_details'] = _res
 
         if "access_token" in _supports_minting:
 

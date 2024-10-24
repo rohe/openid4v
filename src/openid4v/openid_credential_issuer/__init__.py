@@ -6,6 +6,7 @@ from idpyoidc.alg_info import get_encryption_encs
 from idpyoidc.server import Endpoint
 from idpyoidc.server import EndpointContext
 from idpyoidc.server.claims import Claims
+from openid4v.openid_credential_issuer.credential import matching_authz_detail_against_supported
 
 from openid4v import message
 from openid4v import ServerEntity
@@ -42,6 +43,24 @@ class OpenidCredentialIssuer(ServerEntity):
     name = 'openid_credential_issuer'
     parameter = {"endpoint": [Endpoint], "context": EndpointContext}
     claims_class = OpenidCredentialIssuerClaims
+
+    def match_authz_details(self, authz_det, cred_conf_supp):
+        supports = []
+        for _ad in authz_det:
+            if _ad["type"] == "openid_credential":
+                if _ad.get("credential_configuration_id", None) not in cred_conf_supp:
+                    continue
+                else:
+                    supports.append(_ad)
+        return supports
+
+    def matching_credentials_supported(self, authz_detail):
+        _supported = self.context.claims.get_preference("credential_configurations_supported")
+        if _supported:
+            matching = matching_authz_detail_against_supported(authz_detail, _supported)
+        else:
+            matching = []
+        return matching
 
 
 class AutomaticRegistration(object):

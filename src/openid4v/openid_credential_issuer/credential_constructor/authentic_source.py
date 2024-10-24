@@ -31,7 +31,7 @@ class CredentialConstructor(object):
         self.fetch_jwks()
 
     def fetch_jwks(self):
-        # fetch public key
+        # fetch public key from the credential constructor
         # Format
         # {"issuer":"https://vc-interop-1.sunet.se",
         # "jwks":{
@@ -48,6 +48,9 @@ class CredentialConstructor(object):
         except Exception as err:
             logger.exception("fetch_jwks")
             raise err
+
+        if resp.status_code != 200:
+            raise SystemError(f"Jwks fetch from Credential Constructor at {_jwks_uri} failed")
 
         _info = json.loads(resp.text)
         # Two keys
