@@ -3,13 +3,13 @@ import logging
 from typing import Optional
 from typing import Union
 
-from cryptojwt import KeyJar
 from cryptojwt.jwk.jwk import key_from_jwk_dict
 from idpyoidc.client.exception import OidcServiceError
 from idpyoidc.exception import RequestError
 from idpyoidc.message import Message
-from openid4v.message import AuthorizationRequest
 from satosa_idpyop.utils import combine_client_subject_id
+
+from openid4v.message import AuthorizationRequest
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +92,7 @@ class CredentialConstructor(object):
             raise OidcServiceError(f"HTTP ERROR: {resp.text} [{resp.status_code}] on {resp.url}")
         elif 300 <= resp.status_code < 400:
             return {"http_response": resp}
-        else :
+        else:
             return resp.text
 
     def __call__(self,
@@ -121,6 +121,13 @@ class CredentialConstructor(object):
         if _authz_args:
             _body.update(_authz_args)
 
+        _identity = {
+            "authentic_source_person_id": "c117b00c-4792-4d29-896d-55e8c54f6c5c",
+            "schema": {
+                "name": "SE",
+                "version": "1.0.2"
+            }
+        }
         # and more arguments from what the authentication returned
         _persistence = self.upstream_get("attribute", "persistence")
         if _persistence:
@@ -130,17 +137,9 @@ class CredentialConstructor(object):
             if "sub" in authn_claims:
                 authn_claims["authentic_source_person_id"] = authn_claims["sub"]
                 del authn_claims["sub"]
-            _body.update({"identity": authn_claims})
+            _identity.update(authn_claims)
+            _body["identity"] = _identity
         else:
-            _identity = {
-                "identity": {
-                    "authentic_source_person_id": "c117b00c-4792-4d29-896d-55e8c54f6c5c",
-                    "schema": {
-                        "name": "SE",
-                        "version": "1.0.2"
-                    }
-                }
-            }
             _body.update(_identity)
 
         # http://vc-interop-1.sunet.se/api/v1/credential
