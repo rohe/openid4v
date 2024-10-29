@@ -583,22 +583,24 @@ class CredentialDefinition(Message):
 class CredentialResponse(ResponseMessage):
     c_param = {
         "format": SINGLE_REQUIRED_STRING,
-        "credential": SINGLE_OPTIONAL_STRING,
+        "credentials": OPTIONAL_LIST_OF_DICTS,
         "transaction_id": SINGLE_OPTIONAL_STRING,
         "c_nonce": SINGLE_OPTIONAL_STRING,
         "c_nonce_expires_in": SINGLE_OPTIONAL_INT
     }
 
     def verify(self, **kwargs):
-        if "credential" in self and "transaction_id" in self:
-            ValueError("'credential' and 'transaction_id' can not appear at the same time")
-        if "credential" not in self and "transaction_id" not in self:
-            MissingAttribute("One of 'credential' or 'transaction_id' must be given")
+        if "credentials" in self and "transaction_id" in self:
+            ValueError("'credentials' and 'transaction_id' can not appear at the same time")
+        if "credentials" not in self and "transaction_id" not in self:
+            MissingAttribute("One of 'credentials' or 'transaction_id' must be given")
 
-        if "credential" in self:
-            recv = Holder(key_jar=kwargs.get("keyjar"))
-            _msg = recv.parse(self["credential"])
-            self[verified_claim_name("credential")] = recv.payload
+        if "credentials" in self:
+            for item in self["credentials"]:
+                if "credential" in item:
+                    recv = Holder(key_jar=kwargs.get("keyjar"))
+                    _msg = recv.parse(item["credential"])
+                    self[verified_claim_name("credential")] = recv.payload
 
 
 class WalletProviderMetadata(Message):

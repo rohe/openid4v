@@ -125,7 +125,7 @@ class CredentialConstructor(object):
             "authentic_source_person_id": "c117b00c-4792-4d29-896d-55e8c54f6c5c",
             "schema": {
                 "name": "SE",
-                "version": "1.0.2"
+                # "version": "1.0.2"
             }
         }
         # and more arguments from what the authentication returned
@@ -133,11 +133,14 @@ class CredentialConstructor(object):
         if _persistence:
             client_subject_id = combine_client_subject_id(client_id, user_id)
             authn_claims = _persistence.load_claims(client_subject_id)
-            logger.debug(f"Authentication claims: {authn_claims}")
-            if "sub" in authn_claims:
-                authn_claims["authentic_source_person_id"] = authn_claims["sub"]
-                del authn_claims["sub"]
-            _identity.update(authn_claims)
+            # filter on accepted claims
+            _av = {}
+            for attr, value in authn_claims.items():
+                if attr in ["familyname", "givenname","birthdate"]:
+                    _av[attr] = value
+            logger.debug(f"Authentication claims: {_av}")
+            if _av:
+                _identity.update(_av)
             _body["identity"] = _identity
         else:
             _body.update(_identity)
