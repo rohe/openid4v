@@ -1,3 +1,4 @@
+import json
 import logging
 from typing import Optional
 from typing import Union
@@ -333,11 +334,10 @@ class Credential(Endpoint):
                 logger.exception("Credential constructor")
                 return self.error_cls(error="invalid_token", error_description=f"{err}")
 
-        _resp = {
+        _resp = json.loads(_msg)
+        _resp.update({
             "format": "vc+sd-jwt",
-            "credential": _msg,
             "c_nonce": rndstr(),
             "c_nonce_expires_in": 86400
-        }
-
+        })
         return {"response_args": _resp, "client_id": client_id}

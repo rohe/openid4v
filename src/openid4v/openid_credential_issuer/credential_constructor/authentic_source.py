@@ -28,6 +28,8 @@ class CredentialConstructor(object):
                 "document_id": "document_id_7"
             }
         self.key = []
+        self.jwks_uri = self.jwks_url or f"{self.url}/.well-known/jwks.json"
+        logger.debug(f"jwks_uri: {self.jwks_uri}")
         self.fetch_jwks()
 
     def fetch_jwks(self):
@@ -40,26 +42,31 @@ class CredentialConstructor(object):
         #        "crv":"P-256","kty":"EC","x":"jBdJcpK9LCxRvd7kQnhonSsN_fQ6q8fEhclThBRYAt4",
         #        "y":"8rVwmwcFy85bUZn3h00sMiAiFygnhBs0CRL5xFKsuXQ",
         #        "d":"3h0daeEviT8O_VMt0jA0bF-kecfnQcaT8yM6wjWJU78"}]}
-        _jwks_uri = self.jwks_url or f"{self.url}/.well-known/jwks.json"
+
         httpc = self.upstream_get('attribute', 'httpc')
         httpc_params = self.upstream_get("attribute", "httpc_params")
         try:
-            resp = httpc("GET", _jwks_uri, **httpc_params)
+            resp = httpc("GET", self.jwks_uri, **httpc_params)
         except Exception as err:
             logger.exception("fetch_jwks")
             raise err
 
         if resp.status_code != 200:
-            raise SystemError(f"Jwks fetch from Credential Constructor at {_jwks_uri} failed")
-
-        _info = json.loads(resp.text)
-        # Two keys
-        if "issuer" in _info and "jwks" in _info:
-            self.key = []
-            for key_spec in _info["jwks"]["keys"]:
-                self.key.append(key_from_jwk_dict(key_spec))
+            logger.error(f"Jwks fetch from Credential Constructor at {self.jwks_uri} failed")
+            #raise SystemError(f"Jwks fetch from Credential Constructor at {_jwks_uri} failed")
         else:
-            raise ValueError("Missing jwks_info parameter")
+            _info = json.loads(resp.text)
+            logger.debug(f"Fetched Credential Constructors keys: {_info}")
+            # Two keys
+            if "issuer" in _info and "jwks" in _info:
+                self.key = []
+                for key_spec in _info["jwks"]["keys"]:
+                    _key = key_from_jwk_dict(key_spec)
+                    if _key not in self.key:
+                        self.key.append(_key)
+                logger.debug(f"Credential Constructors keys: {[k.serialize() for k in self.key]}")
+            else:
+                raise ValueError("Missing jwks_info parameter")
 
     def get_response(
             self,
@@ -105,6 +112,11 @@ class CredentialConstructor(object):
                  ) -> str:
         logger.debug(":" * 20 + f"Credential constructor[authentic_source]" + ":" * 20)
 
+        if not self.key:
+            self.fetch_jwks()
+            if not self.key:
+                return json.dumps({"error": "failed to pick up keys"})
+
         # body = {
         #     "authentic_source": "sunet2",
         #     "document_type": "PDA1",
@@ -148,4 +160,5 @@ class CredentialConstructor(object):
         # http://vc-interop-1.sunet.se/api/v1/credential
         logger.debug(f"Combined body: {_body}")
         msg = self.get_response(url=self.url, body=_body, headers={'Content-Type': 'application/json'})
+        logger.debug(f"return message: {msg}")
         return msg
