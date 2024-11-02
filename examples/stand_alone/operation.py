@@ -11,6 +11,7 @@ from cryptojwt.jws.jws import factory
 from fedservice.combo import FederationCombo
 from fedservice.entity.function import apply_policies
 from fedservice.entity.function import verify_trust_chains
+from idpyoidc.key_import import import_jwks
 from idpyoidc.logging import configure_logging
 from idpyoidc.message import Message
 from idpyoidc.util import rndstr
@@ -131,7 +132,7 @@ class Federation():
                 _payload = _jws.jwt.payload()
                 _payload["_jws"] = response["response"]
                 _keyjar = _service.upstream_get("attribute", "keyjar")
-                _keyjar.import_jwks(_payload['jwks'], receiver_id)
+                _keyjar = import_jwks(_keyjar, _payload['jwks'], receiver_id)
                 _resp = _payload
             else:
                 _resp = _service.parse_response(response["response"])
@@ -207,7 +208,8 @@ class Federation():
                                     issuer=superior,
                                     subject=subordinate)
         # add subjects key/-s to keyjar
-        self.requestor["federation_entity"].keyjar.import_jwks(_es["jwks"], _es["sub"])
+        _keyjar = self.requestor["federation_entity"].keyjar
+        _keyjar = import_jwks(_keyjar, _es["jwks"], _es["sub"])
 
         _ec = self.federation_query(subordinate,
                                     "entity_configuration",
@@ -387,8 +389,9 @@ def get_credentials(authz_request_args: dict,
 
     # ---------------- Credential request -------------------
 
-    _federation.requestor.get_keyjar().import_jwks(my_oci["openid_credential_issuer"]["jwks"],
-                                                   my_oci["openid_credential_issuer"]["issuer"])
+    _keyjar = _federation.requestor.get_keyjar()
+    _keyjar = import_jwks(_keyjar, my_oci["openid_credential_issuer"]["jwks"],
+                          my_oci["openid_credential_issuer"]["issuer"])
 
     credential_request_args = {
         "format": "vc+sd-jwt",

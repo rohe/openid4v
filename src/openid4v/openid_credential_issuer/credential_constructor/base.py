@@ -4,6 +4,7 @@ from typing import Union
 
 from idpyoidc.exception import RequestError
 from idpyoidc.message import Message
+from idpyoidc.server import EndpointContext
 from idpysdjwt.issuer import Issuer
 
 from openid4v.message import CredentialDefinition
@@ -76,7 +77,8 @@ class CredentialConstructor(object):
                  client_id: str,
                  request: Union[dict, Message],
                  grant: Optional[dict] = None,
-                 id_token: Optional[str] = None
+                 id_token: Optional[str] = None,
+                 context: Optional[EndpointContext] = None
                  ) -> str:
         logger.debug(":" * 20 + f"Credential constructor" + ":" * 20)
 

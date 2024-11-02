@@ -1,6 +1,9 @@
+from idpyoidc.key_import import import_jwks
+
 from examples import execute_function
 
 WALLET_ID = "s6BhdRkqt3"
+
 
 def wallet_setup(federation):
     #########################################
@@ -17,8 +20,9 @@ def wallet_setup(federation):
     wallet = execute_function("members.wallet.main", **kwargs)
 
     # Need the wallet providers public keys. Could get this from the metadata
-    wallet["federation_entity"].keyjar.import_jwks(
-        federation["wp"]["wallet_provider"].context.keyjar.export_jwks(),
-        federation["wp"].entity_id)
+    _keyjar = wallet["federation_entity"]
+    _keyjar = import_jwks(_keyjar,
+                          federation["wp"]["wallet_provider"].context.keyjar.export_jwks(),
+                          federation["wp"].entity_id)
 
     return wallet

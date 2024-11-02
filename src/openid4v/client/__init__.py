@@ -1,20 +1,18 @@
 import base64
-import hashlib
 import json
 from typing import Callable
 from typing import Optional
 from typing import Union
 
 from cryptojwt import as_unicode
-from cryptojwt import JWT
 from cryptojwt import KeyJar
 from cryptojwt.jwk.ec import new_ec_key
 from cryptojwt.jws.dsa import ECDSASigner
-from cryptojwt.utils import as_bytes
 from fedservice.entity.utils import get_federation_entity
 from idpyoidc.client.oauth2 import Client
 from idpyoidc.configure import Configuration
 from idpyoidc.context import OidcContext
+from idpyoidc.key_import import import_jwks
 
 from openid4v.utils import create_client_data_hash
 
@@ -59,8 +57,9 @@ class Wallet(Client):
         self.context.ephemeral_key[ephemeral_key.kid] = ephemeral_key
 
         _jwks = {"keys": [ephemeral_key.serialize(private=True)]}
-        self.context.keyjar.import_jwks(_jwks, self.context.entity_id)
-        self.context.keyjar.import_jwks(_jwks, "")
+        _keyjar = self.context.keyjar
+        _keyjar = import_jwks(_keyjar, _jwks, self.context.entity_id)
+        _keyjar = import_jwks(_keyjar, _jwks, "")
 
         return ephemeral_key
 
@@ -115,7 +114,7 @@ class Wallet(Client):
 
         request_args = {
             "challenge": challenge,
-            #"crypto_hardware_key_tag": crypto_hardware_key_tag
+            # "crypto_hardware_key_tag": crypto_hardware_key_tag
             "crypto_hardware_key": json.dumps(self.context.crypto_hardware_key.serialize())
         }
         resp = self.do_request(
@@ -217,7 +216,7 @@ class Wallet(Client):
         resp = self.do_request(
             'wallet_instance_attestation',
             request_args=war_payload,
-            endpoint = trust_chains[0].metadata['wallet_provider']["token_endpoint"],
+            endpoint=trust_chains[0].metadata['wallet_provider']["token_endpoint"],
             ephemeral_key=_ephemeral_key
         )
 

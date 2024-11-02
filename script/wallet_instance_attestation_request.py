@@ -7,6 +7,7 @@ from typing import Optional
 from fedservice.utils import get_jwks
 from fedservice.utils import make_federation_combo
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
+from idpyoidc.key_import import import_jwks
 
 WALLET_CONFIG = {
     "services": {
@@ -157,7 +158,7 @@ def main(wallet_provider_id: str, trust_anchors: dict):
 
     # load it in the wallet KeyJar
     _jwks = {"keys": [_ephemeral_key.serialize(private=True)]}
-    _wallet.context.keyjar.import_jwks(_jwks, _wallet.entity_id)
+    _wallet.context.keyjar = import_jwks(_wallet.context.keyjar, _jwks, _wallet.entity_id)
     _wallet.context.ephemeral_key = {_ephemeral_key.kid: _ephemeral_key}
 
     # Use the federation to figure out information about the wallet provider

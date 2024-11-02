@@ -4,12 +4,13 @@ from urllib.parse import quote_plus
 from urllib.parse import unquote_plus
 from urllib.parse import urlparse
 
+import pytest
 from cryptojwt import JWT
 from cryptojwt.jws.utils import alg2keytype
 from cryptojwt.jwt import utc_time_sans_frac
 from cryptojwt.key_jar import build_keyjar
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
-import pytest
+from idpyoidc.key_import import store_under_other_id
 
 from openid4v.message import AuthorizationDetail
 from openid4v.message import AuthorizationRequest
@@ -23,7 +24,7 @@ from openid4v.message import ProofToken
 
 JWT_ISSUER = "s6BhdRkqt3"
 KEYJAR = build_keyjar(DEFAULT_KEY_DEFS)
-KEYJAR.import_jwks(KEYJAR.export_jwks(private=True), JWT_ISSUER)
+KEYJAR = store_under_other_id(KEYJAR, "", JWT_ISSUER, True)
 
 _dirname = os.path.dirname(os.path.abspath(__file__))
 
@@ -345,4 +346,3 @@ def test_authz_req():
     assert req
     req.verify()
     assert req
-

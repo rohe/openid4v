@@ -4,6 +4,7 @@ import pytest
 import responses
 from cryptojwt import JWT
 from cryptojwt.jwk.ec import new_ec_key
+from idpyoidc.key_import import import_jwks
 from idpyoidc.util import rndstr
 
 from examples.entities.flask_wallet.views import hash_func
@@ -146,7 +147,7 @@ class TestPID():
         _jwks = {"keys": [_ephemeral_key.serialize(private=True)]}
         _ephemeral_key_tag = _ephemeral_key.kid
         # _wallet_entity_id = f"https://wallet.example.com/instance/{_ephemeral_key_tag}"
-        _wallet.context.keyjar.import_jwks(_jwks, _wallet.entity_id)
+        _wallet.context.keyjar = import_jwks(_wallet.context.keyjar, _jwks, _wallet.entity_id)
         _wallet.context.ephemeral_key = {_ephemeral_key_tag: _ephemeral_key}
 
         war_payload = {

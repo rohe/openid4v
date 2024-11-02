@@ -11,6 +11,8 @@ from fedservice.defaults import LEAF_ENDPOINTS
 from fedservice.utils import make_federation_combo
 from fedservice.utils import make_federation_entity
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
+from idpyoidc.key_import import import_jwks
+from idpyoidc.key_import import store_under_other_id
 
 from openid4v.device_integrity_service import DeviceIntegrityService
 from openid4v.device_integrity_service.integrity import IntegrityAssertion
@@ -227,11 +229,13 @@ class TestComboCollect(object):
         self.wallet = make_federation_combo(**wallet_conf)
         _wallet = self.wallet["wallet"]
         _wallet.oem_key_jar = KeyJar()
-        _wallet.oem_key_jar.import_jwks(self.wp["device_integrity_service"].oem_keyjar.export_jwks(),
-                                        WALLET_PROVIDER_ID)
+        _wallet.oem_key_jar = import_jwks(_wallet.oem_key_jar,
+                                          self.wp[
+                                              "device_integrity_service"].oem_keyjar.export_jwks(),
+                                          WALLET_PROVIDER_ID)
 
         oem_kj = self.wp["device_integrity_service"].oem_keyjar
-        oem_kj.import_jwks(oem_kj.export_jwks(private=True), WALLET_PROVIDER_ID)
+        oem_kj = store_under_other_id(oem_kj, "", WALLET_PROVIDER_ID, True)
 
     def test_metadata(self):
         _metadata = self.wp.get_metadata()
@@ -277,7 +281,9 @@ class TestComboCollect(object):
 
         assert "key_attestation" in response_args
         _wallet.oem_key_jar = KeyJar()
-        _wallet.oem_key_jar.import_jwks(_dis.oem_keyjar.export_jwks(), WALLET_PROVIDER_ID)
+        _wallet.oem_key_jar = import_jwks(_wallet.oem_key_jar,
+                                          _dis.oem_keyjar.export_jwks(),
+                                          WALLET_PROVIDER_ID)
 
         _keyatt = base64.b64decode(response_args["key_attestation"])
         _verifier = JWT(key_jar=_wallet.oem_key_jar)

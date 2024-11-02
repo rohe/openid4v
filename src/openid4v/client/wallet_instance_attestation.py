@@ -3,8 +3,6 @@ from typing import Optional
 from typing import Union
 
 from cryptojwt import JWT
-from cryptojwt.jwk.ec import new_ec_key
-from cryptojwt.jwk.jwk import key_from_jwk_dict
 from fedservice.entity.function import apply_policies
 from fedservice.entity.function import collect_trust_chains
 from fedservice.entity.function import verify_trust_chains
@@ -14,6 +12,7 @@ from fedservice.utils import get_jwks
 from idpyoidc import verified_claim_name
 from idpyoidc.client.configure import Configuration
 from idpyoidc.defaults import JWT_BEARER
+from idpyoidc.key_import import import_jwks
 from idpyoidc.message import Message
 from idpyoidc.message.oauth2 import ResponseMessage
 from idpyoidc.node import topmost_unit
@@ -58,8 +57,8 @@ class WalletInstanceAttestation(FederationService):
         _fe = get_federation_entity(self)
         _fe.trust_chain[self.wallet_provider_id] = trust_chains
         _wallet_unit = _fe.upstream_get("unit")["wallet"]
-        _wallet_unit.context.keyjar.import_jwks(
-            trust_chains[0].metadata["wallet_provider"]["jwks"], self.wallet_provider_id)
+        _keyjar = _wallet_unit.context.keyjar
+        _keyjar = import_jwks(_keyjar, trust_chains[0].metadata["wallet_provider"]["jwks"], self.wallet_provider_id)
         return trust_chains
 
     def get_endpoint(self):

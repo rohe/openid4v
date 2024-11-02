@@ -2,6 +2,7 @@ from cryptojwt import JWT
 from cryptojwt.jwk.ec import new_ec_key
 from cryptojwt.key_jar import build_keyjar
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
+from idpyoidc.key_import import store_under_other_id
 from idpyoidc.util import rndstr
 
 
@@ -9,7 +10,7 @@ class Wallet(object):
     def __init__(self, id):
         self.id = id
         self.keyjar = build_keyjar(DEFAULT_KEY_DEFS)
-        self.keyjar.import_jwks(self.keyjar.export_jwks(private=True), self.id)
+        self.keyjar = store_under_other_id(self.keyjar, "", self.id, True)
 
     def create_wallet_instance_attestation_request(self, wallet_provider_id):
         ec_key = new_ec_key(crv="P-256", key_ops=["sign"])

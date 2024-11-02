@@ -5,8 +5,11 @@ from typing import Union
 
 from cryptojwt.jwk.jwk import key_from_jwk_dict
 from idpyoidc.client.exception import OidcServiceError
+from idpyoidc.context import OidcContext
 from idpyoidc.exception import RequestError
 from idpyoidc.message import Message
+from idpyoidc.server import EndpointContext
+from satosa_idpyop.persistence import Persistence
 from satosa_idpyop.utils import combine_client_subject_id
 
 from openid4v.message import AuthorizationRequest
@@ -108,7 +111,8 @@ class CredentialConstructor(object):
                  request: Optional[Union[dict, Message]] = None,
                  grant: Optional[dict] = None,
                  id_token: Optional[str] = None,
-                 authz_detail: Optional[dict] = None
+                 authz_detail: Optional[dict] = None,
+                 persistence: Optional[Persistence] = None
                  ) -> str:
         logger.debug(":" * 20 + f"Credential constructor[authentic_source]" + ":" * 20)
 
@@ -141,10 +145,11 @@ class CredentialConstructor(object):
             }
         }
         # and more arguments from what the authentication returned
-        _persistence = self.upstream_get("attribute", "persistence")
-        if _persistence:
+        # _persistence = self.upstream_get("attribute", "persistence")
+        if persistence:
+            logger.debug(f"Using {persistence.name} persistence layer")
             client_subject_id = combine_client_subject_id(client_id, user_id)
-            authn_claims = _persistence.load_claims(client_subject_id)
+            authn_claims = persistence.load_claims(client_subject_id)
             # filter on accepted claims
             _av = {}
             for attr, value in authn_claims.items():

@@ -3,9 +3,10 @@ import hashlib
 import json
 import os
 
+import pytest
+from cryptojwt import as_unicode
 from cryptojwt import JWT
 from cryptojwt import KeyJar
-from cryptojwt import as_unicode
 from cryptojwt.jwk.ec import new_ec_key
 from cryptojwt.jws.dsa import ECDSASigner
 from cryptojwt.utils import as_bytes
@@ -13,7 +14,8 @@ from fedservice.defaults import LEAF_ENDPOINTS
 from fedservice.utils import make_federation_combo
 from fedservice.utils import make_federation_entity
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
-import pytest
+from idpyoidc.key_import import import_jwks
+from idpyoidc.key_import import store_under_other_id
 
 from openid4v.device_integrity_service import DeviceIntegrityService
 from openid4v.device_integrity_service.integrity import IntegrityAssertion
@@ -236,12 +238,13 @@ class TestComboCollect(object):
         # OEM key distribution
         _wallet = self.wallet["wallet"]
         _wallet.oem_key_jar = KeyJar()
-        _wallet.oem_key_jar.import_jwks(
+        _wallet.oem_key_jar = import_jwks(
+            _wallet.oem_key_jar,
             self.wp["device_integrity_service"].oem_keyjar.export_jwks(),
             WALLET_PROVIDER_ID)
 
         oem_kj = self.wp["device_integrity_service"].oem_keyjar
-        oem_kj.import_jwks(oem_kj.export_jwks(private=True), WALLET_PROVIDER_ID)
+        oem_kj = store_under_other_id(oem_kj, "", WALLET_PROVIDER_ID, True)
 
     def wallet_instance_initialization_and_registration(self):
         _dis = self.wp["device_integrity_service"]
@@ -326,7 +329,7 @@ class TestComboCollect(object):
         _jwks = {"keys": [_ephemeral_key.serialize(private=True)]}
         _ephemeral_key_tag = _ephemeral_key.kid
         # _wallet_entity_id = f"https://wallet.example.com/instance/{_ephemeral_key_tag}"
-        _wallet.context.keyjar.import_jwks(_jwks, _wallet.entity_id)
+        _wallet.context.keyjar = import_jwks(_wallet.context.keyjar, _jwks, _wallet.entity_id)
 
         # Step 4-6 Get challenge
 

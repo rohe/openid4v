@@ -5,6 +5,8 @@ from cryptojwt.key_jar import build_keyjar
 from fedservice.build_entity import FederationEntityBuilder
 from fedservice.entity import FederationEntity
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
+from idpyoidc.key_import import import_jwks
+from idpyoidc.key_import import store_under_other_id
 from idpyoidc.util import rndstr
 
 from examples import create_trust_chain
@@ -27,7 +29,7 @@ WALLET_FE.add_functions()
 
 fed_wallet = FederationEntity(**WALLET_FE.conf)
 
-fed_wallet.keyjar.import_jwks(fed_wallet.keyjar.export_jwks(private=True), WALLET_ID)
+fed_wallet.keyjar = store_under_other_id(fed_wallet.keyjar, "", WALLET_ID, True)
 
 # ============== SEQUENCE START =======================
 
@@ -108,10 +110,10 @@ _response = token_endpoint.process_request(request=_req, trust_chain=trust_chain
 
 # Wallet parsing Wallet Instance Attestation
 # Need wallet provider's public keys in my key jar
-fed_wallet.keyjar.import_jwks(
-    wallet_provider["wallet_provider"].context.keyjar.export_jwks(
-        issuer_id=wallet_provider.entity_id),
-    wallet_provider.entity_id)
+fed_wallet.keyjar = import_jwks(fed_wallet.keyjar,
+                                wallet_provider["wallet_provider"].context.keyjar.export_jwks(
+                                    issuer_id=wallet_provider.entity_id),
+                                wallet_provider.entity_id)
 
 _verifier = JWT(key_jar=fed_wallet.keyjar, allowed_sign_algs=['ES256'])
 # _jwt.msg_cls = WalletInstanceRequest

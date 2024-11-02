@@ -2,12 +2,13 @@ import base64
 import hashlib
 import json
 
-from cryptojwt import JWT
+import pytest
 from cryptojwt import as_unicode
+from cryptojwt import JWT
 from cryptojwt.jwk.ec import new_ec_key
 from cryptojwt.jws.dsa import ECDSASigner
 from cryptojwt.utils import as_bytes
-import pytest
+from idpyoidc.key_import import import_jwks
 
 from tests.build_federation import build_federation
 
@@ -198,7 +199,7 @@ class TestComboCollect(object):
         _jwks = {"keys": [_ephemeral_key.serialize(private=True)]}
         _ephemeral_key_tag = _ephemeral_key.kid
         # _wallet_entity_id = f"https://wallet.example.com/instance/{_ephemeral_key_tag}"
-        _wallet.context.keyjar.import_jwks(_jwks, _wallet.entity_id)
+        _wallet.context.keyjar = import_jwks(_wallet.context.keyjar, _jwks, _wallet.entity_id)
         _wallet.context.ephemeral_key = {_ephemeral_key_tag: _ephemeral_key}
 
         # Step 4-6 Get challenge

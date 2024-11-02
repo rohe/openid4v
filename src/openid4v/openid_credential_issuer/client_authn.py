@@ -12,6 +12,7 @@ from fedservice.entity import get_verified_trust_chains
 from fedservice.entity.function import verify_trust_chains
 from fedservice.exception import NoTrustedChains
 from fedservice.utils import get_jwks
+from idpyoidc.key_import import import_jwks
 from idpyoidc.message import Message
 from idpyoidc.message.oidc import JsonWebToken
 from idpyoidc.node import topmost_unit
@@ -105,8 +106,8 @@ class ClientAssertion(ClientAuthnMethod):
 
         # adding wallet key to keyjar
         _jwk = _wia["cnf"]["jwk"]
-        _keyjar.import_jwks({"keys": [_jwk]}, _jwk["kid"])
-        _keyjar.import_jwks({"keys": [_jwk]}, _wia["sub"])
+        _keyjar = import_jwks(_keyjar, {"keys": [_jwk]}, _jwk["kid"])
+        _keyjar = import_jwks(_keyjar, {"keys": [_jwk]}, _wia["sub"])
 
         return {"client_id": _wia["sub"], "jwt": _wia}
 
@@ -166,9 +167,9 @@ class ClientAuthenticationAttestation(ClientAuthnMethod):
         logger.debug(f"Verified WIA")
         # Should be a key in there
         _jwk = _wia["cnf"]["jwk"]
-        _keyjar.import_jwks({"keys": [_jwk]}, _wia["sub"])
+        _keyjar = import_jwks(_keyjar, {"keys": [_jwk]}, _wia["sub"])
         if _wia["cnf"]["jwk"]["kid"] != _wia["sub"]:
-            _keyjar.import_jwks({"keys": [_jwk]}, _wia["cnf"]["jwk"]["kid"])
+            _keyjar = import_jwks(_keyjar, {"keys": [_jwk]}, _wia["cnf"]["jwk"]["kid"])
 
         # have already saved the key that comes in the wia
         _verifier = JWT(_keyjar)
@@ -177,9 +178,10 @@ class ClientAuthenticationAttestation(ClientAuthnMethod):
         try:
             _pop = _verifier.unpack(pop)
         except (Invalid, MissingKey, BadSignature, IssuerNotFound) as err:
-            logger.exception("unpacking")
+            logger.exception("unpacking PoP")
             raise ClientAuthenticationError(f"{err.__class__.__name__} {err}")
         except Exception as err:
+            logger.exception("unpacking PoP")
             raise err
 
         if isinstance(_pop, Message):

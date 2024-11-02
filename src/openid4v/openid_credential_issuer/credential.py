@@ -7,6 +7,7 @@ from cryptojwt import JWT
 from cryptojwt.jws.jws import factory
 from fedservice.entity.utils import get_federation_entity
 from idpyoidc.exception import RequestError
+from idpyoidc.key_import import import_jwks_as_json
 from idpyoidc.message import Message
 from idpyoidc.message import oidc
 from idpyoidc.node import topmost_unit
@@ -254,7 +255,8 @@ class Credential(Endpoint):
             if 'jwks_uri' in _metadata["oauth_authorization_server"]:
                 endpoint_context.keyjar.add_url(_metadata["oauth_authorization_server"]["jwks_uri"])
             elif 'jwks' in _metadata["oauth_authorization_server"]:
-                endpoint_context.keyjar.import_jwks_as_json(_metadata["oauth_authorization_server"]["jwks"])
+                endpoint_context.keyjar = import_jwks_as_json(endpoint_context.keyjar,
+                                                              _metadata["oauth_authorization_server"]["jwks"])
             elif 'signed_jwks_uri' in _metadata["oauth_authorization_server"]:
                 pass
 
@@ -296,13 +298,15 @@ class Credential(Endpoint):
         client_id = ""
 
         _context = self.upstream_get("context")
-        if _context.session_manager.db.keys():
-            pass
-        else:
+        if _context.session_manager is None:
             # session information at oauth_server
+            logger.debug("--- Using AS context ---")
             oas = self.part_of_combo()
             if oas:
                 _context = oas.context
+                _persistence = getattr(oas, "persistence")
+        else:
+            _persistence = self.upstream_get("attribute", "persistence")
 
         try:
             # logger.debug(f"Session manager keys: {list(_context.session_manager.db.keys())}")
@@ -329,7 +333,7 @@ class Credential(Endpoint):
             try:
                 _msg = _credential_constructor(user_id=_session_info["user_id"], authz_detail=authz_detail,
                                                grant=_session_info["grant"],
-                                               client_id=client_id)
+                                               client_id=client_id, persistence=_persistence)
             except Exception as err:
                 logger.exception("Credential constructor")
                 return self.error_cls(error="invalid_token", error_description=f"{err}")

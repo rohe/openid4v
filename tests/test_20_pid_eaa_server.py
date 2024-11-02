@@ -3,14 +3,15 @@ import hashlib
 import json
 import os
 
-from cryptojwt import JWT
+import pytest
+import responses
 from cryptojwt import as_unicode
+from cryptojwt import JWT
 from cryptojwt.jwk.ec import new_ec_key
 from cryptojwt.jws.dsa import ECDSASigner
 from cryptojwt.utils import as_bytes
+from idpyoidc.key_import import import_jwks
 from idpyoidc.util import rndstr
-import pytest
-import responses
 
 from examples.entities.flask_wallet.views import hash_func
 from tests import create_trust_chain_messages
@@ -203,7 +204,7 @@ class TestPID():
         _jwks = {"keys": [_ephemeral_key.serialize(private=True)]}
         _ephemeral_key_tag = _ephemeral_key.kid
         # _wallet_entity_id = f"https://wallet.example.com/instance/{_ephemeral_key_tag}"
-        _wallet.context.keyjar.import_jwks(_jwks, _wallet.entity_id)
+        _wallet.context.keyjar = import_jwks(_wallet.context.keyjar, _jwks, _wallet.entity_id)
         _wallet.context.ephemeral_key = {_ephemeral_key_tag: _ephemeral_key}
 
         # Step 4-6 Get challenge
