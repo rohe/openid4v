@@ -1,7 +1,9 @@
 import json
+import logging
 from urllib.parse import urlsplit
 
 from cryptojwt import JWT
+from cryptojwt import KeyJar
 from cryptojwt.jwk.jwk import key_from_jwk_dict
 from cryptojwt.jws.jws import factory
 from fedservice import message as fed_msg
@@ -40,6 +42,7 @@ from idpysdjwt.holder import Holder
 from openid4v.utils import extract_key_from_jws
 from openid4v.utils import jws_issuer
 
+logger = logging.getLogger(__name__)
 
 class ProofToken(JsonWebToken):
     c_param = {
@@ -297,11 +300,18 @@ class CredentialRequest(Message):
                 _jwt = _proof.get("jwt", None)
                 if not _jwt:
                     raise MissingAttribute("Expected 'jwt' claim")
-                _keyjar = kwargs.get("keyjar")
                 _key = extract_key_from_jws(_jwt)
+                if not _key.kid:
+                    _key.add_kid()
+                logger.debug(f"Proof key: {_key.serialize()}")
                 _iss = jws_issuer(_jwt)
+                _proof_keyjar = KeyJar()
+                _proof_keyjar.add_keys(_iss, [_key])
+                _jwt_proof = JwtKeyProof().from_jwt(_jwt, _proof_keyjar)
+                _jwt_proof["kid"] = _key.kid
+                self['__verified_proof'] = _jwt_proof
+                _keyjar = kwargs.get("keyjar")
                 _keyjar.add_keys(_iss, [_key])
-                _jwt_proof = JwtKeyProof().from_jwt(_jwt, _keyjar)
 
 
 class CredentialRequestJwtVcJson(CredentialRequest):
@@ -314,8 +324,15 @@ class CredentialRequestJwtVcJson(CredentialRequest):
     def verify(self, **kwargs):
         super(CredentialRequestJwtVcJson, self).verify(**kwargs)
 
-        self['proof'] = ProofJWT(**self['proof'])
-        self['proof'].verify(**kwargs)
+        if "__verified_proof" in self:
+            _header = self["__verified_proof"].jws_header
+            if "typ" in _header and _header['typ'] == 'openid4vci-proof+jwt':
+                pass
+            else:
+                raise ValueError("Wrong value type")
+        else:
+            self['proof'] = ProofJWT(**self['proof'])
+            self['proof'].verify(**kwargs)
 
 
 class AuthorizationDetail(Message):

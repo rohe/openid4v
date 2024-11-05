@@ -6,11 +6,14 @@ from urllib.parse import urlparse
 
 import pytest
 from cryptojwt import JWT
+from cryptojwt import KeyJar
+from cryptojwt.jwk.ec import new_ec_key
 from cryptojwt.jws.utils import alg2keytype
 from cryptojwt.jwt import utc_time_sans_frac
 from cryptojwt.key_jar import build_keyjar
 from idpyoidc.client.defaults import DEFAULT_KEY_DEFS
 from idpyoidc.key_import import store_under_other_id
+from openid4v.message import JwtKeyProof
 
 from openid4v.message import AuthorizationDetail
 from openid4v.message import AuthorizationRequest
@@ -36,17 +39,21 @@ def test_credential_request():
         "nonce": "tZignsnFbp"
     }
     sign_alg = "ES256"
-    _kid = 0
+    ephemeral_key = new_ec_key('P-256')
+
+    tmp_keyjar = KeyJar()
+    tmp_keyjar.add_keys(JWT_ISSUER, [ephemeral_key])
+    _headers = {
+        "typ": "openid4vci-proof+jwt",
+        "jwk": ephemeral_key.serialize()
+    }
+
     _possible_keys = KEYJAR.get_signing_key(key_type=alg2keytype(sign_alg), issuer_id=JWT_ISSUER)
     if len(_possible_keys) >= 1:
         _kid = _possible_keys[0].kid
 
-    _headers = {
-        "typ": "openid4vci-proof+jwt",
-        "jwk": _possible_keys[0].serialize()
-    }
-    _jwt = JWT(key_jar=KEYJAR, sign_alg=sign_alg, iss=JWT_ISSUER)
-    _jws = _jwt.pack(payload, jws_headers=_headers, kid=_kid)
+    _jwt = JWT(key_jar=tmp_keyjar, sign_alg=sign_alg, iss=JWT_ISSUER)
+    _jws = _jwt.pack(payload, jws_headers=_headers, kid=ephemeral_key.kid)
 
     query = {
         "format": "jwt_vc_json",
@@ -64,7 +71,7 @@ def test_credential_request():
 
     cr = CredentialRequestJwtVcJson(**query)
     cr.verify(keyjar=KEYJAR)
-    assert isinstance(cr["proof"]["__verified_proof"], ProofToken)
+    assert isinstance(cr["__verified_proof"], JwtKeyProof)
 
 
 def test_authorization_detail():
