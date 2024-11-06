@@ -15,6 +15,7 @@ from idpyoidc.server import Endpoint
 from idpyoidc.server.util import execute
 from idpyoidc.util import rndstr
 from idpysdjwt.issuer import Issuer
+from satosa_idpyop.persistence import Persistence
 
 from openid4v.message import CredentialDefinition
 from openid4v.message import CredentialRequest
@@ -83,7 +84,8 @@ class CredentialConstructor(object):
         return _discl
 
     def matching_credentials_supported(self, authz_detail):
-        _supported = self.upstream_get('context').claims.get_preference("credential_configurations_supported")
+        _supported = self.upstream_get('context').claims.get_preference(
+            "credential_configurations_supported")
         logger.debug(f"Credential_supported: {_supported}")
         matching = []
         if _supported:
@@ -119,9 +121,11 @@ class CredentialConstructor(object):
     def __call__(self,
                  user_id: str,
                  client_id: str,
-                 authz_detail: Union[dict, Message],
+                 request: Optional[Union[dict, Message]] = None,
                  grant: Optional[dict] = None,
-                 id_token: Optional[str] = None
+                 id_token: Optional[str] = None,
+                 authz_detail: Optional[dict] = None,
+                 persistence: Optional[Persistence] = None
                  ) -> str:
         logger.debug(":" * 20 + f"Credential constructor" + ":" * 20)
 
@@ -157,7 +161,8 @@ class CredentialConstructor(object):
 
         logger.debug(f"claims_restriction: {_claims_restriction}")
         # Collect user info
-        info = _cntxt.claims_interface.get_user_claims(user_id, claims_restriction=_claims_restriction,
+        info = _cntxt.claims_interface.get_user_claims(user_id,
+                                                       claims_restriction=_claims_restriction,
                                                        client_id=client_id)
 
         logger.debug(f"user claims [{user_id}]: {info}")
@@ -218,7 +223,8 @@ class Credential(Endpoint):
             for typ, spec in kwargs["credential_constructor"].items():
                 self.credential_constructor[typ] = execute(spec, upstream_get=upstream_get)
         else:
-            self.credential_constructor["PersonIdentificationData"] = CredentialConstructor(upstream_get=upstream_get)
+            self.credential_constructor["PersonIdentificationData"] = CredentialConstructor(
+                upstream_get=upstream_get)
 
     def _get_session_info(self, endpoint_context, token):
         _jws = factory(token)
@@ -233,7 +239,8 @@ class Credential(Endpoint):
         return _info
 
     def part_of_combo(self):
-        # The credential issuer may be part of a Combo which also includes the OAuth authorization server
+        # The credential issuer may be part of a Combo which also includes the OAuth
+        # authorization server
         return topmost_unit(self).get("oauth_authorization_server", None)
 
     def get_client_id_from_token(self, endpoint_context, token, request=None):
@@ -256,7 +263,9 @@ class Credential(Endpoint):
                 endpoint_context.keyjar.add_url(_metadata["oauth_authorization_server"]["jwks_uri"])
             elif 'jwks' in _metadata["oauth_authorization_server"]:
                 endpoint_context.keyjar = import_jwks_as_json(endpoint_context.keyjar,
-                                                              _metadata["oauth_authorization_server"]["jwks"])
+                                                              _metadata[
+                                                                  "oauth_authorization_server"][
+                                                                  "jwks"])
             elif 'signed_jwks_uri' in _metadata["oauth_authorization_server"]:
                 pass
 
@@ -280,14 +289,20 @@ class Credential(Endpoint):
             cd_type = cd.get("type", [])
             for typ in cd_type:
                 if typ in self.credential_constructor:
+                    logger.debug(
+                        f"Picked Credential Constructor based on credential_constructor = {typ}")
                     return self.credential_constructor[typ]
         elif "vct" in authz_detail:
             vct = authz_detail.get("vct", "")
             if vct in self.credential_constructor:
+                logger.debug(
+                    f"Picked Credential Constructor based on vct = {vct}")
                 return self.credential_constructor[vct]
         elif "credential_configuration_id" in authz_detail:
             cc_id = authz_detail.get('credential_configuration_id')
             if cc_id in self.credential_constructor:
+                logger.debug(
+                    f"Picked Credential Constructor based on credential_configuration_id = {cc_idc}")
                 return self.credential_constructor[cc_id]
 
         return None
@@ -298,6 +313,7 @@ class Credential(Endpoint):
         client_id = ""
 
         _context = self.upstream_get("context")
+        _persistence = None
         if _context.session_manager is None:
             # session information at oauth_server
             logger.debug("--- Using AS context ---")
@@ -317,7 +333,8 @@ class Credential(Endpoint):
 
         if _session_info:
             client_id = _session_info["client_id"]
-            authz_details = _session_info["grant"].authorization_request.get("authorization_details", [])
+            authz_details = _session_info["grant"].authorization_request.get(
+                "authorization_details", [])
             # Does only one
             authz_detail = authz_details[0]
 
@@ -331,9 +348,11 @@ class Credential(Endpoint):
                 raise AttributeError("Asked for credential type I can't produce")
 
             try:
-                _msg = _credential_constructor(user_id=_session_info["user_id"], authz_detail=authz_detail,
+                _msg = _credential_constructor(user_id=_session_info["user_id"],
+                                               authz_detail=authz_detail,
                                                grant=_session_info["grant"],
-                                               client_id=client_id, persistence=_persistence)
+                                               client_id=client_id,
+                                               persistence=_persistence)
             except Exception as err:
                 logger.exception("Credential constructor")
                 return self.error_cls(error="invalid_token", error_description=f"{err}")
