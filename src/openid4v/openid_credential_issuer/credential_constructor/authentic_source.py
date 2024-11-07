@@ -153,7 +153,7 @@ class CredentialConstructor(object):
             # filter on accepted claims
             _av = {}
             for attr, value in authn_claims.items():
-                if attr in ["familyname", "givenname","birthdate"]:
+                if attr in ["family_name", "given_name","birth_date"]:
                     _av[attr] = value
             logger.debug(f"Authentication claims: {_av}")
             if _av:

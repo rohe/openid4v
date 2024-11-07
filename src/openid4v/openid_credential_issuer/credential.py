@@ -219,6 +219,8 @@ class Credential(Endpoint):
         self.post_parse_request.append(self.add_access_token_to_request)
 
         self.credential_constructor = {}
+        logger.debug(f"Credential endpoint kwargs: {kwargs}")
+        logger.debug(f"Credential endpoint config: {conf}")
         if "credential_constructor" in kwargs:
             for typ, spec in kwargs["credential_constructor"].items():
                 self.credential_constructor[typ] = execute(spec, upstream_get=upstream_get)
@@ -284,28 +286,34 @@ class Credential(Endpoint):
         return request
 
     def _pick_constructor(self, authz_detail):
+        logger.debug(f"Available Constructors: {self.credential_constructor.keys()}")
         cd = authz_detail.get("credential_definition", "")
+        choice = None
         if cd:
             cd_type = cd.get("type", [])
             for typ in cd_type:
                 if typ in self.credential_constructor:
                     logger.debug(
                         f"Picked Credential Constructor based on credential_constructor = {typ}")
-                    return self.credential_constructor[typ]
+                    choice = self.credential_constructor[typ]
         elif "vct" in authz_detail:
             vct = authz_detail.get("vct", "")
             if vct in self.credential_constructor:
                 logger.debug(
                     f"Picked Credential Constructor based on vct = {vct}")
-                return self.credential_constructor[vct]
+                choice = self.credential_constructor[vct]
         elif "credential_configuration_id" in authz_detail:
             cc_id = authz_detail.get('credential_configuration_id')
             if cc_id in self.credential_constructor:
                 logger.debug(
-                    f"Picked Credential Constructor based on credential_configuration_id = {cc_idc}")
-                return self.credential_constructor[cc_id]
+                    f"Picked Credential Constructor based on credential_configuration_id = {cc_id}")
+                choice = self.credential_constructor[cc_id]
 
-        return None
+        if choice:
+            logger.debug(f"Choose {choice}")
+            return choice
+        else:
+            return None
 
     def process_request(self, request=None, **kwargs):
         logger.debug(f"Credential.process_request: {request}")
