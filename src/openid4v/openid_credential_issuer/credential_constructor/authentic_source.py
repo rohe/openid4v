@@ -5,16 +5,61 @@ from typing import Union
 
 from cryptojwt.jwk.jwk import key_from_jwk_dict
 from idpyoidc.client.exception import OidcServiceError
-from idpyoidc.context import OidcContext
 from idpyoidc.exception import RequestError
 from idpyoidc.message import Message
-from idpyoidc.server import EndpointContext
 from satosa_idpyop.persistence import Persistence
 from satosa_idpyop.utils import combine_client_subject_id
 
-from openid4v.message import AuthorizationRequest
-
 logger = logging.getLogger(__name__)
+
+EXAMPLE = [
+    {
+        "credential_type": "sdjwt",
+        "authentic_source_person_id": "10",
+        "document_type": "EHIC",
+        "document_id": "04a4b383-3f78-46f7-8021-9f56577b97ca",
+        "collect_id": "23ae9ed3-2eb2-4cf4-9213-03cb95ff41c9",
+        "family_name": "Howell",
+        "given_name": "Lenna",
+        "birth_date": "1935-02-21",
+        "authentic_source": "SUNET"
+    },
+    {
+        "credential_type": "sdjwt",
+        "authentic_source_person_id": "10",
+        "document_type": "EHIC",
+        "document_id": "04a4b383-3f78-46f7-8021-9f56577b97ca",
+        "collect_id": "d94af424-853a-4245-8f9b-ace39f7ee67f",
+        "family_name": "Roob",
+        "given_name": "Pattie",
+        "birth_date": "1955-05-28",
+        "authentic_source": "SUNET"
+    },
+    {
+        "credential_type": "sdjwt",
+        "authentic_source_person_id": "10",
+        "document_type": "PDA1",
+        "document_id": "a5033da3-cfbb-4b3b-93b0-c31c26b3be04",
+        "collect_id": "fe516ed1-dfd5-4620-8cfc-ed7657f80102",
+        "family_name": "Abshire",
+        "given_name": "Breanne",
+        "birth_date": "1978-01-08",
+        "authentic_source": "SUNET"
+    }
+]
+#
+# EXAMPLE = {
+#     "authentic_source_person_id": "10",
+#     "collect_id": "d94af424-853a-4245-8f9b-ace39f7ee67f",
+#     "family_name": "Roob",
+#     "given_name": "Pattie",
+#     "birth_date": "1955-05-28",
+#     "document_type": "EHIC",
+#     "authentic_source": "SUNET",
+#     "credential_type": "sdjwt"
+# ]
+
+OVERRIDE = True
 
 
 class CredentialConstructor(object):
@@ -26,9 +71,9 @@ class CredentialConstructor(object):
         self.body = kwargs.get("body")
         if not self.body:
             self.body = {
-                "authentic_source": "sunet2",
-                "document_type": "PDA1",
-                "document_id": "document_id_7"
+                "authentic_source": "SUNET",
+                "document_type": EXAMPLE[0]["document_type"],
+                "credential_type": "sdjwt"
             }
         self.key = []
         self.jwks_uri = self.jwks_url or f"{self.url}/.well-known/jwks.json"
@@ -46,7 +91,7 @@ class CredentialConstructor(object):
         #        "y":"8rVwmwcFy85bUZn3h00sMiAiFygnhBs0CRL5xFKsuXQ",
         #        "d":"3h0daeEviT8O_VMt0jA0bF-kecfnQcaT8yM6wjWJU78"}]}
 
-        httpc = self.upstream_get('attribute', 'httpc')
+        httpc = self.upstream_get("attribute", "httpc")
         httpc_params = self.upstream_get("attribute", "httpc_params")
         try:
             resp = httpc("GET", self.jwks_uri, **httpc_params)
@@ -56,7 +101,7 @@ class CredentialConstructor(object):
 
         if resp.status_code != 200:
             logger.error(f"Jwks fetch from Credential Constructor at {self.jwks_uri} failed")
-            #raise SystemError(f"Jwks fetch from Credential Constructor at {_jwks_uri} failed")
+            # raise SystemError(f"Jwks fetch from Credential Constructor at {_jwks_uri} failed")
         else:
             _info = json.loads(resp.text)
             logger.debug(f"Fetched Credential Constructors keys: {_info}")
@@ -89,7 +134,7 @@ class CredentialConstructor(object):
         :param kwargs:
         :return:
         """
-        httpc = self.upstream_get('attribute', 'httpc')
+        httpc = self.upstream_get("attribute", "httpc")
         httpc_params = self.upstream_get("attribute", "httpc_params")
         try:
             resp = httpc(method, url, data=json.dumps(body), headers=headers, **httpc_params)
@@ -126,19 +171,21 @@ class CredentialConstructor(object):
         #     "document_type": "PDA1",
         #     "document_id": "document_id_7"
         # }
-        _body = self.body.copy()
-        logger.debug(f"Original body: {_body}")
-        # Get extra arguments from the authorization request
-        _authz_args = {k: v for k, v in grant.authorization_request.items() if k not in AuthorizationRequest.c_param}
-        _authz_args = {k: v for k, v in _authz_args.items() if k not in ["code_challenge", "code_challenge_method",
-                                                                         "authenticated"]}
-        _authz_args["collect_id"] = "22bb1167-3a43-4eaa-b70e-f1826e38bbac"
+
+        # Get extra arguments from the authorization request if available
+        _authz_args = {}
+        for k in ["collect_id", "authentic_source", "document_type", "credential_type"]:
+            _val = _authz_args.get(k, None)
+            if _val:
+                _authz_args[k] = _val
+            else:
+                _authz_args[k] = EXAMPLE[0][k]
+
         logger.debug(f"Authorization request claims: {_authz_args}")
-        if _authz_args:
-            _body.update(_authz_args)
+        _body = _authz_args
 
         _identity = {
-            "authentic_source_person_id": "c117b00c-4792-4d29-896d-55e8c54f6c5c",
+            # "authentic_source_person_id": EXAMPLE["authentic_source_person_id"],
             "schema": {
                 "name": "SE",
                 # "version": "1.0.2"
@@ -152,9 +199,13 @@ class CredentialConstructor(object):
             authn_claims = persistence.load_claims(client_subject_id)
             # filter on accepted claims
             _av = {}
-            for attr, value in authn_claims.items():
-                if attr in ["family_name", "given_name","birth_date"]:
-                    _av[attr] = value
+            if {"family_name", "given_name", "birth_date"}.issubset(set(list(authn_claims.keys()))):
+                for attr, value in authn_claims.items():
+                    if attr in ["family_name", "given_name", "birth_date"]:
+                        _av[attr] = value
+            else:
+                for attr in ["family_name", "given_name", "birth_date"]:
+                    _av[attr] = EXAMPLE[0][attr]
             logger.debug(f"Authentication claims: {_av}")
             if _av:
                 _identity.update(_av)
@@ -164,6 +215,6 @@ class CredentialConstructor(object):
 
         # http://vc-interop-1.sunet.se/api/v1/credential
         logger.debug(f"Combined body: {_body}")
-        msg = self.get_response(url=self.url, body=_body, headers={'Content-Type': 'application/json'})
+        msg = self.get_response(url=self.url, body=_body, headers={"Content-Type": "application/json"})
         logger.debug(f"return message: {msg}")
         return msg
