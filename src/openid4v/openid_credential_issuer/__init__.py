@@ -57,7 +57,11 @@ class OpenidCredentialIssuer(ServerEntity):
     def matching_credentials_supported(self, authz_detail):
         _supported = self.context.claims.get_preference("credential_configurations_supported")
         if _supported:
-            matching = matching_authz_detail_against_supported(authz_detail, _supported)
+            matching = []
+            for match in matching_authz_detail_against_supported(authz_detail, _supported):
+                if "type" not in match:
+                    match["type"] = authz_detail["type"]
+                matching.append(match)
         else:
             matching = []
         return matching

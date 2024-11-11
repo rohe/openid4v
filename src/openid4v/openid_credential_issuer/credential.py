@@ -328,7 +328,7 @@ class Credential(Endpoint):
             oas = self.part_of_combo()
             if oas:
                 _context = oas.context
-                _persistence = getattr(oas, "persistence")
+                _persistence = getattr(oas, "persistence", None)
         else:
             _persistence = self.upstream_get("attribute", "persistence")
 
@@ -357,10 +357,11 @@ class Credential(Endpoint):
 
             try:
                 _msg = _credential_constructor(user_id=_session_info["user_id"],
+                                               request=request,
                                                authz_detail=authz_detail,
                                                grant=_session_info["grant"],
                                                client_id=client_id,
-                                               persistence=_persistence)
+                                               persistence=_persistence )
             except Exception as err:
                 logger.exception("Credential constructor")
                 return self.error_cls(error="invalid_token", error_description=f"{err}")

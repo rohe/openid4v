@@ -49,6 +49,7 @@ FEDERATION_CONFIG = {
             "authority_hints": [TA_ID],
             "entity_type_config": {
                 "openid_credential_issuer": {
+                    "session_management": False,
                     "endpoint": {
                         "credential": {
                             "path": "credential",

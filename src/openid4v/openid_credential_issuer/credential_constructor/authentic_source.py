@@ -136,11 +136,11 @@ class CredentialConstructor(object):
     def __call__(self,
                  user_id: str,
                  client_id: str,
-                 request: Optional[Union[dict, Message]] = None,
+                 request: Union[dict, Message],
                  grant: Optional[dict] = None,
                  id_token: Optional[str] = None,
                  authz_detail: Optional[dict] = None,
-                 persistence: Optional[Persistence] = None
+                 persistence: Optional[Persistence] = None,
                  ) -> str:
         logger.debug(":" * 20 + f"Credential constructor[authentic_source]" + ":" * 20)
 
@@ -189,8 +189,11 @@ class CredentialConstructor(object):
                 _identity.update(_av)
             _body["identity"] = _identity
         else:
-            _body.update(_identity)
+            _av = {attr: EXAMPLE[0][attr] for attr in ["family_name", "given_name", "birth_date"]}
+            _identity.update(_av)
+            _body["identity"] = _identity
 
+        _body["jwk"] = request["__verified_proof"].jws_header["jwk"]
         # http://vc-interop-1.sunet.se/api/v1/credential
         logger.debug(f"Combined body: {_body}")
         msg = self.get_response(url=self.url, body=_body, headers={"Content-Type": "application/json"})
