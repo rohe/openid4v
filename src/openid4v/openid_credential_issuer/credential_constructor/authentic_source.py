@@ -187,9 +187,14 @@ class CredentialConstructor(object):
                 return json.dumps({"error": "failed to pick up keys"})
 
         # Get extra arguments from the authorization request if available
+        if "issuer_state" in grant.authorization_request:
+            msg = Message().from_urlencoded(grant.authorization_request["issuer_state"])
+        else:
+            msg = grant.authorization_request
+
         _authz_args = {}
         for k in ["collect_id", "authentic_source", "document_type", "credential_type", "identity"]:
-            _val = grant.authorization_request.get(k, None)
+            _val = msg.get(k, None)
             if _val:
                 _authz_args[k] = _val
             else:

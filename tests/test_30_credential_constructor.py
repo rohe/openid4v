@@ -249,9 +249,7 @@ class TestPID():
             "response_type": "code",
             "client_id": _ephemeral_key_tag,
             "redirect_uri": _redirect_uri,
-            "authentic_source": 'authentic_source_se',
-            "document_type": 'EHIC',
-            "collect_id": "collect_id_10"
+            "issuer_state": "authentic_source=authentic_source_se&document_type=EHIC&collect_id=collect_id_10"
         }
 
         kwargs = {
@@ -383,6 +381,22 @@ class TestPID():
         b64hash = hash_func(self.pid.entity_id)
         _redirect_uri = f"https://127.0.0.1:5005/authz_cb/{b64hash}"
 
+        # request_args = {
+        #     "authorization_details": [
+        #         {
+        #             "type": "openid_credential",
+        #             "format": "vc+sd-jwt",
+        #             "vct": "PDA1Credential"
+        #         }
+        #     ],
+        #     "response_type": "code",
+        #     "client_id": _ephemeral_key_tag,
+        #     "redirect_uri": _redirect_uri,
+        #     "authentic_source": 'authentic_source_dk',
+        #     "document_type": 'PDA1',
+        #     "collect_id": "collect_id_20"
+        # }
+
         request_args = {
             "authorization_details": [
                 {
@@ -394,9 +408,7 @@ class TestPID():
             "response_type": "code",
             "client_id": _ephemeral_key_tag,
             "redirect_uri": _redirect_uri,
-            "authentic_source": 'authentic_source_dk',
-            "document_type": 'PDA1',
-            "collect_id": "collect_id_20"
+            "issuer_state": "authentic_source=authentic_source_dk&document_type=PDA1&collect_id=collect_id_20"
         }
 
         kwargs = {
