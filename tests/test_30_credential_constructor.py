@@ -59,7 +59,7 @@ FEDERATION_CONFIG = {
                                     "dpop_client_auth"
                                 ],
                                 "credential_constructor": {
-                                    "PersonIdentificationData": {
+                                    "PDA1Credential": {
                                         "class":
                                             "openid4v.openid_credential_issuer.credential_constructor.authentic_source.CredentialConstructor",
                                         "kwargs": {
@@ -68,6 +68,19 @@ FEDERATION_CONFIG = {
                                             "body": {
                                                 "authentic_source": "SUNET",
                                                 "document_type": "PDA1",
+                                                "credential_type": "sdjwt"
+                                            }
+                                        }
+                                    },
+                                    "EHICCredential": {
+                                        "class":
+                                            "openid4v.openid_credential_issuer.credential_constructor.authentic_source.CredentialConstructor",
+                                        "kwargs": {
+                                            "url": "http://vc-interop-1.sunet.se/api/v1/credential",
+                                            "jwks_url": "http://vc-interop-1.sunet.se/api/v1/credential/.well-known/jwks",
+                                            "body": {
+                                                "authentic_source": "SUNET",
+                                                "document_type": "EHIC",
                                                 "credential_type": "sdjwt"
                                             }
                                         }
@@ -199,7 +212,8 @@ class TestPID():
         _resp = pushed_authorization_endpoint.process_request(_req)
         return _resp
 
-    def test_authorization(self):
+
+    def test_authorization_EHIC(self):
         where_and_what = create_trust_chain_messages(self.pid,
                                                      self.ta)
         with responses.RequestsMock() as rsps:
@@ -229,12 +243,160 @@ class TestPID():
                 {
                     "type": "openid_credential",
                     "format": "vc+sd-jwt",
-                    "vct": "PersonIdentificationData"
+                    "vct": "EHICCredential"
                 }
             ],
             "response_type": "code",
             "client_id": _ephemeral_key_tag,
             "redirect_uri": _redirect_uri,
+            "authentic_source": 'authentic_source_se',
+            "document_type": 'EHIC',
+            "collect_id": "collect_id_10"
+        }
+
+        kwargs = {
+            "state": rndstr(24),
+            "wallet_instance_attestation": wallet_instance_attestation,
+            "signing_key": self.wallet["wallet"].context.ephemeral_key[_ephemeral_key_tag]
+        }
+
+        authz_req = authorization_service.get_request_parameters(request_args=request_args,
+                                                                 **kwargs)
+
+        # The PID Issuer parses the authz request
+
+        _authorization_endpoint = self.pid["oauth_authorization_server"].get_endpoint(
+            'authorization')
+        _authorization_endpoint.request_format = "url"
+
+        where_and_what = create_trust_chain_messages(self.wp, self.ta)
+        with responses.RequestsMock() as rsps:
+            for _url, _jwks in where_and_what.items():
+                rsps.add("GET", _url, body=_jwks,
+                         adding_headers={"Content-Type": "application/json"}, status=200)
+
+            parsed_args = _authorization_endpoint.parse_request(authz_req["url"],
+                                                                http_info={"headers": authz_req["headers"]})
+
+        authz_response = _authorization_endpoint.process_request(parsed_args)
+
+        assert authz_response
+
+        # Now for the token request
+
+        _args = {
+            "audience": self.pid.entity_id,
+            "thumbprint": _ephemeral_key_tag,
+            "wallet_instance_attestation": wallet_instance_attestation,
+            "signing_key": self.wallet["wallet"].context.ephemeral_key[_ephemeral_key_tag]
+        }
+
+        _lifetime = self.wallet["pid_eaa_consumer"].config.get("jwt_lifetime", None)
+        if _lifetime:
+            _args["lifetime"] = _lifetime
+
+        _request_args = {
+            "code": authz_response['response_args']["code"],
+            "grant_type": "authorization_code",
+            "redirect_uri": parsed_args["redirect_uri"],
+            "state": authz_response['response_args']["state"]
+        }
+
+        _token_service = actor.get_service("accesstoken")
+        _metadata = self.wallet["federation_entity"].get_verified_metadata(self.pid.entity_id)
+        _args["endpoint"] = _metadata['oauth_authorization_server']['token_endpoint']
+        token_req_info = _token_service.get_request_parameters(_request_args, **_args)
+        assert token_req_info
+
+        assert "dpop" in token_req_info["headers"]
+
+        # Token endpoint
+
+        _token_endpoint = self.pid["oauth_authorization_server"].get_endpoint("token")
+        _http_info = {
+            "headers": token_req_info["headers"],
+            "url": token_req_info["url"],
+            "method": token_req_info["method"]}
+
+        parsed_args = _token_endpoint.parse_request(token_req_info["body"], http_info=_http_info)
+
+        token_response = _token_endpoint.process_request(parsed_args)
+
+        assert token_response
+
+        _context = _token_service.upstream_get("context")
+        _context.cstate.update(authz_response['response_args']["state"],
+                               token_response["response_args"])
+
+        # credential issuer service
+
+        _credential_service = actor.get_service("credential")
+
+        _request_args = {
+            "format": 'vc+sd-jwt'
+        }
+
+        _args = {
+            "state": authz_response['response_args']["state"]
+        }
+
+        req_info = _credential_service.get_request_parameters(request_args=_request_args, **_args)
+
+        assert req_info
+
+        assert req_info["headers"]["Authorization"].startswith("DPoP")
+
+        _credential_endpoint = self.pid["openid_credential_issuer"].get_endpoint("credential")
+
+        _http_info = {
+            "headers": req_info["headers"],
+            "url": req_info["url"],
+            "method": req_info["method"]}
+        parsed_args = _credential_endpoint.parse_request(req_info["body"], http_info=_http_info)
+
+        credential_response = _credential_endpoint.process_request(parsed_args)
+
+        assert "error" not in credential_response
+
+    def test_authorization_PDA1(self):
+        where_and_what = create_trust_chain_messages(self.pid,
+                                                     self.ta)
+        with responses.RequestsMock() as rsps:
+            for _url, _jwks in where_and_what.items():
+                rsps.add("GET", _url, body=_jwks,
+                         adding_headers={"Content-Type": "application/json"}, status=200)
+
+            # collect metadata for PID issuer
+            pid_issuer_metadata = self.wallet["federation_entity"].get_verified_metadata(
+                self.pid.entity_id)
+
+        wallet_instance_attestation, _ephemeral_key_tag = self.wallet_attestation_issuance()
+
+        # authorization_endpoint = pid_issuer_metadata["oauth_authorization_server"][
+        # "authorization_endpoint"]
+
+        handler = self.wallet["pid_eaa_consumer"]
+        actor = handler.new_consumer(self.pid.entity_id)
+        authorization_service = actor.get_service("authorization")
+        authorization_service.certificate_issuer_id = self.pid.entity_id
+
+        b64hash = hash_func(self.pid.entity_id)
+        _redirect_uri = f"https://127.0.0.1:5005/authz_cb/{b64hash}"
+
+        request_args = {
+            "authorization_details": [
+                {
+                    "type": "openid_credential",
+                    "format": "vc+sd-jwt",
+                    "vct": "PDA1Credential"
+                }
+            ],
+            "response_type": "code",
+            "client_id": _ephemeral_key_tag,
+            "redirect_uri": _redirect_uri,
+            "authentic_source": 'authentic_source_dk',
+            "document_type": 'PDA1',
+            "collect_id": "collect_id_20"
         }
 
         kwargs = {

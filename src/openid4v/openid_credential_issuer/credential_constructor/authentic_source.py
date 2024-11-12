@@ -21,7 +21,12 @@ EXAMPLE = [
         "authentic_source_person_id": "10",
         "family_name": "Castaneda",
         "given_name": "Carlos",
-        "birth_date": "1970-01-10"
+        "birth_date": "1970-01-10",
+        "identity": {
+            "schema": {
+                "name": "SE",
+            }
+        }
     },
     {
         "credential_type": "sdjwt",
@@ -31,7 +36,12 @@ EXAMPLE = [
         "authentic_source_person_id": "11",
         "family_name": "Howell",
         "given_name": "Lenna",
-        "birth_date": "1935-02-21"
+        "birth_date": "1935-02-21",
+        "identity": {
+            "schema": {
+                "name": "AT",
+            }
+        }
     },
     {
         "credential_type": "sdjwt",
@@ -41,11 +51,32 @@ EXAMPLE = [
         "authentic_source_person_id": "20",
         "family_name": "Christiansen",
         "given_name": "Mats",
-        "birth_date": "1983-03-27"
+        "birth_date": "1983-03-27",
+        "identity": {
+            "schema": {
+                "name": "DK",
+            }
+        }
     }
 ]
 
 OVERRIDE = True
+
+
+def fetch_userinfo(body):
+    keys = list(body.keys())
+    keys.remove("identity")
+    base = {k: v for k, v in body.items() if k in keys}
+    for ex in EXAMPLE:
+        _cmp = {k: v for k, v in ex.items() if k in keys}
+        if base == _cmp:
+            body["identity"] = ex["identity"]
+            _ava = {k: v for k, v in ex.items() if k in ["authentic_source_person_id", "family_name", "given_name",
+                                                         "birth_date"]}
+            body["identity"].update(_ava)
+            break
+
+    return body
 
 
 class CredentialConstructor(object):
@@ -151,8 +182,8 @@ class CredentialConstructor(object):
 
         # Get extra arguments from the authorization request if available
         _authz_args = {}
-        for k in ["collect_id", "authentic_source", "document_type", "credential_type"]:
-            _val = _authz_args.get(k, None)
+        for k in ["collect_id", "authentic_source", "document_type", "credential_type", "identity"]:
+            _val = grant.authorization_request.get(k, None)
             if _val:
                 _authz_args[k] = _val
             else:
@@ -161,14 +192,6 @@ class CredentialConstructor(object):
         logger.debug(f"Authorization request claims: {_authz_args}")
         _body = _authz_args
 
-        _identity = {
-            # "authentic_source_person_id": EXAMPLE["authentic_source_person_id"],
-            # Other personal information
-            "schema": {
-                "name": "SE",
-                # "version": "1.0.2"
-            }
-        }
         # and more arguments from what the authentication returned
         # _persistence = self.upstream_get("attribute", "persistence")
         if persistence:
@@ -185,13 +208,10 @@ class CredentialConstructor(object):
                 for attr in ["family_name", "given_name", "birth_date"]:
                     _av[attr] = EXAMPLE[0][attr]
             logger.debug(f"Authentication claims: {_av}")
-            if _av:
-                _identity.update(_av)
-            _body["identity"] = _identity
+
+            _body["identity"].update(_av)
         else:
-            _av = {attr: EXAMPLE[0][attr] for attr in ["family_name", "given_name", "birth_date"]}
-            _identity.update(_av)
-            _body["identity"] = _identity
+            _body = fetch_userinfo(_body)
 
         _body["jwk"] = request["__verified_proof"].jws_header["jwk"]
         # http://vc-interop-1.sunet.se/api/v1/credential

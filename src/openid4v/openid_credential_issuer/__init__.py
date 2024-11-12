@@ -6,10 +6,10 @@ from idpyoidc.alg_info import get_encryption_encs
 from idpyoidc.server import Endpoint
 from idpyoidc.server import EndpointContext
 from idpyoidc.server.claims import Claims
-from openid4v.openid_credential_issuer.credential import matching_authz_detail_against_supported
 
 from openid4v import message
 from openid4v import ServerEntity
+from openid4v.openid_credential_issuer.credential_constructor import matching_authz_detail_against_supported
 
 
 class OpenidCredentialIssuerClaims(Claims):
