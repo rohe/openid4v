@@ -203,6 +203,7 @@ class CredentialConstructor(object):
         if persistence:
             ex = matches_example(_body)
             if ex:
+                logger.debug(f"Will use example: {ex}")
                 _body["identity"] = ex["identity"]
                 _ava = {k: v for k, v in ex.items() if k in ["authentic_source_person_id", "family_name", "given_name",
                                                              "birth_date"]}
