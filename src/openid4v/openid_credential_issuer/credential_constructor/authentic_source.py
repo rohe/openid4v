@@ -218,17 +218,17 @@ class CredentialConstructor(object):
                 client_subject_id = combine_client_subject_id(client_id, user_id)
                 authn_claims = persistence.load_claims(client_subject_id)
                 # filter on accepted claims
-                _av = {}
+                _ava = {}
                 if {"family_name", "given_name", "birth_date"}.issubset(set(list(authn_claims.keys()))):
                     for attr, value in authn_claims.items():
                         if attr in ["family_name", "given_name", "birth_date"]:
-                            _av[attr] = value
+                            _ava[attr] = value
                 else:
                     for attr in ["family_name", "given_name", "birth_date"]:
-                        _av[attr] = EXAMPLE[0][attr]
-                logger.debug(f"Authentication claims: {_av}")
+                        _ava[attr] = EXAMPLE[0][attr]
+                logger.debug(f"Authentication claims: {_ava}")
 
-            _body["identity"].update(_av)
+            _body["identity"].update(_ava)
         else:
             _body = fetch_userinfo(_body)
 
