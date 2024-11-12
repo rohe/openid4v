@@ -63,18 +63,24 @@ EXAMPLE = [
 OVERRIDE = True
 
 
-def fetch_userinfo(body):
+def matches_example(body):
     keys = list(body.keys())
     keys.remove("identity")
     base = {k: v for k, v in body.items() if k in keys}
     for ex in EXAMPLE:
         _cmp = {k: v for k, v in ex.items() if k in keys}
         if base == _cmp:
-            body["identity"] = ex["identity"]
-            _ava = {k: v for k, v in ex.items() if k in ["authentic_source_person_id", "family_name", "given_name",
-                                                         "birth_date"]}
-            body["identity"].update(_ava)
-            break
+            return ex
+    return None
+
+
+def fetch_userinfo(body):
+    ex = matches_example(body)
+    if ex:
+        body["identity"] = ex["identity"]
+        _ava = {k: v for k, v in ex.items() if k in ["authentic_source_person_id", "family_name", "given_name",
+                                                     "birth_date"]}
+        body["identity"].update(_ava)
 
     return body
 
@@ -195,19 +201,26 @@ class CredentialConstructor(object):
         # and more arguments from what the authentication returned
         # _persistence = self.upstream_get("attribute", "persistence")
         if persistence:
-            logger.debug(f"Using {persistence.name} persistence layer")
-            client_subject_id = combine_client_subject_id(client_id, user_id)
-            authn_claims = persistence.load_claims(client_subject_id)
-            # filter on accepted claims
-            _av = {}
-            if {"family_name", "given_name", "birth_date"}.issubset(set(list(authn_claims.keys()))):
-                for attr, value in authn_claims.items():
-                    if attr in ["family_name", "given_name", "birth_date"]:
-                        _av[attr] = value
+            ex = matches_example(_body)
+            if ex:
+                _body["identity"] = ex["identity"]
+                _ava = {k: v for k, v in ex.items() if k in ["authentic_source_person_id", "family_name", "given_name",
+                                                             "birth_date"]}
+                _body["identity"].update(_ava)
             else:
-                for attr in ["family_name", "given_name", "birth_date"]:
-                    _av[attr] = EXAMPLE[0][attr]
-            logger.debug(f"Authentication claims: {_av}")
+                logger.debug(f"Using {persistence.name} persistence layer")
+                client_subject_id = combine_client_subject_id(client_id, user_id)
+                authn_claims = persistence.load_claims(client_subject_id)
+                # filter on accepted claims
+                _av = {}
+                if {"family_name", "given_name", "birth_date"}.issubset(set(list(authn_claims.keys()))):
+                    for attr, value in authn_claims.items():
+                        if attr in ["family_name", "given_name", "birth_date"]:
+                            _av[attr] = value
+                else:
+                    for attr in ["family_name", "given_name", "birth_date"]:
+                        _av[attr] = EXAMPLE[0][attr]
+                logger.debug(f"Authentication claims: {_av}")
 
             _body["identity"].update(_av)
         else:
