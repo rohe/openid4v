@@ -1,5 +1,5 @@
 __author__ = "Roland Hedberg"
-__version__ = "0.8.0"
+__version__ = "0.9.0"
 
 from typing import Any
 from typing import Callable

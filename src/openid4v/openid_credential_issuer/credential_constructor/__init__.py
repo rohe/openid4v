@@ -1,9 +1,11 @@
+import json
 import logging
 from typing import Optional
 from typing import Union
 
 from idpyoidc.exception import RequestError
 from idpyoidc.message import Message
+from idpyoidc.node import topmost_unit
 from idpysdjwt.issuer import Issuer
 from satosa_idpyop.persistence import Persistence
 
@@ -141,9 +143,16 @@ class CredentialConstructor(object):
 
         logger.debug(f"claims_restriction: {_claims_restriction}")
         # Collect user info
-        info = _cntxt.claims_interface.get_user_claims(user_id,
-                                                       claims_restriction=_claims_restriction,
-                                                       client_id=client_id)
+        if _cntxt.userinfo:
+            info = _cntxt.claims_interface.get_user_claims(user_id,
+                                                           claims_restriction=_claims_restriction,
+                                                           client_id=client_id)
+        else:
+            entity = topmost_unit(self)
+            _oas = entity["oauth_authorization_server"]
+            info = _oas.context.claims_interface.get_user_claims(user_id,
+                                                                 claims_restriction=_claims_restriction,
+                                                                 client_id=client_id)
 
         logger.debug(f"user claims [{user_id}]: {info}")
 
@@ -171,4 +180,5 @@ class CredentialConstructor(object):
             ci.array_disclosure = _array_disclosure
 
         # create SD-JWT
-        return ci.create_holder_message(payload=must_display, jws_headers={"typ": "example+sd-jwt"})
+        _sdjwt = ci.create_holder_message(payload=must_display, jws_headers={"typ": "example+sd-jwt"})
+        return json.dumps({"credentials": {"credential": _sdjwt}})
