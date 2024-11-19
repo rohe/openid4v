@@ -65,12 +65,19 @@ OVERRIDE = True
 
 def matches_example(body):
     keys = list(body.keys())
-    keys.remove("identity")
-    base = {k: v for k, v in body.items() if k in keys}
+    if "identity" in keys:
+        _val = body["identity"]
+        keys.remove("identity")
+        del body["identity"]
+    else:
+        _val = None
     for ex in EXAMPLE:
         _cmp = {k: v for k, v in ex.items() if k in keys}
-        if base == _cmp:
+        logger.debug(f"Compare: {body} vs {_cmp}")
+        if body == _cmp:
             return ex
+    if _val:
+        body["identity"] = _val
     return None
 
 
@@ -83,6 +90,12 @@ def fetch_userinfo(body):
         body["identity"].update(_ava)
 
     return body
+
+
+DOCTYPE = {
+    "EHICCredential": "EHIC",
+    "PDA1Credential": "PDA1"
+}
 
 
 class CredentialConstructor(object):
@@ -189,44 +202,44 @@ class CredentialConstructor(object):
         # Get extra arguments from the authorization request if available
         if "issuer_state" in grant.authorization_request:
             msg = Message().from_urlencoded(grant.authorization_request["issuer_state"])
+            _body = msg.to_dict()
+            _body["credential_type"] = "sdjwt"
+            _vct = authz_detail["vct"]
+            if _vct in DOCTYPE:
+                _vct = DOCTYPE[_vct]
+            _body["document_type"] = _vct
         else:
-            msg = grant.authorization_request
+            _body = grant.authorization_request
 
-        _authz_args = {}
-        for k in ["collect_id", "authentic_source", "document_type", "credential_type", "identity"]:
-            _val = msg.get(k, None)
-            if _val:
-                _authz_args[k] = _val
-            else:
-                _authz_args[k] = EXAMPLE[0][k]
-
-        logger.debug(f"Authorization request claims: {_authz_args}")
-        _body = _authz_args
+        logger.debug(f"Authorization request claims: {_body}")
 
         # and more arguments from what the authentication returned
         # _persistence = self.upstream_get("attribute", "persistence")
+        ex = matches_example(_body)
+        if ex:
+            logger.debug(f"Will use example: {ex}")
+            _body["identity"] = ex["identity"]
+            _ava = {k: v for k, v in ex.items() if k in ["authentic_source_person_id", "family_name", "given_name",
+                                                         "birth_date"]}
+            _body["identity"].update(_ava)
+
         if persistence:
-            ex = matches_example(_body)
-            if ex:
-                logger.debug(f"Will use example: {ex}")
-                _body["identity"] = ex["identity"]
-                _ava = {k: v for k, v in ex.items() if k in ["authentic_source_person_id", "family_name", "given_name",
-                                                             "birth_date"]}
-                _body["identity"].update(_ava)
+            logger.debug(f"Using {persistence.name} persistence layer")
+            client_subject_id = combine_client_subject_id(client_id, user_id)
+            authn_claims = persistence.load_claims(client_subject_id)
+            # filter on accepted claims
+            _ava = {}
+            if {"family_name", "given_name", "birth_date"}.issubset(set(list(authn_claims.keys()))):
+                for attr, value in authn_claims.items():
+                    if attr in ["family_name", "given_name", "birth_date"]:
+                        _ava[attr] = value
             else:
-                logger.debug(f"Using {persistence.name} persistence layer")
-                client_subject_id = combine_client_subject_id(client_id, user_id)
-                authn_claims = persistence.load_claims(client_subject_id)
-                # filter on accepted claims
-                _ava = {}
-                if {"family_name", "given_name", "birth_date"}.issubset(set(list(authn_claims.keys()))):
-                    for attr, value in authn_claims.items():
-                        if attr in ["family_name", "given_name", "birth_date"]:
-                            _ava[attr] = value
-                else:
-                    for attr in ["family_name", "given_name", "birth_date"]:
-                        _ava[attr] = EXAMPLE[0][attr]
-                logger.debug(f"Authentication claims: {_ava}")
+                for attr in ["family_name", "given_name", "birth_date"]:
+                    _ava[attr] = EXAMPLE[0][attr]
+            logger.debug(f"Authentication claims: {_ava}")
+
+            if "identity" not in _body:
+                _body["identity"] = EXAMPLE[0]["identity"]
 
             _body["identity"].update(_ava)
         else:
