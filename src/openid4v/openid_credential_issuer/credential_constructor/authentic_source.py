@@ -268,7 +268,11 @@ class CredentialConstructor(object):
                     _ava["birth_date"] = _ava["birth_date"][0]
 
             if "identity" not in _body:
-                _body["identity"] = EXAMPLE[0]["identity"]
+                _body["identity"] = {
+                    "schema": {
+                        "name": "FR"
+                    }
+                }
 
             _body["identity"].update(_ava)
 
