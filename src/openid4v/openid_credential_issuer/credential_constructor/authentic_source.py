@@ -257,10 +257,15 @@ class CredentialConstructor(object):
             authn_claims = persistence.load_claims(client_subject_id)
             # filter on accepted claims
             _ava = {}
+            logger.debug(f"AVA claims: {authn_claims}")
             for attr, value in authn_claims.items():
                 if attr in ["family_name", "given_name", "birth_date"]:
                     _ava[attr] = value
             logger.debug(f"Authentication claims: {_ava}")
+
+            if "birth_date" in _ava:
+                if isinstance(_ava["birth_date"], list):
+                    _ava["birth_date"] = _ava["birth_date"][0]
 
             if "identity" not in _body:
                 _body["identity"] = EXAMPLE[0]["identity"]
