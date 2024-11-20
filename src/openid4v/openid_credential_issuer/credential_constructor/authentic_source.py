@@ -61,7 +61,7 @@ EXAMPLE = [
 ]
 
 OVERRIDE = True
-
+BOOTSTRAP = False
 
 def matches_example(body):
     keys = list(body.keys())
@@ -183,6 +183,40 @@ class CredentialConstructor(object):
         else:
             return resp.text
 
+    def _matching(self, body, persistence, client_id, user_id):
+        # and more arguments from what the authentication returned
+        # _persistence = self.upstream_get("attribute", "persistence")
+        ex = matches_example(body)
+        if ex:
+            logger.debug(f"Will use example: {ex}")
+            body["identity"] = ex["identity"]
+            _ava = {k: v for k, v in ex.items() if k in ["authentic_source_person_id", "family_name", "given_name",
+                                                         "birth_date"]}
+            body["identity"].update(_ava)
+
+        if persistence:
+            logger.debug(f"Using {persistence.name} persistence layer")
+            client_subject_id = combine_client_subject_id(client_id, user_id)
+            authn_claims = persistence.load_claims(client_subject_id)
+            # filter on accepted claims
+            _ava = {}
+            if {"family_name", "given_name", "birth_date"}.issubset(set(list(authn_claims.keys()))):
+                for attr, value in authn_claims.items():
+                    if attr in ["family_name", "given_name", "birth_date"]:
+                        _ava[attr] = value
+            else:
+                for attr in ["family_name", "given_name", "birth_date"]:
+                    _ava[attr] = EXAMPLE[0][attr]
+            logger.debug(f"Authentication claims: {_ava}")
+
+            if "identity" not in body:
+                body["identity"] = EXAMPLE[0]["identity"]
+
+            body["identity"].update(_ava)
+        else:
+            body = fetch_userinfo(body)
+        return body
+
     def __call__(self,
                  user_id: str,
                  client_id: str,
@@ -215,35 +249,23 @@ class CredentialConstructor(object):
 
         # and more arguments from what the authentication returned
         # _persistence = self.upstream_get("attribute", "persistence")
-        ex = matches_example(_body)
-        if ex:
-            logger.debug(f"Will use example: {ex}")
-            _body["identity"] = ex["identity"]
-            _ava = {k: v for k, v in ex.items() if k in ["authentic_source_person_id", "family_name", "given_name",
-                                                         "birth_date"]}
-            _body["identity"].update(_ava)
-
-        if persistence:
+        if BOOTSTRAP:
+            _body = self._matching(_body, persistence, client_id, user_id)
+        else:
             logger.debug(f"Using {persistence.name} persistence layer")
             client_subject_id = combine_client_subject_id(client_id, user_id)
             authn_claims = persistence.load_claims(client_subject_id)
             # filter on accepted claims
             _ava = {}
-            if {"family_name", "given_name", "birth_date"}.issubset(set(list(authn_claims.keys()))):
-                for attr, value in authn_claims.items():
-                    if attr in ["family_name", "given_name", "birth_date"]:
-                        _ava[attr] = value
-            else:
-                for attr in ["family_name", "given_name", "birth_date"]:
-                    _ava[attr] = EXAMPLE[0][attr]
+            for attr, value in authn_claims.items():
+                if attr in ["family_name", "given_name", "birth_date"]:
+                    _ava[attr] = value
             logger.debug(f"Authentication claims: {_ava}")
 
             if "identity" not in _body:
                 _body["identity"] = EXAMPLE[0]["identity"]
 
             _body["identity"].update(_ava)
-        else:
-            _body = fetch_userinfo(_body)
 
         _body["jwk"] = request["__verified_proof"].jws_header["jwk"]
         # http://vc-interop-1.sunet.se/api/v1/credential
