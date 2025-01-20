@@ -15,46 +15,46 @@ logger = logging.getLogger(__name__)
 EXAMPLE = [
     {
         "credential_type": "sdjwt",
-        "authentic_source": "authentic_source_se",
+        "authentic_source": "EHIC:00001",
         "document_type": "EHIC",
-        "collect_id": "collect_id_10",
-        "authentic_source_person_id": "10",
-        "family_name": "Castaneda",
-        "given_name": "Carlos",
-        "birth_date": "1970-01-10",
+        "collect_id": "collect_id_ehic_129",
+        "authentic_source_person_id": "authentic_source_person_id_129",
+        "family_name": "Wilson",
+        "given_name": "Owen",
+        "birth_date": "2007-09-11",
         "identity": {
             "schema": {
-                "name": "SE",
+                "name": "DefaultSchema",
             }
         }
     },
     {
         "credential_type": "sdjwt",
-        "authentic_source": "authentic_source_at",
+        "authentic_source": "EHIC:00001",
         "document_type": "EHIC",
-        "collect_id": "collect_id_11",
-        "authentic_source_person_id": "11",
-        "family_name": "Howell",
-        "given_name": "Lenna",
-        "birth_date": "1935-02-21",
+        "collect_id": "collect_id_ehic_88",
+        "authentic_source_person_id": "authentic_source_person_id_88",
+        "family_name": "Hopkins",
+        "given_name": "Anthony",
+        "birth_date": "2006-08-16",
         "identity": {
             "schema": {
-                "name": "AT",
+                "name": "DefaultSchema",
             }
         }
     },
     {
         "credential_type": "sdjwt",
-        "authentic_source": "authentic_source_dk",
+        "authentic_source": "PDA1:00001",
         "document_type": "PDA1",
-        "collect_id": "collect_id_20",
-        "authentic_source_person_id": "20",
-        "family_name": "Christiansen",
-        "given_name": "Mats",
-        "birth_date": "1983-03-27",
+        "collect_id": "collect_id_pda1_79",
+        "authentic_source_person_id": "authentic_source_person_id_79",
+        "family_name": "Foster",
+        "given_name": "Jodie",
+        "birth_date": "1991-10-30",
         "identity": {
             "schema": {
-                "name": "DK",
+                "name": "DefaultSchema",
             }
         }
     }
@@ -270,7 +270,7 @@ class CredentialConstructor(object):
             if "identity" not in _body:
                 _body["identity"] = {
                     "schema": {
-                        "name": "FR"
+                        "name": "DefaultSchema"
                     }
                 }
 
