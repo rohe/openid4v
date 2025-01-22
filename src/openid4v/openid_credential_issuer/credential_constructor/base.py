@@ -106,11 +106,12 @@ class CredentialConstructor(object):
             _claims_restriction = {c: None for c in _matching[0].keys()}
 
         logger.debug(f"claims_restriction: {_claims_restriction}")
+
         # Collect user info
-        info = _cntxt.claims_interface.get_user_claims(user_id, claims_restriction=_claims_restriction,
+        user_info = _cntxt.claims_interface.get_user_claims(user_id, claims_restriction=_claims_restriction,
                                                        client_id=client_id)
 
-        logger.debug(f"user claims [{user_id}]: {info}")
+        logger.debug(f"user claims [{user_id}]: {user_info}")
 
         # Initiate the Issuer
         ci = Issuer(
@@ -120,18 +121,18 @@ class CredentialConstructor(object):
             lifetime=900,
             holder_key={}
         )
-        must_display = info.copy()
+        must_display = user_info.copy()
 
         # First object disclosure
-        _attribute_disclose = self.calculate_attribute_disclosure(info)
+        _attribute_disclose = self.calculate_attribute_disclosure(user_info)
 
         if _attribute_disclose:
-            # Figure out what must be displayed
+            # Figure out what must be displayed and what must not
             ci.objective_disclosure = _attribute_disclose
             must_display = self._must_display(_attribute_disclose, must_display)
 
         # Then array disclosure
-        _array_disclosure = self.calculate_array_disclosure(info)
+        _array_disclosure = self.calculate_array_disclosure(user_info)
         if _array_disclosure:
             ci.array_disclosure = _array_disclosure
 
