@@ -212,7 +212,7 @@ class TestPID():
         _resp = pushed_authorization_endpoint.process_request(_req)
         return _resp
 
-    @pytest.disable()
+    @pytest.mark.skip(reason="This was broken when I found it!")
     def test_authorization_EHIC(self):
         where_and_what = create_trust_chain_messages(self.pid,
                                                      self.ta)
@@ -356,7 +356,7 @@ class TestPID():
 
         assert "error" not in credential_response
 
-    @pytest.disable()
+    @pytest.mark.skip(reason="This was broken when I found it!")
     def test_authorization_PDA1(self):
         where_and_what = create_trust_chain_messages(self.pid,
                                                      self.ta)
