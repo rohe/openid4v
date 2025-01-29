@@ -1,5 +1,5 @@
 from openid4v.openid_credential_issuer.credential import CredentialConstructor
-from openid4v.openid_credential_issuer.credential import matching_authz_detail_against_supported
+from openid4v.openid_credential_issuer import matching_authz_detail_against_supported
 
 AUTHZ_DETAIL_1 = {
     "type": "openid_credential",

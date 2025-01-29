@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=61.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openid4v"
+version = "0.9.0"
+authors = [{name = "Roland Hedberg", email = "roland@catalogix.se"}]
+license = {text = "Apache 2.0"}
+description = "Python implementation of OpenID Verifiable Credentials Issuer, Wallet and Wallet Provider"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+urls = {Homepage = "https://github.com/SUNET/openid4v/"}
+dependencies = [
+    "idpyoidc @ git+https://github.com/IdentityPython/idpy-oidc.git@issuer_metadata",
+    "fedservice @ git+https://github.com/SUNET/fedservice.git", 
+]
+
+
+[project.readme]
+file = "README.md"
+content-type = "text/markdown"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+zip-safe = false
+include-package-data = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
+
+[project.optional-dependencies]
+test = [
+    "cryptojwt",
+    "idpysdjwt @ git+https://github.com/SUNET/idpy-sdjwt.git",
+    "flask",
+    "satosa-idpyop @ git+https://github.com/SUNET/satosa-idpy.git"
+]
