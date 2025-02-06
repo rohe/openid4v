@@ -18,7 +18,7 @@ classifiers = [
 ]
 urls = {Homepage = "https://github.com/SUNET/openid4v/"}
 dependencies = [
-    "idpyoidc @ git+https://github.com/IdentityPython/idpy-oidc.git@issuer_metadata",
+    "idpyoidc @ git+https://github.com/IdentityPython/idpy-oidc.git@issuer_metadata#egg=idpyoidc",
     "fedservice @ git+https://github.com/SUNET/fedservice.git", 
 ]
 
